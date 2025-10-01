@@ -24,19 +24,72 @@ namespace Fishmachine
 		public uint Address;
 
 		public FishInst Inst;
-		public uint Op1;
-		public uint Op2;
-		public uint Op3;
 
-		public AsmToken Op1Token;
-		public AsmToken Op2Token;
-		public AsmToken Op3Token;
+		uint Op1;
+		uint Op2;
+		uint Op3;
+
+		int Op1Size;
+		int Op2Size;
+		int Op3Size;
+
+		bool HasOp1 = false;
+		bool HasOp2 = false;
+		bool HasOp3 = false;
+
+		public AsmToken Op1Token { get; private set; }
+
+		public AsmToken Op2Token { get; private set; }
+
+		public AsmToken Op3Token { get; private set; }
 
 		public byte[] Raw;
 
 		public AsmInstr(FishInst Inst)
 		{
 			this.Inst = Inst;
+		}
+
+		public void SetOp1(uint Val, int Size)
+		{
+			Op1 = Val;
+			Op1Size = Size;
+			HasOp1 = true;
+		}
+
+		public void SetOp1(AsmToken Val, int Size)
+		{
+			Op1Token = Val;
+			Op1Size = Size;
+			HasOp1 = true;
+		}
+
+		public void SetOp2(uint Val, int Size)
+		{
+			Op2 = Val;
+			Op2Size = Size;
+			HasOp2 = true;
+		}
+
+		public void SetOp2(AsmToken Val, int Size)
+		{
+			Op2Token = Val;
+			Op2Size = Size;
+			HasOp2 = true;
+		}
+
+		public void SetOp3(uint Val, int Size)
+		{
+			Op3 = Val;
+			Op3Size = Size;
+			HasOp3 = true;
+		}
+
+		public void SetOp3(AsmToken Val, int Size)
+		{
+			Op3Token = Val;
+			Op3Size = Size;
+			HasOp3 = true;
 		}
 
 		public void WriteBytes(BinaryWriter BW)
@@ -48,6 +101,15 @@ namespace Fishmachine
 			else
 			{
 				BW.Write((byte)Inst);
+
+				if (HasOp1)
+					BW.Write(BitConverter.GetBytes(Op1), 0, Op1Size);
+
+				if (HasOp2)
+					BW.Write(BitConverter.GetBytes(Op2), 0, Op2Size);
+
+				if (HasOp3)
+					BW.Write(BitConverter.GetBytes(Op3), 0, Op3Size);
 			}
 		}
 
@@ -63,7 +125,7 @@ namespace Fishmachine
 
 		public override string ToString()
 		{
-			return string.Format("{0} {1}, {2}, {3}", Inst, Op1Token?.Name ?? Op1.ToString(), Op2Token?.Name ?? Op2.ToString(), Op3Token?.Name ?? Op3.ToString());
+			return string.Format("{4}: {0} {1}, {2}, {3}", Inst, Op1Token?.Name ?? Op1.ToString(), Op2Token?.Name ?? Op2.ToString(), Op3Token?.Name ?? Op3.ToString(), Address);
 		}
 	}
 
@@ -221,11 +283,12 @@ namespace Fishmachine
 					switch (Tokens[0])
 					{
 						case "PUSH_REG":
+						case "CALL_REG":
 							if (Tokens.Length != 2)
 								Throw(i, $"{Tokens[0]} requires 1 operand");
 
-							Instr = new AsmInstr(FishInst.PUSH_REG);
-							Instr.Op1 = (byte)ParseReg(i, Tokens[1]);
+							Instr = new AsmInstr(Enum.Parse<FishInst>(Tokens[0]));
+							Instr.SetOp1((byte)ParseReg(i, Tokens[1]), 1);
 							AddAsmInstr(Instr);
 
 							break;
@@ -234,9 +297,9 @@ namespace Fishmachine
 							if (Tokens.Length != 3)
 								Throw(i, $"{Tokens[0]} requires 2 operands");
 
-							Instr = new AsmInstr(FishInst.MOVE_REG_REG);
-							Instr.Op1 = (byte)ParseReg(i, Tokens[1]);
-							Instr.Op2 = (byte)ParseReg(i, Tokens[2]);
+							Instr = new AsmInstr(Enum.Parse<FishInst>(Tokens[0]));
+							Instr.SetOp1((byte)ParseReg(i, Tokens[1]), 1);
+							Instr.SetOp2((byte)ParseReg(i, Tokens[2]), 1);
 							AddAsmInstr(Instr);
 
 							break;
@@ -253,11 +316,11 @@ namespace Fishmachine
 								{
 									if (Tok != null)
 									{
-										Instr.Op1Token = Tok;
+										Instr.SetOp1(Tok, 4);
 									}
 									else
 									{
-										Instr.Op1 = Val;
+										Instr.SetOp1(Val, 4);
 									}
 								}
 								else
@@ -265,7 +328,7 @@ namespace Fishmachine
 									Throw(i, $"Invalid operand: {Tokens[1]}");
 								}
 
-								Instr.Op2 = (byte)ParseReg(i, Tokens[2]);
+								Instr.SetOp2((byte)ParseReg(i, Tokens[2]), 1);
 
 								AddAsmInstr(Instr);
 								break;
@@ -276,8 +339,8 @@ namespace Fishmachine
 								Throw(i, $"{Tokens[0]} requires 2 operands");
 
 							Instr = new AsmInstr(Enum.Parse<FishInst>(Tokens[0]));
-							Instr.Op1Token = RefToken(Tokens[1]);
-							Instr.Op2 = (byte)ParseReg(i, Tokens[2]);
+							Instr.SetOp1(RefToken(Tokens[1]), 4);
+							Instr.SetOp2((byte)ParseReg(i, Tokens[2]), 1);
 
 							AddAsmInstr(Instr);
 							break;
@@ -287,9 +350,9 @@ namespace Fishmachine
 								Throw(i, $"{Tokens[0]} requires 3 operands");
 
 							Instr = new AsmInstr(Enum.Parse<FishInst>(Tokens[0]));
-							Instr.Op1 = (byte)ParseReg(i, Tokens[1]);
-							Instr.Op2 = (uint)ParseOffset(Tokens[2]);
-							Instr.Op3 = (byte)ParseReg(i, Tokens[3]);
+							Instr.SetOp1((byte)ParseReg(i, Tokens[1]), 1);
+							Instr.SetOp2((uint)ParseOffset(Tokens[2]), 4);
+							Instr.SetOp3((byte)ParseReg(i, Tokens[3]), 1);
 
 							AddAsmInstr(Instr);
 							break;
@@ -299,21 +362,11 @@ namespace Fishmachine
 								Throw(i, $"{Tokens[0]} requires 3 operands");
 
 							Instr = new AsmInstr(Enum.Parse<FishInst>(Tokens[0]));
-							Instr.Op1 = (uint)ParseOffset(Tokens[1]);
-							Instr.Op2 = (byte)ParseReg(i, Tokens[2]);
-							Instr.Op3 = (byte)ParseReg(i, Tokens[3]);
+							Instr.SetOp1((uint)ParseOffset(Tokens[1]), 4);
+							Instr.SetOp2((byte)ParseReg(i, Tokens[2]), 1);
+							Instr.SetOp3((byte)ParseReg(i, Tokens[3]), 1);
 
 							AddAsmInstr(Instr);
-							break;
-
-						case "CALL_REG":
-							if (Tokens.Length != 2)
-								Throw(i, $"{Tokens[0]} requires 1 operand");
-
-							Instr = new AsmInstr(Enum.Parse<FishInst>(Tokens[0]));
-							Instr.Op1 = (byte)ParseReg(i, Tokens[1]);
-							AddAsmInstr(Instr);
-
 							break;
 
 
@@ -329,11 +382,11 @@ namespace Fishmachine
 								{
 									if (Tok != null)
 									{
-										Instr.Op1Token = Tok;
+										Instr.SetOp1(Tok, 4);
 									}
 									else
 									{
-										Instr.Op1 = Val;
+										Instr.SetOp1(Val, 4);
 									}
 								}
 								else
@@ -376,27 +429,33 @@ namespace Fishmachine
 				{
 					if (Bytes[i].Op1Token != null)
 					{
-						Bytes[i].Op1 = Bytes[i].Op1Token.Address;
+						Bytes[i].SetOp1(Bytes[i].Op1Token.Address, 4);
 					}
 
 					if (Bytes[i].Op2Token != null)
 					{
-						Bytes[i].Op2 = Bytes[i].Op2Token.Address;
+						Bytes[i].SetOp2(Bytes[i].Op2Token.Address, 4);
 					}
 
 					if (Bytes[i].Op3Token != null)
 					{
-						Bytes[i].Op3 = Bytes[i].Op3Token.Address;
+						Bytes[i].SetOp3(Bytes[i].Op3Token.Address, 4);
 					}
 				}
 			}
 
 			using (MemoryStream MS = new MemoryStream())
-			using (BinaryWriter BW = new BinaryWriter(MS))
 			{
-				foreach (var Instr in Bytes)
+				MS.Seek(0, SeekOrigin.Begin);
+
+				using (BinaryWriter BW = new BinaryWriter(MS))
 				{
-					Instr.WriteBytes(BW);
+					foreach (var Instr in Bytes)
+					{
+						Instr.WriteBytes(BW);
+					}
+
+					BW.Flush();
 				}
 
 				return MS.ToArray();

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CodeGeneration;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.AccessControl;
@@ -9,6 +10,8 @@ namespace Fishmachine
 {
 	public enum FishInst : byte
 	{
+		INVALID = 0,
+
 		NOP,
 		LEAVE,
 		RET,
@@ -40,6 +43,7 @@ namespace Fishmachine
 	public struct FishRegisters
 	{
 		public uint[] Regs;
+		public uint IP;
 
 		public uint Read(CodeGeneration.Reg Reg)
 		{
@@ -51,20 +55,10 @@ namespace Fishmachine
 			Regs[(int)Reg] = Val;
 		}
 
-		public uint IP;
-
 		public FishRegisters()
 		{
 			Regs = new uint[24];
 		}
-	}
-
-	public struct CurInstruction
-	{
-		public FishInst Inst;
-		public uint Op1;
-		public uint Op2;
-		public uint Op3;
 	}
 
 	public class FishVM
@@ -114,8 +108,7 @@ namespace Fishmachine
 
 		byte[] Memory;
 
-		FishRegisters Regs = new FishRegisters();
-		CurInstruction CurInstr;
+		public FishRegisters Regs = new FishRegisters();
 
 		public FishVM()
 		{
@@ -160,77 +153,122 @@ namespace Fishmachine
 			return Value;
 		}
 
-		public void WriteByte(uint Address, byte Value)
+		public void WriteByte(uint VirtAddress, byte Value)
 		{
-			Address = VirtualToReal(Address);
-			MemoryBankForRealAddress(Address)[Address] = Value;
+			VirtAddress = VirtualToReal(VirtAddress);
+			MemoryBankForRealAddress(VirtAddress)[VirtAddress] = Value;
 		}
 
-		public void Jump(uint Address)
+		public void WriteBytes(uint VirtAddress, byte[] Value)
 		{
-			Regs.IP = Address;
+			VirtAddress = VirtualToReal(VirtAddress);
+			Array.Copy(Value, 0, MemoryBankForRealAddress(VirtAddress), VirtAddress, Value.Length);
 		}
 
-		void Fetch()
+		public void Jump(uint VirtAddress)
 		{
-			Console.WriteLine("IP = {0}", Regs.IP);
-
-			CurInstr = new CurInstruction();
-			CurInstr.Inst = (FishInst)ReadByteFromIP();
-
-			switch (CurInstr.Inst)
-			{
-				// Single register, 2 byte total
-				case FishInst.PUSH_REG:
-					CurInstr.Reg1 = ReadByteFromIP();
-					break;
-
-				// Two registers, 3 byte total
-				case FishInst.MOVE_REG_REG:
-					CurInstr.Reg1 = ReadByteFromIP();
-					CurInstr.Reg2 = ReadByteFromIP();
-					break;
-
-				// Single 32-bit operand, 5 byte total
-				case FishInst.JUMP_LONG:
-				case FishInst.PUSH_LONG:
-					CurInstr.Operand1 = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() }, 0);
-					break;
-
-				// Two 32-bit operands, 9 byte total
-				case FishInst.MOVE_LONG_REG:
-					CurInstr.Operand1 = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() }, 0);
-					CurInstr.Operand2 = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() }, 0);
-					break;
-			}
-
-			Console.WriteLine("FETCH {0} Op1 = {1:X4} Op2 = {2:X4} Op3 = {3:X4}", CurInstr.Inst, CurInstr.Op1, CurInstr.Op2, CurInstr.Op3);
+			Regs.IP = VirtAddress;
+			Console.WriteLine("IP = 0x{0:X4}", Regs.IP);
 		}
 
-		void Decode()
+		bool Step()
 		{
+			Console.Write("{0:X4}: ", Regs.IP);
 
-		}
+			FishInst Inst = (FishInst)ReadByteFromIP();
+			Console.WriteLine("{0}", Inst);
 
-		void Execute()
-		{
-			switch (CurInstr.Inst)
+			switch (Inst)
 			{
 				case FishInst.NOP:
-					break;
+					{
+						break;
+					}
+
+				case FishInst.INVALID:
+					throw new Exception("Invalid instruction");
+
+				case FishInst.PUSH_REG:
+					{
+						Reg R = (Reg)ReadByteFromIP();
+						uint ESP = Regs.Read(Reg.ESP);
+						uint WriteAddr = ESP - sizeof(uint);
+						WriteBytes(WriteAddr, BitConverter.GetBytes(Regs.Read(R)));
+						Regs.Write(Reg.ESP, WriteAddr);
+						break;
+					}
+
+				case FishInst.MOVE_REG_REG:
+					{
+						Reg R1 = (Reg)ReadByteFromIP();
+						Reg R2 = (Reg)ReadByteFromIP();
+
+						uint R1Val = Regs.Read(R1);
+						Regs.Write(R2, R1Val);
+						break;
+					}
+
+				case FishInst.MOVE_REG_OFFSET_REG:
+					{
+						Reg R1 = (Reg)ReadByteFromIP();
+						int Offset = BitConverter.ToInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
+						Reg R2 = (Reg)ReadByteFromIP();
+
+						uint R1Val = Regs.Read(R1);
+						uint Addr = (uint)(Regs.Read(R2) + Offset);
+						WriteBytes(Addr, BitConverter.GetBytes(R1Val));
+						//Regs.Write(R2, R1Val);
+						break;
+					}
+
+				case FishInst.SUB_LONG_REG:
+					{
+						uint L1 = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
+						Reg R2 = (Reg)ReadByteFromIP();
+
+						uint RVal = Regs.Read(R2);
+						Regs.Write(R2, RVal - L1);
+						break;
+					}
+
+				case FishInst.LEA_ADDR_REG:
+					{
+						uint L1 = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
+						Reg R2 = (Reg)ReadByteFromIP();
+						Regs.Write(R2, L1);
+						break;
+					}
+
+				case FishInst.LEA_OFFSET_REG_REG:
+					{
+						int Offset = BitConverter.ToInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
+						Reg R1 = (Reg)ReadByteFromIP();
+						Reg R2 = (Reg)ReadByteFromIP();
+
+						uint Addr = (uint)(Regs.Read(R1) + Offset);
+						Regs.Write(R2, Addr);
+						break;
+					}
+
+				case FishInst.CALL_REG:
+					{
+						Reg R1 = (Reg)ReadByteFromIP();
+						uint RetAddr = Regs.IP;
+						uint Addr = Regs.Read(R1);
 
 
+						uint ESP = Regs.Read(Reg.ESP);
+						uint WriteAddr = ESP - sizeof(uint);
+						WriteBytes(WriteAddr, BitConverter.GetBytes(RetAddr));
+						Regs.Write(Reg.ESP, WriteAddr);
+
+						Jump(Addr);
+						break;
+					}
 
 				default:
-					throw new InvalidProgramException("Invalid instruction");
+					throw new Exception(string.Format("Unknown instruction {0}", Inst));
 			}
-		}
-
-		public bool Step()
-		{
-			Fetch();
-			Decode();
-			Execute();
 
 			return true;
 		}
