@@ -425,118 +425,142 @@ namespace ABT
 			//      +--------+
 			// 
 
-			state.NEWLINE();
-			state.COMMENT($"Before pushing the arguments, stack size = {state.StackSize}.");
+			bool is_special_function = false;
+			Variable FuncVar = Func as Variable;
+			is_special_function = (this.Func.Type is FunctionType && this.Func is ABT.Variable && (FuncVar.Name == "syscall" || FuncVar.Name == "dbg_break"));
 
-			var r_pack = Utils.PackArguments(this.Args.Select(_ => _.Type).ToList());
-			Int32 pack_size = r_pack.Item1;
-			IReadOnlyList<Int32> offsets = r_pack.Item2;
-
-			if (this.Type is StructOrUnionType)
+			if (is_special_function)
 			{
-				// If the function returns a struct
-
-				// Allocate space for return Value.
-				state.COMMENT("Allocate space for returning stack.");
-				state.CGenExpandStackWithAlignment(this.Type.SizeOf, this.Type.Alignment);
-
-				// Temporarily store the address in %eax.
-				state.MOVL(Reg.ESP, Reg.EAX);
-
-				// add an extra argument and move all other arguments upwards.
-				pack_size += ExprType.SIZEOF_POINTER;
-				offsets = offsets.Select(_ => _ + ExprType.SIZEOF_POINTER).ToList();
-			}
-
-			// Allocate space for arguments.
-			// If returning struct, the extra pointer is included.
-			state.COMMENT($"Arguments take {pack_size} bytes.");
-			state.CGenExpandStackBy(pack_size);
-			state.NEWLINE();
-
-			// Store the address as the first argument.
-			if (this.Type is StructOrUnionType)
-			{
-				state.COMMENT("Putting extra argument for struct return address.");
-				state.MOVL(Reg.EAX, 0, Reg.ESP);
-				state.NEWLINE();
-			}
-
-			// This is the stack size before calling the function.
-			Int32 header_base = -state.StackSize;
-
-			// Push the arguments onto the stack in reverse order
-			for (Int32 i = this.Args.Count; i-- > 0;)
-			{
-				Expr arg = this.Args[i];
-				Int32 pos = header_base + offsets[i];
-
-				state.COMMENT($"Argument {i} is at {pos}");
-
-				Reg ret = arg.CGenValue(state);
-				switch (arg.Type.Kind)
+				switch (FuncVar.Name)
 				{
-					case ExprTypeKind.ARRAY:
-					case ExprTypeKind.CHAR:
-					case ExprTypeKind.UCHAR:
-					case ExprTypeKind.SHORT:
-					case ExprTypeKind.USHORT:
-					case ExprTypeKind.LONG:
-					case ExprTypeKind.ULONG:
-					case ExprTypeKind.POINTER:
-						if (ret != Reg.EAX)
+					case "syscall":
 						{
-							throw new InvalidProgramException();
-						}
-						state.MOVL(Reg.EAX, pos, Reg.EBP);
-						break;
+							if (Args.Count != 1 || (Args.Count == 1 && Args[0] is not ConstLong))
+								throw new Exception("syscall takes exactly one const long argument.");
 
-					case ExprTypeKind.DOUBLE:
-						if (ret != Reg.ST0)
-						{
-							throw new InvalidProgramException();
+							ConstLong ArgE = Args[0] as ConstLong;
+							state.SYSCALL((uint)ArgE.Value);
+							break;
 						}
-						state.FSTPL(pos, Reg.EBP);
-						break;
 
-					case ExprTypeKind.FLOAT:
-						if (ret != Reg.ST0)
-						{
-							throw new InvalidProgramException();
-						}
-						state.FSTPL(pos, Reg.EBP);
-						break;
-
-					case ExprTypeKind.STRUCT_OR_UNION:
-						if (ret != Reg.EAX)
-						{
-							throw new InvalidProgramException();
-						}
-						state.MOVL(Reg.EAX, Reg.ESI);
-						state.LEA(pos, Reg.EBP, Reg.EDI);
-						state.MOVL(arg.Type.SizeOf, Reg.ECX);
-						state.CGenMemCpy();
+					case "dbg_break":
+						state.__INLINE("DBG_BREAK");
 						break;
 
 					default:
-						throw new InvalidProgramException();
+						throw new NotImplementedException();
 				}
 
 				state.NEWLINE();
-
-			}
-
-			// When evaluating arguments, the stack might be changed.
-			// We must restore the stack.
-			state.CGenForceStackSizeTo(-header_base);
-
-			if (this.Func.Type is FunctionType && this.Func is ABT.Variable FuncVar && FuncVar.Name == "syscall")
-			{
-				state.SYSCALL();
-				state.COMMENT("Syscall returned.");
 			}
 			else
 			{
+
+				state.NEWLINE();
+				state.COMMENT($"Before pushing the arguments, stack size = {state.StackSize}.");
+
+				var r_pack = Utils.PackArguments(this.Args.Select(_ => _.Type).ToList());
+				Int32 pack_size = r_pack.Item1;
+				IReadOnlyList<Int32> offsets = r_pack.Item2;
+
+				if (this.Type is StructOrUnionType)
+				{
+					// If the function returns a struct
+
+					// Allocate space for return Value.
+					state.COMMENT("Allocate space for returning stack.");
+					state.CGenExpandStackWithAlignment(this.Type.SizeOf, this.Type.Alignment);
+
+					// Temporarily store the address in %eax.
+					state.MOVL(Reg.ESP, Reg.EAX);
+
+					// add an extra argument and move all other arguments upwards.
+					pack_size += ExprType.SIZEOF_POINTER;
+					offsets = offsets.Select(_ => _ + ExprType.SIZEOF_POINTER).ToList();
+				}
+
+				// Allocate space for arguments.
+				// If returning struct, the extra pointer is included.
+				state.COMMENT($"Arguments take {pack_size} bytes.");
+				state.CGenExpandStackBy(pack_size);
+				state.NEWLINE();
+
+				// Store the address as the first argument.
+				if (this.Type is StructOrUnionType)
+				{
+					state.COMMENT("Putting extra argument for struct return address.");
+					state.MOVL(Reg.EAX, 0, Reg.ESP);
+					state.NEWLINE();
+				}
+
+				// This is the stack size before calling the function.
+				Int32 header_base = -state.StackSize;
+
+				// Push the arguments onto the stack in reverse order
+				for (Int32 i = this.Args.Count; i-- > 0;)
+				{
+					Expr arg = this.Args[i];
+					Int32 pos = header_base + offsets[i];
+
+					state.COMMENT($"Argument {i} is at {pos}");
+
+					Reg ret = arg.CGenValue(state);
+					switch (arg.Type.Kind)
+					{
+						case ExprTypeKind.ARRAY:
+						case ExprTypeKind.CHAR:
+						case ExprTypeKind.UCHAR:
+						case ExprTypeKind.SHORT:
+						case ExprTypeKind.USHORT:
+						case ExprTypeKind.LONG:
+						case ExprTypeKind.ULONG:
+						case ExprTypeKind.POINTER:
+							if (ret != Reg.EAX)
+							{
+								throw new InvalidProgramException();
+							}
+							state.MOVL(Reg.EAX, pos, Reg.EBP);
+							break;
+
+						case ExprTypeKind.DOUBLE:
+							if (ret != Reg.ST0)
+							{
+								throw new InvalidProgramException();
+							}
+							state.FSTPL(pos, Reg.EBP);
+							break;
+
+						case ExprTypeKind.FLOAT:
+							if (ret != Reg.ST0)
+							{
+								throw new InvalidProgramException();
+							}
+							state.FSTPL(pos, Reg.EBP);
+							break;
+
+						case ExprTypeKind.STRUCT_OR_UNION:
+							if (ret != Reg.EAX)
+							{
+								throw new InvalidProgramException();
+							}
+							state.MOVL(Reg.EAX, Reg.ESI);
+							state.LEA(pos, Reg.EBP, Reg.EDI);
+							state.MOVL(arg.Type.SizeOf, Reg.ECX);
+							state.CGenMemCpy();
+							break;
+
+						default:
+							throw new InvalidProgramException();
+					}
+
+					state.NEWLINE();
+
+				}
+
+				// When evaluating arguments, the stack might be changed.
+				// We must restore the stack.
+				state.CGenForceStackSizeTo(-header_base);
+
 				// Get function address
 				if (this.Func.Type is FunctionType)
 				{
@@ -554,9 +578,8 @@ namespace ABT
 				state.CALL("CALL_REG", "%eax");
 
 				state.COMMENT("Function returned.");
+				state.NEWLINE();
 			}
-
-			state.NEWLINE();
 
 			if (this.Type.Kind == ExprTypeKind.FLOAT || this.Type.Kind == ExprTypeKind.DOUBLE)
 			{

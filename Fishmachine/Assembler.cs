@@ -320,6 +320,8 @@ namespace Fishmachine
 						case "SETEQUAL_REG":
 						case "SETGREATER_REG":
 						case "SETGREATEREQUAL_REG":
+						case "SETLESS_REG":
+						case "SETLESSEQUAL_REG":
 							if (Tokens.Length != 2)
 								Throw(i, $"{Tokens[0]} requires 1 operand");
 
@@ -419,6 +421,7 @@ namespace Fishmachine
 							AddAsmInstr(Instr);
 							break;
 
+						case "SYSCALL":
 						case "JUMP_IF_ZERO_LONG":
 						case "JUMP_LONG":
 							{
@@ -449,7 +452,7 @@ namespace Fishmachine
 								break;
 							}
 
-						case "SYSCALL":
+						case "DBG_BREAK":
 						case "NOP":
 						case "LEAVE":
 						case "RET":

@@ -1,6 +1,7 @@
 ﻿using CodeGeneration;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Security.AccessControl;
 using System.Text;
@@ -16,6 +17,7 @@ namespace Fishmachine
 		HALT,
 		LEAVE,
 		RET,
+		DBG_BREAK,
 		SYSCALL,
 
 		JUMP_REG,
@@ -53,6 +55,8 @@ namespace Fishmachine
 		SETEQUAL_REG,
 		SETGREATER_REG,
 		SETGREATEREQUAL_REG,
+		SETLESS_REG,
+		SETLESSEQUAL_REG,
 
 		SUB_LONG_REG,
 		SUB_REG_REG,
@@ -72,25 +76,31 @@ namespace Fishmachine
 		public uint[] Regs;
 		public uint IP;
 
-		public byte ZF; // Zero Flag
-		public byte SF; // Sign Flag
-		public byte CF; // First operand was less than second
-		public byte Negative;
+
+		public bool IsZero;
+		public bool Sign;
+
+		public bool LessThan;
+		public bool Equal;
+		public bool GreaterThan;
 
 		public uint Read(CodeGeneration.Reg Reg)
 		{
-			Console.ForegroundColor = ConsoleColor.Yellow;
-			Console.WriteLine(": {0}({1:X4} - {1})", Reg, Regs[(int)Reg]);
-			Console.ResetColor();
+			//Console.ForegroundColor = ConsoleColor.Yellow;
+			//Console.WriteLine(": {0}({1:X4} - {1})", Reg, Regs[(int)Reg]);
+			//Console.ResetColor();
+
+			if (Reg == Reg.AX)
+				return Read(Reg.EAX) & 0xFFFF;
 
 			return Regs[(int)Reg];
 		}
 
 		public void Write(CodeGeneration.Reg Reg, uint Val)
 		{
-			Console.ForegroundColor = ConsoleColor.Yellow;
-			Console.WriteLine(": {0}({1:X4} - {1}) = {2:X4} - {2}", Reg, Regs[(int)Reg], Val);
-			Console.ResetColor();
+			//Console.ForegroundColor = ConsoleColor.Yellow;
+			//Console.WriteLine(": {0}({1:X4} - {1}) = {2:X4} - {2}", Reg, Regs[(int)Reg], Val);
+			//Console.ResetColor();
 
 			Regs[(int)Reg] = Val;
 		}
@@ -111,7 +121,7 @@ namespace Fishmachine
 				case FishInst.HALT:
 				case FishInst.LEAVE:
 				case FishInst.RET:
-				case FishInst.SYSCALL:
+				case FishInst.DBG_BREAK:
 					return 1;
 
 				// One register, 2 byte total
@@ -125,6 +135,8 @@ namespace Fishmachine
 				case FishInst.SETEQUAL_REG:
 				case FishInst.SETGREATER_REG:
 				case FishInst.SETGREATEREQUAL_REG:
+				case FishInst.SETLESS_REG:
+				case FishInst.SETLESSEQUAL_REG:
 					return 2;
 
 				// Two registers, 3 byte total
@@ -138,6 +150,7 @@ namespace Fishmachine
 					return 3;
 
 				// One 32-bit operand, 5 byte total
+				case FishInst.SYSCALL:
 				case FishInst.JUMP_LONG:
 				case FishInst.PUSH_LONG:
 				case FishInst.CALL_LONG:
@@ -312,8 +325,15 @@ namespace Fishmachine
 						Reg R = (Reg)ReadByteFromIP();
 						uint ESP = Regs.Read(Reg.ESP);
 						uint WriteAddr = ESP - sizeof(uint);
-						WriteBytes(WriteAddr, BitConverter.GetBytes(Regs.Read(R)));
+
+						uint RVal = Regs.Read(R);
+						WriteBytes(WriteAddr, BitConverter.GetBytes(RVal));
 						Regs.Write(Reg.ESP, WriteAddr);
+
+						Console.ForegroundColor = ConsoleColor.DarkYellow;
+						Console.WriteLine("Push ({0}) {1} to {2}", R, RVal, WriteAddr);
+						Console.ResetColor();
+
 						break;
 					}
 
@@ -325,6 +345,10 @@ namespace Fishmachine
 						Regs.Write(R, RegVal);
 
 						Regs.Write(Reg.ESP, ESP + sizeof(uint));
+
+						Console.ForegroundColor = ConsoleColor.DarkYellow;
+						Console.WriteLine("Pop ({0}) new {1} from {2}", R, RegVal, ESP);
+						Console.ResetColor();
 						break;
 					}
 
@@ -372,66 +396,121 @@ namespace Fishmachine
 
 				case FishInst.TEST_REG_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP();
 						Reg R2 = (Reg)ReadByteFromIP();
+						Reg R1 = (Reg)ReadByteFromIP();
 
 						uint R1Val = Regs.Read(R1);
 						uint R2Val = Regs.Read(R2);
 
 						int Result = (int)R1Val - (int)R2Val;
 
-						Regs.ZF = (R1Val & R2Val) == 0 ? (byte)1 : (byte)0;
-						Regs.SF = (Result < 0) ? (byte)1 : (byte)0;
-						Regs.CF = R1Val < R2Val ? (byte)1 : (byte)0;
-						Regs.Negative = Result < 0 ? (byte)1 : (byte)0;
+						Regs.LessThan = R1Val < R2Val;
+						Regs.Equal = R1Val == R2Val;
+						Regs.IsZero = (R1Val & R2Val) == 0;
+						Regs.GreaterThan = R1Val > R2Val;
+						Regs.Sign = Result < 0;
+
+						Console.ForegroundColor = ConsoleColor.Cyan;
+						Console.WriteLine("Test ({0}) {1}; 0x{1:X} and ({2}) {3}; 0x{3:X}", R1, R1Val, R2, R2Val);
+						Console.WriteLine("IsZero = {0}, Sign = {1}, GreaterThan = {2}, Equal = {3}, LessThan = {4}", Regs.IsZero, Regs.Sign, Regs.GreaterThan, Regs.Equal, Regs.LessThan);
+						Console.ResetColor();
 						break;
 					}
 
 				case FishInst.CMP_REG_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP();
 						Reg R2 = (Reg)ReadByteFromIP();
+						Reg R1 = (Reg)ReadByteFromIP();
 
 						uint R1Val = Regs.Read(R1);
 						uint R2Val = Regs.Read(R2);
 
 						int Result = (int)R1Val - (int)R2Val;
+						Regs.Write(R2, (uint)Result);
 
-						Regs.ZF = R1Val == R2Val ? (byte)1 : (byte)0;
-						Regs.SF = (Result < 0) ? (byte)1 : (byte)0;
-						Regs.CF = R1Val < R2Val ? (byte)1 : (byte)0;
+						Regs.LessThan = R1Val < R2Val;
+						Regs.Equal = R1Val == R2Val;
+						Regs.IsZero = Result == 0;
+						Regs.GreaterThan = R1Val > R2Val;
+						Regs.Sign = Result < 0;
+
+						Console.ForegroundColor = ConsoleColor.Cyan;
+						Console.WriteLine("Cmp ({0}) {1}; 0x{1:X} and ({2}) {3}; 0x{3:X}", R1, R1Val, R2, R2Val);
+						Console.WriteLine("IsZero = {0}, Sign = {1}, GreaterThan = {2}, Equal = {3}, LessThan = {4}", Regs.IsZero, Regs.Sign, Regs.GreaterThan, Regs.Equal, Regs.LessThan);
+						Console.ResetColor();
+
 						break;
 					}
 
 				case FishInst.SETNOTEQUAL_REG:
 					{
 						Reg R1 = (Reg)ReadByteFromIP();
+						uint Val = !Regs.Equal ? (uint)1 : (uint)0;
+						Regs.Write(R1, Val);
 
-						Regs.Write(R1, Regs.ZF == 1 ? (uint)1 : (uint)0);
+						Console.ForegroundColor = ConsoleColor.Cyan;
+						Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
+						Console.ResetColor();
 						break;
 					}
 
 				case FishInst.SETEQUAL_REG:
 					{
 						Reg R1 = (Reg)ReadByteFromIP();
+						uint Val = Regs.Equal ? (uint)1 : (uint)0;
+						Regs.Write(R1, Val);
 
-						Regs.Write(R1, Regs.ZF == 0 ? (uint)1 : (uint)0);
+						Console.ForegroundColor = ConsoleColor.Cyan;
+						Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
+						Console.ResetColor();
 						break;
 					}
 
-				/*case FishInst.SETGREATEREQUAL_REG:
+				case FishInst.SETGREATEREQUAL_REG:
 					{
 						Reg R1 = (Reg)ReadByteFromIP();
+						uint Val = Regs.GreaterThan || Regs.Equal ? (uint)1 : (uint)0;
+						Regs.Write(R1, Val);
 
-						Regs.Write(R1, Regs. == 1 ? (uint)1 : (uint)0);
+						Console.ForegroundColor = ConsoleColor.Cyan;
+						Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
+						Console.ResetColor();
 						break;
-					}**/
+					}
 
 				case FishInst.SETGREATER_REG:
 					{
 						Reg R1 = (Reg)ReadByteFromIP();
+						uint Val = Regs.GreaterThan ? (uint)1 : (uint)0;
+						Regs.Write(R1, Val);
 
-						Regs.Write(R1, Regs.CF == 0 ? (uint)1 : (uint)0);
+						Console.ForegroundColor = ConsoleColor.Cyan;
+						Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
+						Console.ResetColor();
+						break;
+					}
+
+				case FishInst.SETLESS_REG:
+					{
+						Reg R1 = (Reg)ReadByteFromIP();
+						uint Val = Regs.LessThan ? (uint)1 : (uint)0;
+						Regs.Write(R1, Val);
+
+						Console.ForegroundColor = ConsoleColor.Cyan;
+						Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
+						Console.ResetColor();
+						break;
+					}
+
+				case FishInst.SETLESSEQUAL_REG:
+					{
+						Reg R1 = (Reg)ReadByteFromIP();
+						uint Val = Regs.LessThan || Regs.Equal ? (uint)1 : (uint)0;
+						Regs.Write(R1, Val);
+
+						Console.ForegroundColor = ConsoleColor.Cyan;
+						Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
+						Console.ResetColor();
 						break;
 					}
 
@@ -439,16 +518,30 @@ namespace Fishmachine
 				case FishInst.MOVE_REG_OFFSET_REG:
 					{
 						Reg R1 = (Reg)ReadByteFromIP();
-						int Offset = (int)BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
+						int Offset = BitConverter.ToInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
 						Reg R2 = (Reg)ReadByteFromIP();
 
 						uint R1Val = Regs.Read(R1);
 						uint Addr = (uint)(Regs.Read(R2) + Offset);
 
 						if (Inst == FishInst.MOVE_REG_OFFSET_REG)
-							WriteBytes(Addr, BitConverter.GetBytes(R1Val));
+						{
+							byte[] WriteVal = BitConverter.GetBytes(R1Val);
+							WriteBytes(Addr, WriteVal);
+
+							Console.ForegroundColor = ConsoleColor.Yellow;
+							Console.WriteLine("Wrote bytes ({5:X8}; {5}) {{ {0:X2} {1:X2} {2:X2} {3:X2} }} to {4:X4}", WriteVal[0], WriteVal[1], WriteVal[2], WriteVal[3], Addr, R1Val);
+							Console.ResetColor();
+						}
 						else
-							WriteByte(Addr, (byte)(R1Val & 0xFF));
+						{
+							byte WriteB = (byte)(R1Val & 0xFF);
+							WriteByte(Addr, WriteB);
+
+							Console.ForegroundColor = ConsoleColor.Yellow;
+							Console.WriteLine("Wrote byte {0:X2} to {1:X4}", WriteB, Addr);
+							Console.ResetColor();
+						}
 						//Regs.Write(R2, R1Val);
 						break;
 					}
@@ -456,16 +549,35 @@ namespace Fishmachine
 				case FishInst.MOVES_OFFSET_REG_REG:
 				case FishInst.MOVE_OFFSET_REG_REG:
 					{
-						int Offset = (int)BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
+						int Offset = BitConverter.ToInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
 						Reg R1 = (Reg)ReadByteFromIP();
 						Reg R2 = (Reg)ReadByteFromIP();
 
 						uint R1Val = 0;
 
 						if (Inst == FishInst.MOVES_OFFSET_REG_REG)
-							R1Val = ReadUInt32((uint)(Regs.Read(R1) + Offset));
+						{
+							uint Addr = (uint)(Regs.Read(R1) + Offset);
+							R1Val = ReadUInt32(Addr);
+							byte[] ReadVal = BitConverter.GetBytes(R1Val);
+
+							Console.ForegroundColor = ConsoleColor.Yellow;
+							Console.WriteLine("Read bytes ({5:X8}; {5}) {{ {0:X2} {1:X2} {2:X2} {3:X2} }} from {4:X4}", ReadVal[0], ReadVal[1], ReadVal[2], ReadVal[3], Addr, R1Val);
+							Console.ResetColor();
+						}
 						else
-							R1Val = ReadByte((uint)(Regs.Read(R1) + Offset));
+						{
+							//R1Val = ReadUInt32((uint)(Regs.Read(R1) + Offset));
+							//R1Val = ReadByte((uint)(Regs.Read(R1) + Offset));
+
+							uint Addr = (uint)(Regs.Read(R1) + Offset);
+							R1Val = ReadUInt32(Addr);
+							byte[] ReadVal = BitConverter.GetBytes(R1Val);
+
+							Console.ForegroundColor = ConsoleColor.Yellow;
+							Console.WriteLine("Read bytes ({5:X8}; {5}) {{ {0:X2} {1:X2} {2:X2} {3:X2} }} from {4:X4}", ReadVal[0], ReadVal[1], ReadVal[2], ReadVal[3], Addr, R1Val);
+							Console.ResetColor();
+						}
 
 						Regs.Write(R2, R1Val);
 						//Regs.Write(R2, R1Val);
@@ -487,7 +599,14 @@ namespace Fishmachine
 						Reg R1 = (Reg)ReadByteFromIP();
 						Reg R2 = (Reg)ReadByteFromIP();
 
-						Regs.Write(R2, Regs.Read(R1) + Regs.Read(R2));
+						uint R1Val = Regs.Read(R1);
+						uint R2Val = Regs.Read(R2);
+
+						Console.ForegroundColor = ConsoleColor.Magenta;
+						Console.WriteLine("Add ({0}) {1}, ({2}) {3} = {4}", R1, R1Val, R2, R2Val, R1Val + R2Val);
+						Console.ResetColor();
+
+						Regs.Write(R2, R1Val + R2Val);
 						break;
 					}
 
@@ -526,6 +645,11 @@ namespace Fishmachine
 
 						uint Addr = (uint)(Regs.Read(R1) + Offset);
 						Regs.Write(R2, Addr);
+
+						Console.ForegroundColor = ConsoleColor.DarkYellow;
+						Console.WriteLine("Write to {0} value {1} (0x{1:X})", R2, Addr);
+						Console.ResetColor();
+
 						break;
 					}
 
@@ -556,8 +680,7 @@ namespace Fishmachine
 
 				case FishInst.SYSCALL:
 					{
-						UInt32 ESP = Regs.Read(Reg.ESP);
-						uint SyscallNum = ReadUInt32(ESP);
+						uint SyscallNum = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
 						Syscall(SyscallNum);
 						break;
 					}
@@ -569,7 +692,7 @@ namespace Fishmachine
 
 						if (Inst == FishInst.JUMP_IF_ZERO_LONG)
 						{
-							if (Regs.ZF == 1)
+							if (Regs.IsZero)
 							{
 								Jump(Addr);
 							}
@@ -595,6 +718,15 @@ namespace Fishmachine
 						break;
 					}
 
+				case FishInst.DBG_BREAK:
+					{
+						/*if (Debugger.IsAttached)
+							Debugger.Break();*/
+
+						Console.ReadLine();
+						break;
+					}
+
 
 				default:
 					throw new Exception(string.Format("Unknown instruction {0}", Inst));
@@ -606,7 +738,12 @@ namespace Fishmachine
 		public void Run()
 		{
 			Halted = false;
-			while (Step() && !Halted) ;
+
+			while (Step())
+			{
+				if (Halted)
+					break;
+			}
 		}
 	}
 }

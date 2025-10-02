@@ -1,25 +1,14 @@
-int syscall();
-void exit();
-void print(const char* str);
+void syscall(const long num);
+void dbg_break();
+
 
 void kmain() {
-	print("Hello_Fishmachine_World!\n");
+	int cur_char = 55;
+char* str = "Hello,world!\n";
 
-	exit();
-}
+	cur_char = str[2];
 
-void exit() {
+	dbg_break();
+
 	syscall(0);
-}
-
-void print(const char* str) {
-	int idx = 0;
-
-	while (1) {
-		if (str[idx] == 0)
-			break;
-
-		syscall(1, str[idx]);
-		idx++;
-	}
 }

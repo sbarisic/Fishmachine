@@ -354,9 +354,14 @@ namespace CodeGeneration
 			this.os.WriteLine($"    {instr} " + addr);
 		}
 
-		public void SYSCALL()
+		public void __INLINE(string Asm)
 		{
-			this.os.WriteLine($"    SYSCALL");
+			this.os.WriteLine($"    {Asm}");
+		}
+
+		public void SYSCALL(uint num)
+		{
+			this.os.WriteLine($"    SYSCALL ${num}");
 		}
 
 		// CGenExpandStack
@@ -692,22 +697,14 @@ namespace CodeGeneration
 		/// <summary>
 		/// SETL: set if less than (signed).
 		/// </summary>
-		public void SETL(String dst)
-		{
-			this.os.WriteLine($"    setl {dst}");
-		}
 
-		public void SETL(Reg dst) => SETL(RegToString(dst));
+		public void SETL(Reg dst) => SETG("SETLESS_REG", RegToString(dst));
 
 		/// <summary>
 		/// SETLE: set if less than or equal to (signed).
 		/// </summary>
-		public void SETLE(String dst)
-		{
-			this.os.WriteLine($"    setle {dst}");
-		}
-
-		public void SETLE(Reg dst) => SETLE(RegToString(dst));
+	
+		public void SETLE(Reg dst) => SETG("SETLESSEQUAL_REG", RegToString(dst));
 
 		/// <summary>
 		/// SETB: set if below (unsigned).
