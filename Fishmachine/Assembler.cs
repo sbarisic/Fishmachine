@@ -125,7 +125,12 @@ namespace Fishmachine
 
 		public override string ToString()
 		{
-			return string.Format("{4}: {0} {1}, {2}, {3}", Inst, Op1Token?.Name ?? Op1.ToString(), Op2Token?.Name ?? Op2.ToString(), Op3Token?.Name ?? Op3.ToString(), Address);
+			if (Raw != null)
+			{
+				return string.Format("{0:X4}: {1}", Address, string.Join(" ", Raw.Select(R => R.ToString("X2"))));
+			}
+
+			return string.Format("{4:X4}: {0} {1}, {2}, {3}", Inst, Op1Token?.Name ?? Op1.ToString(), Op2Token?.Name ?? Op2.ToString(), Op3Token?.Name ?? Op3.ToString(), Address);
 		}
 	}
 
@@ -155,14 +160,14 @@ namespace Fishmachine
 			return Tok;
 		}
 
-		AsmToken DefineToken(string TokenName, bool Global)
+		AsmToken DefineToken(string TokenName, uint Addr, bool Global)
 		{
 			AsmToken Tok = RefToken(TokenName);
 
 			if (!Tok.Global)
 				Tok.Global = Global;
 
-			Tok.Address = 0;
+			Tok.Address = Addr;
 			return Tok;
 		}
 
@@ -170,6 +175,16 @@ namespace Fishmachine
 		{
 			AsmToken Tok = Tokens.Where(T => T.Name == TokenName).FirstOrDefault();
 			return Tok;
+		}
+
+		public uint GetSymbolOffset(string SymbolName)
+		{
+			AsmToken Tok = Tokens.Where(T => T.Name == SymbolName).FirstOrDefault();
+
+			if (Tok == null)
+				return 0;
+
+			return Tok.Address;
 		}
 
 		void Throw(int Line, string Msg)
@@ -238,6 +253,12 @@ namespace Fishmachine
 				if (L.StartsWith("#"))
 					continue;
 
+				if (L.Contains("#"))
+					L = L.Split('#')[0];
+
+				L = L.Trim();
+
+
 				if (L.StartsWith(".") && !L.EndsWith(":"))
 				{
 					// Directive	
@@ -250,15 +271,19 @@ namespace Fishmachine
 							break;
 
 						case ".globl":
-							DefineToken(Tokens[1], true);
+							DefineToken(Tokens[1], 0, true);
 							break;
 
 						case ".String":
 							{
 								AsmInstr RawStr = new AsmInstr(FishInst.NOP);
-								int Len = Tokens[1].Length;
+								string QStr = L.Substring(".String".Length).Trim();
+								QStr = QStr.Substring(1, QStr.Length - 2);
+								QStr = QStr.Replace("\\n", "\n").Replace("\\t", "\t");
+
+								int Len = QStr.Length;
 								RawStr.Raw = new byte[Len + 1];
-								Array.Copy(Encoding.ASCII.GetBytes(Tokens[1]), RawStr.Raw, Len);
+								Array.Copy(Encoding.ASCII.GetBytes(QStr), RawStr.Raw, Len);
 								AddAsmInstr(RawStr);
 								break;
 							}
@@ -272,18 +297,29 @@ namespace Fishmachine
 				{
 					// Label
 					string LabelName = L.Substring(0, L.Length - 1).Trim();
-					AsmToken Tok = DefineToken(LabelName, false);
-					Tok.Address = CurAddr;
+					DefineToken(LabelName, CurAddr, false);
 				}
 				else
 				{
 					string[] Tokens = L.Split(new[] { ' ', '\t', ',' }, StringSplitOptions.RemoveEmptyEntries);
 					AsmInstr Instr;
 
+
+
+
+
+
 					switch (Tokens[0])
 					{
+						case "MUL_REG":
+						case "IMUL_REG":
+						case "POP_REG":
 						case "PUSH_REG":
 						case "CALL_REG":
+						case "SETNOTEQUAL_REG":
+						case "SETEQUAL_REG":
+						case "SETGREATER_REG":
+						case "SETGREATEREQUAL_REG":
 							if (Tokens.Length != 2)
 								Throw(i, $"{Tokens[0]} requires 1 operand");
 
@@ -293,6 +329,12 @@ namespace Fishmachine
 
 							break;
 
+						case "CMP_REG_REG":
+						case "MOVEZ_REG_REG":
+						case "MOVES_REG_REG":
+						case "MOVEBYTE_REG_REG":
+						case "ADD_REG_REG":
+						case "TEST_REG_REG":
 						case "MOVE_REG_REG":
 							if (Tokens.Length != 3)
 								Throw(i, $"{Tokens[0]} requires 2 operands");
@@ -304,6 +346,10 @@ namespace Fishmachine
 
 							break;
 
+						case "CMP_LONG_REG":
+						case "MOVEZ_LONG_REG":
+						case "MOVES_LONG_REG":
+						case "ADD_LONG_REG":
 						case "MOVE_LONG_REG":
 						case "SUB_LONG_REG":
 							{
@@ -345,6 +391,7 @@ namespace Fishmachine
 							AddAsmInstr(Instr);
 							break;
 
+						case "MOVEBYTE_REG_OFFSET_REG":
 						case "MOVE_REG_OFFSET_REG":
 							if (Tokens.Length != 4)
 								Throw(i, $"{Tokens[0]} requires 3 operands");
@@ -357,6 +404,9 @@ namespace Fishmachine
 							AddAsmInstr(Instr);
 							break;
 
+						case "MOVEZ_OFFSET_REG_REG":
+						case "MOVES_OFFSET_REG_REG":
+						case "MOVE_OFFSET_REG_REG":
 						case "LEA_OFFSET_REG_REG":
 							if (Tokens.Length != 4)
 								Throw(i, $"{Tokens[0]} requires 3 operands");
@@ -369,7 +419,7 @@ namespace Fishmachine
 							AddAsmInstr(Instr);
 							break;
 
-
+						case "JUMP_IF_ZERO_LONG":
 						case "JUMP_LONG":
 							{
 
@@ -399,6 +449,7 @@ namespace Fishmachine
 								break;
 							}
 
+						case "SYSCALL":
 						case "NOP":
 						case "LEAVE":
 						case "RET":
@@ -416,6 +467,22 @@ namespace Fishmachine
 					}
 				}
 
+			}
+		}
+
+		public void LoadOffset(uint Offset)
+		{
+			foreach (var T in Tokens)
+			{
+				/*if (T.Global)
+					continue;*/
+
+				T.Address += Offset;
+			}
+
+			foreach (var I in Assembly)
+			{
+				I.Address += Offset;
 			}
 		}
 
@@ -443,6 +510,8 @@ namespace Fishmachine
 					}
 				}
 			}
+
+			File.WriteAllBytes("out.txt", Encoding.UTF8.GetBytes(string.Join("\n", Bytes.Select(B => B.ToString()))));
 
 			using (MemoryStream MS = new MemoryStream())
 			{

@@ -1,6 +1,25 @@
-int prints(char* str);
+int syscall();
+void exit();
+void print(const char* str);
 
-int main(int argc, char** argv) {
-    prints("Hello Fishmachine World!\n");
-    return 32;
+void kmain() {
+	print("Hello_Fishmachine_World!\n");
+
+	exit();
+}
+
+void exit() {
+	syscall(0);
+}
+
+void print(const char* str) {
+	int idx = 0;
+
+	while (1) {
+		if (str[idx] == 0)
+			break;
+
+		syscall(1, str[idx]);
+		idx++;
+	}
 }

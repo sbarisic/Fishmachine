@@ -231,7 +231,7 @@ namespace CodeGeneration
 		/// </remarks>
 		//private void POPL(String dst) => this.os.WriteLine($"    POP_REG {dst}");
 
-		private void POPL(Reg dst) => this.os.WriteLine($"    POP_REG {RegToString(dst)}"); 
+		private void POPL(Reg dst) => this.os.WriteLine($"    POP_REG {RegToString(dst)}");
 
 		/// <summary>
 		/// MOVL: move a 4-byte long
@@ -253,36 +253,36 @@ namespace CodeGeneration
 		/// <summary>
 		/// MOVZBL: move a byte and zero-extend to a 4-byte long
 		/// </summary>
-		public void MOVZBL(String src, String dst) => this.os.WriteLine($"    movzbl {src}, {dst}");
+		public void MOVZBL(string instr, String src, String dst) => this.os.WriteLine($"    {instr} {src}, {dst}");
 
-		public void MOVZBL(String src, Reg dst) => MOVZBL(src, RegToString(dst));
+		public void MOVZBL(String src, Reg dst) => MOVZBL("MOVEZ_LONG_REG", src, RegToString(dst));
 
-		public void MOVZBL(Int32 offset, Reg src, Reg dst) => MOVZBL($"{offset}({RegToString(src)})", RegToString(dst));
+		public void MOVZBL(Int32 offset, Reg src, Reg dst) => MOVZBL("MOVEZ_OFFSET_REG_REG", $"{offset}, {RegToString(src)}", RegToString(dst));
 
-		public void MOVZBL(Reg src, Reg dst) => MOVZBL(RegToString(src), RegToString(dst));
+		public void MOVZBL(Reg src, Reg dst) => MOVZBL("MOVEZ_REG_REG", RegToString(src), RegToString(dst));
 
 		/// <summary>
 		/// MOVSBL: move a byte and sign-extend to a 4-byte long
 		/// </summary>
-		public void MOVSBL(String src, String dst) => this.os.WriteLine($"    movsbl {src}, {dst}");
+		public void MOVSBL(string instr, String src, String dst) => this.os.WriteLine($"    {instr} {src}, {dst}");
 
-		public void MOVSBL(String src, Reg dst) => MOVSBL(src, RegToString(dst));
+		public void MOVSBL(String src, Reg dst) => MOVSBL("MOVES_LONG_REG", src, RegToString(dst));
 
-		public void MOVSBL(Int32 offset, Reg src, Reg dst) => MOVSBL($"{offset}({RegToString(src)})", RegToString(dst));
+		public void MOVSBL(Int32 offset, Reg src, Reg dst) => MOVSBL("MOVES_OFFSET_REG_REG", $"{offset}, {RegToString(src)}", RegToString(dst));
 
-		public void MOVSBL(Reg src, Reg dst) => MOVSBL(RegToString(src), RegToString(dst));
+		public void MOVSBL(Reg src, Reg dst) => MOVSBL("MOVES_REG_REG", RegToString(src), RegToString(dst));
 
 		/// <summary>
 		/// MOVB: move a byte
 		/// </summary>
-		public void MOVB(String src, String dst) => this.os.WriteLine($"    movb {src}, {dst}");
+		public void MOVB(string instr, String src, String dst) => this.os.WriteLine($"    {instr} {src}, {dst}");
 
 		public void MOVB(Reg from, Int32 imm, Reg to)
 		{
-			MOVB(RegToString(from), imm + "(" + RegToString(to) + ")");
+			MOVB("MOVEBYTE_REG_OFFSET_REG", RegToString(from), imm + ", " + RegToString(to));
 		}
 
-		public void MOVB(Reg from, Reg to) => MOVB(RegToString(from), RegToString(to));
+		public void MOVB(Reg from, Reg to) => MOVB("MOVEBYTE_REG_REG", RegToString(from), RegToString(to));
 
 		/// <summary>
 		/// MOVW: move a 2-byte word
@@ -352,6 +352,11 @@ namespace CodeGeneration
 		public void CALL(string instr, String addr)
 		{
 			this.os.WriteLine($"    {instr} " + addr);
+		}
+
+		public void SYSCALL()
+		{
+			this.os.WriteLine($"    SYSCALL");
 		}
 
 		// CGenExpandStack
@@ -453,9 +458,9 @@ namespace CodeGeneration
 		/// <summary>
 		/// ADDL: add long
 		/// </summary>
-		public void ADDL(String er, String ee, String comment = "")
+		public void ADDL(string instr, String er, String ee, String comment = "")
 		{
-			this.os.Write($"    addl {er}, {ee}");
+			this.os.Write($"    {instr} {er}, {ee}");
 			if (comment == "")
 			{
 				this.os.WriteLine();
@@ -466,9 +471,9 @@ namespace CodeGeneration
 			}
 		}
 
-		public void ADDL(Int32 er, Reg ee, String comment = "") => ADDL($"${er}", RegToString(ee), comment);
+		public void ADDL(Int32 er, Reg ee, String comment = "") => ADDL("ADD_LONG_REG", $"${er}", RegToString(ee), comment);
 
-		public void ADDL(Reg er, Reg ee, String comment = "") => ADDL(RegToString(er), RegToString(ee), comment);
+		public void ADDL(Reg er, Reg ee, String comment = "") => ADDL("ADD_REG_REG", RegToString(er), RegToString(ee), comment);
 
 		/// <summary>
 		/// SUBL: subtract long
@@ -589,27 +594,23 @@ namespace CodeGeneration
 		/// <summary>
 		/// IMUL: signed multiplication. %edx:%eax = %eax * {addr}.
 		/// </summary>
-		public void IMUL(String addr)
+		public void IMUL(string instr, String addr)
 		{
-			this.os.WriteLine($"    imul {addr}");
+			this.os.WriteLine($"    {instr} {addr}");
 		}
 
 		public void IMUL(Reg er)
 		{
-			IMUL(RegToString(er));
+			IMUL("IMUL_REG", RegToString(er));
 		}
 
 		/// <summary>
 		/// MUL: unsigned multiplication. %edx:%eax = %eax * {addr}.
 		/// </summary>
-		public void MUL(String addr)
-		{
-			this.os.WriteLine($"    mul {addr}");
-		}
 
 		public void MUL(Reg er)
 		{
-			MUL(RegToString(er));
+			IMUL("MUL_REG", RegToString(er));
 		}
 
 		/// <summary>
@@ -641,60 +642,52 @@ namespace CodeGeneration
 		/// CMPL: compare based on subtraction.
 		/// Note that the order is reversed, i.e. ee comp er.
 		/// </summary>
-		public void CMPL(String er, String ee)
+		public void CMPL(string instr, String er, String ee)
 		{
-			this.os.WriteLine($"    cmpl {er}, {ee}");
+			this.os.WriteLine($"    {instr} {er}, {ee}");
 		}
 
-		public void CMPL(Reg er, Reg ee) => CMPL(RegToString(er), RegToString(ee));
+		public void CMPL(Reg er, Reg ee) => CMPL("CMP_REG_REG", RegToString(er), RegToString(ee));
 
-		public void CMPL(Int32 imm, Reg ee) => CMPL($"${imm}", RegToString(ee));
+		public void CMPL(Int32 imm, Reg ee) => CMPL("CMP_LONG_REG", $"${imm}", RegToString(ee));
 
 		/// <summary>
 		/// TESTL: used like testl %eax, %eax: compare %eax with zero.
 		/// </summary>
-		public void TESTL(String er, String ee)
+		public void TESTL(string instr, String er, String ee)
 		{
-			this.os.WriteLine($"    testl {er}, {ee}");
+			this.os.WriteLine($"    {instr} {er}, {ee}");
 		}
 
-		public void TESTL(Reg er, Reg ee) => TESTL(RegToString(er), RegToString(ee));
+		public void TESTL(Reg er, Reg ee) => TESTL("TEST_REG_REG", RegToString(er), RegToString(ee));
 
 		/// <summary>
 		/// SETE: set if equal to.
 		/// </summary>
-		public void SETE(String dst)
-		{
-			this.os.WriteLine($"    sete {dst}");
-		}
 
-		public void SETE(Reg dst) => SETE(RegToString(dst));
+		public void SETE(Reg dst) => SETNE("SETEQUAL_REG", RegToString(dst));
 
 		/// <summary>
 		/// SETNE: set if not equal to.
 		/// </summary>
-		public void SETNE(String dst) => this.os.WriteLine($"    setne {dst}");
-		public void SETNE(Reg dst) => SETNE(RegToString(dst));
+		public void SETNE(string instr, String dst) => this.os.WriteLine($"    {instr} {dst}");
+		public void SETNE(Reg dst) => SETNE("SETNOTEQUAL_REG", RegToString(dst));
 
 		/// <summary>
 		/// SETG: set if greater than (signed).
 		/// </summary>
-		public void SETG(String dst)
+		public void SETG(string instr, String dst)
 		{
-			this.os.WriteLine($"    setg {dst}");
+			this.os.WriteLine($"    {instr} {dst}");
 		}
 
-		public void SETG(Reg dst) => SETG(RegToString(dst));
+		public void SETG(Reg dst) => SETG("SETGREATER_REG", RegToString(dst));
 
 		/// <summary>
 		/// SETGE: set if greater or equal to (signed).
 		/// </summary>
-		public void SETGE(String dst)
-		{
-			this.os.WriteLine($"    setge {dst}");
-		}
-
-		public void SETGE(Reg dst) => SETGE(RegToString(dst));
+		/// 
+		public void SETGE(Reg dst) => SETG("SETGREATEREQUAL_REG", RegToString(dst));
 
 		/// <summary>
 		/// SETL: set if less than (signed).
@@ -763,9 +756,9 @@ namespace CodeGeneration
 
 		public void JMP(Int32 label) => this.os.WriteLine($"    JUMP_LONG .L{label}");
 
-		public void JZ(Int32 label) => this.os.WriteLine($"    jz .L{label}");
+		public void JZ(Int32 label) => this.os.WriteLine($"    JUMP_IF_ZERO_LONG .L{label}");
 
-		public void JNZ(Int32 label) => this.os.WriteLine($"    jz .L{label}");
+		public void JNZ(Int32 label) => this.os.WriteLine($"    JUMP_IF_ZERO_LONG .L{label}");
 
 		public void CLD() => this.os.WriteLine("    cld");
 
