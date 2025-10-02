@@ -141,6 +141,7 @@ namespace Fishmachine
 
 				// Two registers, 3 byte total
 				case FishInst.ADD_REG_REG:
+				case FishInst.SUB_REG_REG:
 				case FishInst.MOVE_REG_REG:
 				case FishInst.TEST_REG_REG:
 				case FishInst.MOVEZ_REG_REG:
@@ -374,6 +375,51 @@ namespace Fishmachine
 						break;
 					}
 
+				case FishInst.PUSH_LONG:
+					{
+						uint Val = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
+						uint ESP = Regs.Read(Reg.ESP);
+						uint WriteAddr = ESP - sizeof(uint);
+						WriteBytes(WriteAddr, BitConverter.GetBytes(Val));
+						Regs.Write(Reg.ESP, WriteAddr);
+						Console.ForegroundColor = ConsoleColor.DarkYellow;
+						Console.WriteLine("Push long {0} to {1}", Val, WriteAddr);
+						Console.ResetColor();
+						break;
+					}
+				case FishInst.MOVEBYTE_REG_REG:
+					{
+						Reg R1 = (Reg)ReadByteFromIP();
+						Reg R2 = (Reg)ReadByteFromIP();
+						byte Val = (byte)(Regs.Read(R1) & 0xFF);
+						Regs.Write(R2, Val);
+						Console.ForegroundColor = ConsoleColor.Yellow;
+						Console.WriteLine("Move byte from {0} to {1}: {2:X2}", R1, R2, Val);
+						Console.ResetColor();
+						break;
+					}
+				case FishInst.LEA_ADDR_REG:
+					{
+						uint Addr = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
+						Reg R2 = (Reg)ReadByteFromIP();
+						Regs.Write(R2, Addr);
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("LEA_ADDR_REG: Write address {0:X8} to {1}", Addr, R2);
+						Console.ResetColor();
+						break;
+					}
+				case FishInst.LEA_OFFSET_REG_REG:
+					{
+						int Offset = BitConverter.ToInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
+						Reg R1 = (Reg)ReadByteFromIP();
+						Reg R2 = (Reg)ReadByteFromIP();
+						uint Addr = (uint)(Regs.Read(R1) + Offset);
+						Regs.Write(R2, Addr);
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("LEA_OFFSET_REG_REG: Write address {0:X8} to {1}", Addr, R2);
+						Console.ResetColor();
+						break;
+					}
 				case FishInst.MOVEZ_REG_REG:
 				case FishInst.MOVES_REG_REG:
 				case FishInst.MOVE_REG_REG:
@@ -385,10 +431,17 @@ namespace Fishmachine
 
 						if (Inst == FishInst.MOVE_REG_REG)
 							R1Val = Regs.Read(R1);
-						if (Inst == FishInst.MOVES_REG_REG)
-							R1Val = (Regs.Read(R1) & 0xFF);
-						else
+						else if (Inst == FishInst.MOVES_REG_REG)
+						{
+							// Sign extend byte (0xFF becomes 0xFFFFFFFF)
+							byte byteVal = (byte)(Regs.Read(R1) & 0xFF);
+							R1Val = (uint)(sbyte)byteVal;
+						}
+						else if (Inst == FishInst.MOVEZ_REG_REG)
+						{
+							// Zero extend word (keep lower 16 bits)
 							R1Val = (Regs.Read(R1) & 0xFFFF);
+						}
 
 						Regs.Write(R2, R1Val);
 						break;
@@ -546,41 +599,61 @@ namespace Fishmachine
 						break;
 					}
 
+				case FishInst.MOVEZ_OFFSET_REG_REG:
+					{
+						int Offset = BitConverter.ToInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
+						Reg R1 = (Reg)ReadByteFromIP();
+						Reg R2 = (Reg)ReadByteFromIP();
+
+						uint Addr = (uint)(Regs.Read(R1) + Offset);
+						// Zero extend word from memory
+						byte[] wordBytes = ReadBytes(Addr, 2);
+						ushort wordVal = BitConverter.ToUInt16(wordBytes, 0);
+						uint R1Val = wordVal;
+
+						Console.ForegroundColor = ConsoleColor.Yellow;
+						Console.WriteLine("Read zero-extended word {0:X4} from {1:X4} -> {2:X8}", wordVal, Addr, R1Val);
+						Console.ResetColor();
+
+						Regs.Write(R2, R1Val);
+						break;
+					}
+
 				case FishInst.MOVES_OFFSET_REG_REG:
+					{
+						int Offset = BitConverter.ToInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
+						Reg R1 = (Reg)ReadByteFromIP();
+						Reg R2 = (Reg)ReadByteFromIP();
+
+						uint Addr = (uint)(Regs.Read(R1) + Offset);
+						// Sign extend byte from memory
+						byte byteVal = ReadByte(Addr);
+						uint R1Val = (uint)(sbyte)byteVal;
+
+						Console.ForegroundColor = ConsoleColor.Yellow;
+						Console.WriteLine("Read sign-extended byte {0:X2} ({1}) from {2:X4} -> {3:X8}", byteVal, (sbyte)byteVal, Addr, R1Val);
+						Console.ResetColor();
+
+						Regs.Write(R2, R1Val);
+						break;
+					}
+
 				case FishInst.MOVE_OFFSET_REG_REG:
 					{
 						int Offset = BitConverter.ToInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
 						Reg R1 = (Reg)ReadByteFromIP();
 						Reg R2 = (Reg)ReadByteFromIP();
 
-						uint R1Val = 0;
+						uint Addr = (uint)(Regs.Read(R1) + Offset);
+						// Regular 32-bit read
+						uint R1Val = ReadUInt32(Addr);
+						byte[] ReadVal = BitConverter.GetBytes(R1Val);
 
-						if (Inst == FishInst.MOVES_OFFSET_REG_REG)
-						{
-							uint Addr = (uint)(Regs.Read(R1) + Offset);
-							R1Val = ReadUInt32(Addr);
-							byte[] ReadVal = BitConverter.GetBytes(R1Val);
-
-							Console.ForegroundColor = ConsoleColor.Yellow;
-							Console.WriteLine("Read bytes ({5:X8}; {5}) {{ {0:X2} {1:X2} {2:X2} {3:X2} }} from {4:X4}", ReadVal[0], ReadVal[1], ReadVal[2], ReadVal[3], Addr, R1Val);
-							Console.ResetColor();
-						}
-						else
-						{
-							//R1Val = ReadUInt32((uint)(Regs.Read(R1) + Offset));
-							//R1Val = ReadByte((uint)(Regs.Read(R1) + Offset));
-
-							uint Addr = (uint)(Regs.Read(R1) + Offset);
-							R1Val = ReadUInt32(Addr);
-							byte[] ReadVal = BitConverter.GetBytes(R1Val);
-
-							Console.ForegroundColor = ConsoleColor.Yellow;
-							Console.WriteLine("Read bytes ({5:X8}; {5}) {{ {0:X2} {1:X2} {2:X2} {3:X2} }} from {4:X4}", ReadVal[0], ReadVal[1], ReadVal[2], ReadVal[3], Addr, R1Val);
-							Console.ResetColor();
-						}
+						Console.ForegroundColor = ConsoleColor.Yellow;
+						Console.WriteLine("Read bytes ({5:X8}; {5}) {{ {0:X2} {1:X2} {2:X2} {3:X2} }} from {4:X4}", ReadVal[0], ReadVal[1], ReadVal[2], ReadVal[3], Addr, R1Val);
+						Console.ResetColor();
 
 						Regs.Write(R2, R1Val);
-						//Regs.Write(R2, R1Val);
 						break;
 					}
 
@@ -591,6 +664,22 @@ namespace Fishmachine
 
 						uint RVal = Regs.Read(R2);
 						Regs.Write(R2, RVal - L1);
+						break;
+					}
+
+				case FishInst.SUB_REG_REG:
+					{
+						Reg R1 = (Reg)ReadByteFromIP();
+						Reg R2 = (Reg)ReadByteFromIP();
+
+						uint R1Val = Regs.Read(R1);
+						uint R2Val = Regs.Read(R2);
+
+						Console.ForegroundColor = ConsoleColor.Magenta;
+						Console.WriteLine("Sub ({0}) {1}, ({2}) {3} = {4}", R1, R1Val, R2, R2Val, R2Val - R1Val);
+						Console.ResetColor();
+
+						Regs.Write(R2, R2Val - R1Val);
 						break;
 					}
 
@@ -629,25 +718,46 @@ namespace Fishmachine
 						break;
 					}
 
-				case FishInst.LEA_ADDR_REG:
+				case FishInst.MOVEZ_LONG_REG:
 					{
 						uint L1 = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
 						Reg R2 = (Reg)ReadByteFromIP();
-						Regs.Write(R2, L1);
+
+						// Zero extend the lower 16 bits of the immediate value
+						uint Result = L1 & 0xFFFF;
+						Regs.Write(R2, Result);
 						break;
 					}
 
-				case FishInst.LEA_OFFSET_REG_REG:
+				case FishInst.MOVES_LONG_REG:
 					{
-						int Offset = BitConverter.ToInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
-						Reg R1 = (Reg)ReadByteFromIP();
+						uint L1 = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
 						Reg R2 = (Reg)ReadByteFromIP();
 
-						uint Addr = (uint)(Regs.Read(R1) + Offset);
-						Regs.Write(R2, Addr);
+						// Sign extend the lower 8 bits of the immediate value
+						byte byteVal = (byte)(L1 & 0xFF);
+						uint Result = (uint)(sbyte)byteVal;
+						Regs.Write(R2, Result);
+						break;
+					}
 
-						Console.ForegroundColor = ConsoleColor.DarkYellow;
-						Console.WriteLine("Write to {0} value {1} (0x{1:X})", R2, Addr);
+				case FishInst.CMP_LONG_REG:
+					{
+						uint L1 = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
+						Reg R2 = (Reg)ReadByteFromIP();
+
+						uint R2Val = Regs.Read(R2);
+						int Result = (int)R2Val - (int)L1;
+
+						Regs.LessThan = R2Val < L1;
+						Regs.Equal = R2Val == L1;
+						Regs.IsZero = Result == 0;
+						Regs.GreaterThan = R2Val > L1;
+						Regs.Sign = Result < 0;
+
+						Console.ForegroundColor = ConsoleColor.Cyan;
+						Console.WriteLine("Cmp ({0}) {1}; 0x{1:X} and immediate {2}; 0x{2:X}", R2, R2Val, L1);
+						Console.WriteLine("IsZero = {0}, Sign = {1}, GreaterThan = {2}, Equal = {3}, LessThan = {4}", Regs.IsZero, Regs.Sign, Regs.GreaterThan, Regs.Equal, Regs.LessThan);
 						Console.ResetColor();
 
 						break;
@@ -659,6 +769,20 @@ namespace Fishmachine
 						uint RetAddr = Regs.IP;
 						uint Addr = Regs.Read(R1);
 
+
+						uint ESP = Regs.Read(Reg.ESP);
+						uint WriteAddr = ESP - sizeof(uint);
+						WriteBytes(WriteAddr, BitConverter.GetBytes(RetAddr));
+
+						Regs.Write(Reg.ESP, WriteAddr);
+						Jump(Addr);
+						break;
+					}
+
+				case FishInst.CALL_LONG:
+					{
+						uint Addr = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
+						uint RetAddr = Regs.IP;
 
 						uint ESP = Regs.Read(Reg.ESP);
 						uint WriteAddr = ESP - sizeof(uint);
@@ -704,15 +828,23 @@ namespace Fishmachine
 						break;
 					}
 
+				case FishInst.JUMP_REG:
+					{
+						Reg R1 = (Reg)ReadByteFromIP();
+						uint Addr = Regs.Read(R1);
+						Jump(Addr);
+						break;
+					}
+
 				case FishInst.LEAVE:
 					{
-						Regs.Write(Reg.EBP, Regs.Read(Reg.ESP));
+						// Restore ESP from EBP
+						Regs.Write(Reg.ESP, Regs.Read(Reg.EBP));
 
 						// Pop EBP
-						Reg R = Reg.EBP;
 						uint ESP = Regs.Read(Reg.ESP);
 						uint RegVal = ReadUInt32(ESP);
-						Regs.Write(R, RegVal);
+						Regs.Write(Reg.EBP, RegVal);
 
 						Regs.Write(Reg.ESP, ESP + sizeof(uint));
 						break;

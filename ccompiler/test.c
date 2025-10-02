@@ -4,7 +4,7 @@ void dbg_break();
 
 void kmain() {
 	int cur_char = 55;
-char* str = "Hello,world!\n";
+	char* str = "Hello,world!\n";
 
 	cur_char = str[2];
 
