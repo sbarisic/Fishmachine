@@ -19,6 +19,7 @@ namespace Fishmachine
 		RET,
 		DBG_BREAK,
 		SYSCALL,
+		SYSCALL_2,
 
 		JUMP_REG,
 		JUMP_LONG,
@@ -122,6 +123,7 @@ namespace Fishmachine
 				case FishInst.LEAVE:
 				case FishInst.RET:
 				case FishInst.DBG_BREAK:
+				case FishInst.SYSCALL_2:
 					return 1;
 
 				// One register, 2 byte total
@@ -152,6 +154,7 @@ namespace Fishmachine
 
 				// One 32-bit operand, 5 byte total
 				case FishInst.SYSCALL:
+
 				case FishInst.JUMP_LONG:
 				case FishInst.PUSH_LONG:
 				case FishInst.CALL_LONG:
@@ -267,7 +270,7 @@ namespace Fishmachine
 			Console.ResetColor();
 		}
 
-		public void Syscall(uint Num)
+		public void Syscall(uint Num, uint Arg1)
 		{
 			Console.ForegroundColor = ConsoleColor.Red;
 			Console.WriteLine("SYSCALL {0}", Num);
@@ -288,14 +291,7 @@ namespace Fishmachine
 			}
 			else if (Num == 1)
 			{
-				UInt32 ESP = Regs.Read(Reg.ESP);
-
-				byte[] Mem = ReadBytes(ESP - 24, 24);
-
-				byte B = ReadByte(ESP - 4);
-
-
-				Console.WriteLine("VM: {0}", (char)B);
+				Console.WriteLine("VM: 0x{0:X} = '{0}'", Arg1, (char)Arg1);
 			}
 		}
 
@@ -802,10 +798,19 @@ namespace Fishmachine
 						break;
 					}
 
+				case FishInst.SYSCALL_2:
+					{
+						uint ESP = Regs.Read(Reg.ESP);
+						uint SyscallNum = ReadUInt32(ESP);
+						uint Arg1 = ReadUInt32(ESP + 4);
+						Syscall(SyscallNum, Arg1);
+						break;
+					}
+
 				case FishInst.SYSCALL:
 					{
 						uint SyscallNum = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
-						Syscall(SyscallNum);
+						Syscall(SyscallNum, 0);
 						break;
 					}
 

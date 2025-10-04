@@ -561,23 +561,31 @@ namespace ABT
 				// We must restore the stack.
 				state.CGenForceStackSizeTo(-header_base);
 
-				// Get function address
-				if (this.Func.Type is FunctionType)
+				if (this.Func.Type is FunctionType && Func is Variable FVar && FVar.Name == "syscall_2")
 				{
-					this.Func.CGenAddress(state);
-				}
-				else if (this.Func.Type is PointerType)
-				{
-					this.Func.CGenValue(state);
+					state.__INLINE("SYSCALL_2");
 				}
 				else
 				{
-					throw new InvalidProgramException();
+					// Get function address
+					if (this.Func.Type is FunctionType)
+					{
+						this.Func.CGenAddress(state);
+					}
+					else if (this.Func.Type is PointerType)
+					{
+						this.Func.CGenValue(state);
+					}
+					else
+					{
+						throw new InvalidProgramException();
+					}
+
+					state.CALL("CALL_REG", "%eax");
+
+					state.COMMENT("Function returned.");
 				}
 
-				state.CALL("CALL_REG", "%eax");
-
-				state.COMMENT("Function returned.");
 				state.NEWLINE();
 			}
 

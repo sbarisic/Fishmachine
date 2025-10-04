@@ -456,6 +456,7 @@ namespace Fishmachine
 						case "NOP":
 						case "LEAVE":
 						case "RET":
+						case "SYSCALL_2":
 							if (Tokens.Length != 1)
 								Throw(i, $"{Tokens[0]} requires 0 operands");
 
