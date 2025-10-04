@@ -1,9 +1,82 @@
-﻿namespace Fishmachine
+﻿using Driver;
+
+namespace Fishmachine
 {
+	static class Console
+	{
+		public static void Write(string Str)
+		{
+			System.Console.Write(Str);
+			File.AppendAllText("vm_out.txt", Str);
+		}
+
+		public static void Write(string Fmt, params object[] Args)
+		{
+			Write(string.Format(Fmt, Args));
+		}
+
+		public static void WriteLine(string Fmt, params object[] Args)
+		{
+			Write(Fmt, Args);
+			WriteLine();
+		}
+
+		public static void WriteLine()
+		{
+			Write("\n");
+		}
+
+		public static string ReadLine()
+		{
+			return System.Console.ReadLine();
+		}
+
+		public static void ResetColor()
+		{
+			System.Console.ResetColor();
+		}
+
+		public static System.ConsoleColor ForegroundColor
+		{
+			get
+			{
+				return System.Console.ForegroundColor;
+			}
+
+			set
+			{
+				System.Console.ForegroundColor = value;
+			}
+		}
+	}
+
 	internal class Program
 	{
+		static void HookOutput()
+		{
+			if (File.Exists("vm_out.txt"))
+				File.Delete("vm_out.txt");
+		}
+
 		static void Main(string[] args)
 		{
+			// Compile
+			string Src = "";
+
+			if (File.Exists("test.c"))
+			{
+				Src = File.ReadAllText("test.c").Trim() + "\n";
+			}
+
+			Compiler compiler = Compiler.FromSource(Src);
+			//Console.WriteLine(compiler.Assembly);
+
+			if (File.Exists("out.asm"))
+				File.Delete("out.asm");
+
+			File.WriteAllText("out.asm", compiler.Assembly);
+
+			// Assemble
 			byte[] Bytecode = null;
 			uint KMainAddr = 0;
 
@@ -20,6 +93,9 @@
 
 			if (Bytecode != null)
 				File.WriteAllBytes("bytecode.bin", Bytecode);
+
+			// Setup VM, load program and run
+			HookOutput();
 
 			FishVM VM = new FishVM();
 			VM.AllocateMemory(0x1000 * 2);

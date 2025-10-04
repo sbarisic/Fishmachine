@@ -9,6 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="..\bin\Debug\net8.0\vm_out.txt" Link="vm_out.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\ccompiler\ccompiler.csproj" />
   </ItemGroup>
 

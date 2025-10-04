@@ -87,9 +87,9 @@ namespace Fishmachine
 
 		public uint Read(CodeGeneration.Reg Reg)
 		{
-			//Console.ForegroundColor = ConsoleColor.Yellow;
-			//Console.WriteLine(": {0}({1:X4} - {1})", Reg, Regs[(int)Reg]);
-			//Console.ResetColor();
+			Console.ForegroundColor = ConsoleColor.Yellow;
+			Console.WriteLine(": Read {0} = 0x{1:X} - {1}", Reg, Regs[(int)Reg]);
+			Console.ResetColor();
 
 			if (Reg == Reg.AX)
 				return Read(Reg.EAX) & 0xFFFF;
@@ -99,9 +99,9 @@ namespace Fishmachine
 
 		public void Write(CodeGeneration.Reg Reg, uint Val)
 		{
-			//Console.ForegroundColor = ConsoleColor.Yellow;
-			//Console.WriteLine(": {0}({1:X4} - {1}) = {2:X4} - {2}", Reg, Regs[(int)Reg], Val);
-			//Console.ResetColor();
+			Console.ForegroundColor = ConsoleColor.Yellow;
+			Console.WriteLine(": Write {0} = 0x{2:X} - {2}", Reg, Regs[(int)Reg], Val);
+			Console.ResetColor();
 
 			Regs[(int)Reg] = Val;
 		}
