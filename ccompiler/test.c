@@ -7,6 +7,8 @@ void print(const char* str);
 void kmain() {
 	char* str = "Hello,world!\n";
 
+	// Test comment
+
 	print(str);
 
 	dbg_break();

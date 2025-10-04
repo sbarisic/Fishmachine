@@ -35,6 +35,26 @@ namespace LexicalAnalysis {
         private IEnumerable<Token> Lex() {
             var tokens = new List<Token>();
             for (Int32 i = 0; i < this.Source.Length; ++i) {
+                // Skip single-line comments
+                if (this.Source[i] == '/' && i + 1 < this.Source.Length && this.Source[i + 1] == '/') {
+                    i += 2;
+                    while (i < this.Source.Length && this.Source[i] != '\n') {
+                        i++;
+                    }
+                    continue;
+                }
+                // Skip multi-line comments
+                if (this.Source[i] == '/' && i + 1 < this.Source.Length && this.Source[i + 1] == '*') {
+                    i += 2;
+                    while (i + 1 < this.Source.Length && !(this.Source[i] == '*' && this.Source[i + 1] == '/')) {
+                        i++;
+                    }
+                    if (i + 1 < this.Source.Length) {
+                        i += 2;
+                    }
+                    continue;
+                }
+
                 this.FSAs.ForEach(fsa => fsa.ReadChar(this.Source[i]));
 
                 // if no running
