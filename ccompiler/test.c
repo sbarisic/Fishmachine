@@ -7,7 +7,7 @@ void kmain() {
 	long cur_char = 55;
 	char* str = "Hello,world!\n";
 
-	cur_char = str[0];
+	cur_char = str[1];
 	syscall_2(1, cur_char);
 
 	dbg_break();

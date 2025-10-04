@@ -94,6 +94,25 @@ namespace Fishmachine
 			if (Reg == Reg.AX)
 				return Read(Reg.EAX) & 0xFFFF;
 
+
+			switch (Reg)
+			{
+				case Reg.AL:
+					return Read(Reg.EAX) & 0xFF;
+
+				case Reg.AX:
+					return Read(Reg.EAX) & 0xFFFF;
+
+				case Reg.BL:
+					return Read(Reg.EBX) & 0xFF;
+
+				case Reg.BX:
+					return Read(Reg.EBX) & 0xFFFF;
+
+				default:
+					break;
+			}
+
 			return Regs[(int)Reg];
 		}
 
@@ -276,14 +295,15 @@ namespace Fishmachine
 			Console.WriteLine("SYSCALL {0}", Num);
 			Console.ResetColor();
 
-			Console.ForegroundColor = ConsoleColor.Yellow;
+			//Console.ForegroundColor = ConsoleColor.Yellow;
 			Reg[] RegsEnum = Enum.GetValues<Reg>().ToArray();
 			foreach (var R in RegsEnum)
 			{
-				Console.Write("{0} = {1:X4} ", R, this.Regs.Read(R));
+				//Console.Write("{0} = {1:X4} ", R, this.Regs.Read(R));
+				Regs.Read(R);
 			}
-			Console.WriteLine();
-			Console.ResetColor();
+			//Console.WriteLine();
+			//Console.ResetColor();
 
 			if (Num == 0)
 			{
@@ -291,7 +311,7 @@ namespace Fishmachine
 			}
 			else if (Num == 1)
 			{
-				Console.WriteLine("VM: 0x{0:X} = '{0}'", Arg1, (char)Arg1);
+				Console.WriteLine("VM: 0x{0:X} = '{1}'", Arg1, (char)Arg1);
 			}
 		}
 
