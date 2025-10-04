@@ -4,13 +4,19 @@ using System.Reflection;
 
 namespace Driver
 {
-    class Program
-    {
-        static void Main(String[] args)
-        {
-            if (!args.Any())
-            {
-                string src = @"
+	class Program
+	{
+		static void Main(String[] args)
+		{
+			string CFileName = "test.c";
+			string OutAsm = "out.asm";
+
+			//string CFileName = "stdfish.c";
+			//string OutAsm = "stdfish.asm";
+
+			if (!args.Any())
+			{
+				string src = @"
 int printf(char *, ...);
 int main(int argc, char **argv) {
     printf(""%d"", argc);
@@ -18,29 +24,29 @@ int main(int argc, char **argv) {
 }
 ";
 
-                if (File.Exists("test.c"))
-                {
-                    src = File.ReadAllText("test.c").Trim() + "\n";
-                }
+				if (File.Exists(CFileName))
+				{
+					src = File.ReadAllText(CFileName).Trim() + "\n";
+				}
 
-                Compiler compiler = Compiler.FromSource(src);
-                //Console.WriteLine(compiler.Assembly);
+				Compiler compiler = Compiler.FromSource(src);
+				//Console.WriteLine(compiler.Assembly);
 
-                if (File.Exists("out.asm"))
-                    File.Delete("out.asm");
+				if (File.Exists(OutAsm))
+					File.Delete(OutAsm);
 
-                File.WriteAllText("out.asm", compiler.Assembly);
-            }
-            else
-            {
-                Compiler compiler = Compiler.FromFile(args[0]);
+				File.WriteAllText(OutAsm, compiler.Assembly);
+			}
+			else
+			{
+				Compiler compiler = Compiler.FromFile(args[0]);
 
-                //Console.WriteLine(compiler.Assembly);
-                if (File.Exists("out.asm"))
-                    File.Delete("out.asm");
+				//Console.WriteLine(compiler.Assembly);
+				if (File.Exists(OutAsm))
+					File.Delete(OutAsm);
 
-                File.WriteAllText("out.asm", compiler.Assembly);
-            }
+				File.WriteAllText(OutAsm, compiler.Assembly);
+			}
 		}
-    }
+	}
 }

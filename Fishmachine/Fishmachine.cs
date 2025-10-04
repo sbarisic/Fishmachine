@@ -103,13 +103,15 @@ namespace Fishmachine
 
 			if (File.Exists("out.asm"))
 			{
-				Assembler Asm = new Assembler();
-				Asm.Assemble(File.ReadAllText("out.asm"));
+				AssemblerState AsmState = new AssemblerState();
+
+				Assembler Asm = new Assembler(0x1000);
+				Asm.Assemble(AsmState, File.ReadAllText("out.asm"));
 
 				//Asm.LoadOffset(0x1000);
 				Bytecode = Asm.Link();
 
-				KMainAddr = Asm.GetSymbolOffset("kmain");
+				KMainAddr = AsmState.GetSymbolOffset("kmain");
 			}
 
 			if (Bytecode != null)
@@ -121,7 +123,7 @@ namespace Fishmachine
 			FishVM VM = new FishVM();
 			VM.AllocateMemory(0x1000 * 2);
 			//VM.LoadToMemory(Bytecode, 0x1000);
-			VM.LoadToMemory(Bytecode, 0);
+			VM.LoadToMemory(Bytecode, 0x1000);
 
 			VM.Regs.Write(CodeGeneration.Reg.ESP, 0x2000);
 			VM.Jump(KMainAddr);

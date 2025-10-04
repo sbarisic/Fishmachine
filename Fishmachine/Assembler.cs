@@ -11,8 +11,16 @@ namespace Fishmachine
 	public class AsmToken
 	{
 		public string Name;
-		public uint Address = 0;
 		public bool Global = false;
+		public uint Address = 0;
+
+		public uint ResolveAddress()
+		{
+			if (Address == 0)
+				throw new Exception(string.Format("Linker error: could not resolve symbol '{0}'", Name));
+
+			return Address;
+		}
 
 		public override string ToString()
 		{
@@ -59,6 +67,7 @@ namespace Fishmachine
 			Op1 = Val;
 			Op1Size = Size;
 			HasOp1 = true;
+			Op1Token = null;
 		}
 
 		public void SetOp1(AsmToken Val, int Size)
@@ -73,6 +82,7 @@ namespace Fishmachine
 			Op2 = Val;
 			Op2Size = Size;
 			HasOp2 = true;
+			Op2Token = null;
 		}
 
 		public void SetOp2(AsmToken Val, int Size)
@@ -87,6 +97,7 @@ namespace Fishmachine
 			Op3 = Val;
 			Op3Size = Size;
 			HasOp3 = true;
+			Op3Token = null;
 		}
 
 		public void SetOp3(AsmToken Val, int Size)
@@ -158,19 +169,11 @@ namespace Fishmachine
 		}
 	}
 
-	public class Assembler
+	public class AssemblerState
 	{
-		List<AsmInstr> Assembly = new List<AsmInstr>();
 		List<AsmToken> Tokens = new List<AsmToken>();
 
-		uint CurAddr = 0;
-
-		public Assembler()
-		{
-
-		}
-
-		AsmToken RefToken(string TokenName)
+		public AsmToken RefToken(string TokenName)
 		{
 			AsmToken Tok = Tokens.Where(T => T.Name == TokenName).FirstOrDefault();
 
@@ -184,7 +187,7 @@ namespace Fishmachine
 			return Tok;
 		}
 
-		AsmToken DefineToken(string TokenName, uint Addr, bool Global)
+		public AsmToken DefineToken(string TokenName, uint Addr, bool Global)
 		{
 			AsmToken Tok = RefToken(TokenName);
 
@@ -195,7 +198,7 @@ namespace Fishmachine
 			return Tok;
 		}
 
-		AsmToken FindToken(string TokenName)
+		public AsmToken FindToken(string TokenName)
 		{
 			AsmToken Tok = Tokens.Where(T => T.Name == TokenName).FirstOrDefault();
 			return Tok;
@@ -206,9 +209,20 @@ namespace Fishmachine
 			AsmToken Tok = Tokens.Where(T => T.Name == SymbolName).FirstOrDefault();
 
 			if (Tok == null)
-				return 0;
+				throw new Exception(string.Format("Unresolved symbol '{0}'", SymbolName));
 
 			return Tok.Address;
+		}
+	}
+
+	public class Assembler
+	{
+		List<AsmInstr> Assembly = new List<AsmInstr>();
+		uint CurAddr = 0;
+
+		public Assembler(uint Address)
+		{
+			CurAddr = Address;
 		}
 
 		void Throw(int Line, string Msg)
@@ -235,7 +249,7 @@ namespace Fishmachine
 			CurAddr += (uint)Instr.Size(CurAddr);
 		}
 
-		bool TryParseToken(string TokenStr, out AsmToken Token, out uint Value)
+		bool TryParseToken(AssemblerState state, string TokenStr, out AsmToken Token, out uint Value)
 		{
 			Token = null;
 			Value = 0;
@@ -253,7 +267,7 @@ namespace Fishmachine
 			}
 			else
 			{
-				Token = RefToken(TokenStr);
+				Token = state.RefToken(TokenStr);
 				return true;
 			}
 
@@ -265,7 +279,7 @@ namespace Fishmachine
 			return Convert.ToInt32(Tok);
 		}
 
-		public void Assemble(string assemblyCode)
+		public void Assemble(AssemblerState state, string assemblyCode)
 		{
 			string[] Lines = assemblyCode.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
@@ -305,7 +319,7 @@ namespace Fishmachine
 							}
 
 						case ".globl":
-							DefineToken(Tokens[1], 0, true);
+							state.DefineToken(Tokens[1], 0, true);
 							break;
 
 						case ".long":
@@ -342,7 +356,7 @@ namespace Fishmachine
 				{
 					// Label
 					string LabelName = L.Substring(0, L.Length - 1).Trim();
-					DefineToken(LabelName, CurAddr, false);
+					state.DefineToken(LabelName, CurAddr, false);
 				}
 				else
 				{
@@ -405,7 +419,7 @@ namespace Fishmachine
 
 								Instr = new AsmInstr(Enum.Parse<FishInst>(Tokens[0]));
 
-								if (TryParseToken(Tokens[1], out AsmToken Tok, out uint Val))
+								if (TryParseToken(state, Tokens[1], out AsmToken Tok, out uint Val))
 								{
 									if (Tok != null)
 									{
@@ -450,7 +464,7 @@ namespace Fishmachine
 								Throw(i, $"{Tokens[0]} requires 2 operands");
 
 							Instr = new AsmInstr(Enum.Parse<FishInst>(Tokens[0]));
-							Instr.SetOp1(RefToken(Tokens[1]), 4);
+							Instr.SetOp1(state.RefToken(Tokens[1]), 4);
 							Instr.SetOp2((byte)ParseReg(i, Tokens[2]), 1);
 
 							AddAsmInstr(Instr);
@@ -497,7 +511,7 @@ namespace Fishmachine
 
 								Instr = new AsmInstr(Enum.Parse<FishInst>(Tokens[0]));
 
-								if (TryParseToken(Tokens[1], out AsmToken Tok, out uint Val))
+								if (TryParseToken(state, Tokens[1], out AsmToken Tok, out uint Val))
 								{
 									if (Tok != null)
 									{
@@ -544,13 +558,10 @@ namespace Fishmachine
 			}
 		}
 
-		public void LoadOffset(uint Offset)
+		/*public void LoadOffset(uint Offset)
 		{
 			foreach (var T in Tokens)
 			{
-				/*if (T.Global)
-					continue;*/
-
 				T.Address += Offset;
 			}
 
@@ -558,32 +569,11 @@ namespace Fishmachine
 			{
 				I.Address += Offset;
 			}
-		}
+		}*/
 
 		public byte[] Link()
 		{
 			AsmInstr[] Bytes = Assembly.ToArray();
-
-			for (int i = 0; i < Bytes.Length; i++)
-			{
-				if (Bytes[i].Op1Token != null || Bytes[i].Op2Token != null || Bytes[i].Op3Token != null)
-				{
-					if (Bytes[i].Op1Token != null)
-					{
-						Bytes[i].SetOp1(Bytes[i].Op1Token.Address, 4);
-					}
-
-					if (Bytes[i].Op2Token != null)
-					{
-						Bytes[i].SetOp2(Bytes[i].Op2Token.Address, 4);
-					}
-
-					if (Bytes[i].Op3Token != null)
-					{
-						Bytes[i].SetOp3(Bytes[i].Op3Token.Address, 4);
-					}
-				}
-			}
 
 			File.WriteAllBytes("out.txt", Encoding.UTF8.GetBytes(string.Join("\n", Bytes.Select(B => B.ToString()))));
 
@@ -595,6 +585,24 @@ namespace Fishmachine
 				{
 					foreach (var Instr in Bytes)
 					{
+						if (Instr.Op1Token != null || Instr.Op2Token != null || Instr.Op3Token != null)
+						{
+							if (Instr.Op1Token != null)
+							{
+								Instr.SetOp1(Instr.Op1Token.ResolveAddress(), 4);
+							}
+
+							if (Instr.Op2Token != null)
+							{
+								Instr.SetOp2(Instr.Op2Token.ResolveAddress(), 4);
+							}
+
+							if (Instr.Op3Token != null)
+							{
+								Instr.SetOp3(Instr.Op3Token.ResolveAddress(), 4);
+							}
+						}
+
 						Instr.WriteBytes(BW);
 					}
 

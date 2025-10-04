@@ -20,6 +20,9 @@
     <PackageReference Include="System.Collections.Immutable" Version="6.0.0" />
   </ItemGroup>
   <ItemGroup>
+    <None Update="stdfish.c">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="test.c">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

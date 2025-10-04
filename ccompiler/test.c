@@ -23,7 +23,7 @@ void print(const char* str) {
 
 	while (str[i] != 0) {
 		syscall_2(1, str[i]);
-	
+
 		i++;
 	}
 }
