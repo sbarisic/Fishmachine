@@ -76,6 +76,11 @@ namespace Fishmachine
 
 			File.WriteAllText("out.asm", compiler.Assembly);
 
+			if (File.Exists("out_asm.txt"))
+				File.Delete("out_asm.txt");
+
+			File.Copy("out.asm", "out_asm.txt");
+
 			// Assemble
 			byte[] Bytecode = null;
 			uint KMainAddr = 0;

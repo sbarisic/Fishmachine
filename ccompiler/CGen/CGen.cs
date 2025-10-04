@@ -755,7 +755,7 @@ namespace CodeGeneration
 
 		public void JZ(Int32 label) => this.os.WriteLine($"    JUMP_IF_ZERO_LONG .L{label}");
 
-		public void JNZ(Int32 label) => this.os.WriteLine($"    JUMP_IF_ZERO_LONG .L{label}");
+		public void JNZ(Int32 label) => this.os.WriteLine($"    JUMP_IF_NOT_ZERO_LONG .L{label}");
 
 		public void CLD() => this.os.WriteLine("    cld");
 

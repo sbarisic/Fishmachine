@@ -423,6 +423,7 @@ namespace Fishmachine
 
 						case "SYSCALL":
 						case "JUMP_IF_ZERO_LONG":
+						case "JUMP_IF_NOT_ZERO_LONG":
 						case "JUMP_LONG":
 							{
 

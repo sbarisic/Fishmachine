@@ -4,11 +4,13 @@ void dbg_break();
 
 
 void kmain() {
+	int i = 0;
 	long cur_char = 55;
 	char* str = "Hello,world!\n";
 
-	cur_char = str[1];
-	syscall_2(1, cur_char);
+	for (i = 0; i < 5; i++) {
+		syscall_2(1, 'H');
+	}
 
 	dbg_break();
 	syscall(0);

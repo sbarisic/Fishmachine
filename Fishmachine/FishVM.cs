@@ -25,6 +25,7 @@ namespace Fishmachine
 		JUMP_LONG,
 
 		JUMP_IF_ZERO_LONG,
+		JUMP_IF_NOT_ZERO_LONG,
 
 		CALL_REG,
 		CALL_LONG,
@@ -178,6 +179,7 @@ namespace Fishmachine
 				case FishInst.PUSH_LONG:
 				case FishInst.CALL_LONG:
 				case FishInst.JUMP_IF_ZERO_LONG:
+				case FishInst.JUMP_IF_NOT_ZERO_LONG:
 					return 5;
 
 				// One 32-bit operand, one 8-bit operand, 6 byte total
@@ -312,6 +314,7 @@ namespace Fishmachine
 			else if (Num == 1)
 			{
 				Console.WriteLine("VM: 0x{0:X} = '{1}'", Arg1, (char)Arg1);
+				File.AppendAllText("vm_sys.txt", ((char)Arg1).ToString());
 			}
 		}
 
@@ -834,6 +837,7 @@ namespace Fishmachine
 						break;
 					}
 
+				case FishInst.JUMP_IF_NOT_ZERO_LONG:
 				case FishInst.JUMP_IF_ZERO_LONG:
 				case FishInst.JUMP_LONG:
 					{
@@ -842,6 +846,13 @@ namespace Fishmachine
 						if (Inst == FishInst.JUMP_IF_ZERO_LONG)
 						{
 							if (Regs.IsZero)
+							{
+								Jump(Addr);
+							}
+						}
+						else if (Inst == FishInst.JUMP_IF_NOT_ZERO_LONG)
+						{
+							if (!Regs.IsZero)
 							{
 								Jump(Addr);
 							}
