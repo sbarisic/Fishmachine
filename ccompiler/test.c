@@ -5,13 +5,16 @@ void dbg_break();
 void print(const char* str);
 
 void kmain() {
-	char* str = "Hello,world!\n";
-
+	char* str = "Hello, world!\n";
+	float a = 2.4f;
+	float b = 3.5f;
+	float c = 0.0f;
 	// Test comment
+
+	c = a + b;
 
 	print(str);
 
-	dbg_break();
 	syscall(0);
 }
 

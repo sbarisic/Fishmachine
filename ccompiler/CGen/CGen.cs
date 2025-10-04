@@ -119,17 +119,17 @@ namespace CodeGeneration
 		/// <summary>
 		/// FLDS: load float to FPU stack.
 		/// </summary>
-		public void FLDS(String src) => this.os.WriteLine($"    flds {src}");
+		public void FLDS(string instr, String src) => this.os.WriteLine($"    {instr} {src}");
 
-		public void FLDS(Int32 imm, Reg src) => FLDS($"{imm}({RegToString(src)})");
+		public void FLDS(Int32 imm, Reg src) => FLDS("FLOAT_LOAD_OFFSET_REG", $"{imm}, {RegToString(src)}");
 
 		/// <summary>
 		/// FLDL: load double to FPU stack.
 		/// </summary>
 		/// <param name="addr">Address.</param>
-		public void FLDL(String addr) => this.os.WriteLine($"    fldl {addr}");
+		public void FLDL(string instr, String addr) => this.os.WriteLine($"    {instr} {addr}");
 
-		public void FLDL(Int32 imm, Reg from) => FLDL($"{imm}({RegToString(from)})");
+		public void FLDL(Int32 imm, Reg from) => FLDL("DOUBLE_LOAD_OFFSET_REG", $"{imm}, {RegToString(from)}");
 
 		/// <summary>
 		/// FLD1: push 1.0 to FPU stack.
@@ -145,16 +145,16 @@ namespace CodeGeneration
 		/// FSTS: store float from FPU stack.
 		/// </summary>
 		/// <param name="addr"></param>
-		public void FSTS(String addr) => this.os.WriteLine($"    fsts {addr}");
+		public void FSTS(string instr, String addr) => this.os.WriteLine($"    {instr} {addr}");
 
-		public void FSTS(Int32 imm, Reg to) => FSTS($"{imm}({RegToString(to)})");
+		public void FSTS(Int32 imm, Reg to) => FSTS("FLOAT_STORE_OFFSET_REG", $"{imm}, {RegToString(to)}");
 
 		/// <summary>
 		/// FSTPS: pop float from FPU stack, and store to {addr}.
 		/// </summary>
-		public void FSTPS(String addr) => this.os.WriteLine($"    fstps {addr}");
+		public void FSTPS(string instr, String addr) => this.os.WriteLine($"    {instr} {addr}");
 
-		public void FSTPS(Int32 imm, Reg to) => FSTPS($"{imm}({RegToString(to)})");
+		public void FSTPS(Int32 imm, Reg to) => FSTPS("FLOAT_POP_OFFSET_REG", $"{imm}, {RegToString(to)}");
 
 		/// <summary>
 		/// FSTL: store double from FPU stack.
@@ -186,7 +186,7 @@ namespace CodeGeneration
 		/// FADDP: pop operands from %st(0) and %st(1),
 		///        push addition result back to %st(0).
 		/// </summary>
-		public void FADDP() => this.os.WriteLine("    faddp");
+		public void FADDP() => this.os.WriteLine("    FLOAT_ADD");
 
 		/// <summary>
 		/// FADD: calculate %st(op1) + %st(op2) and rewrite %st(op2).
@@ -197,17 +197,17 @@ namespace CodeGeneration
 		/// FSUBP: pop operands from %st(0) and %st(1),
 		///        push %st(0) / %st(1) back to %st(0).
 		/// </summary>
-		public void FSUBP() => this.os.WriteLine("    fsubp");
+		public void FSUBP() => this.os.WriteLine("    FLOAT_SUB");
 
 		/// <summary>
 		/// FMULP: pop operands from %st(0) and %st(1), push multiplication result back to %st(0).
 		/// </summary>
-		public void FMULP() => this.os.WriteLine("    fmulp");
+		public void FMULP() => this.os.WriteLine("    FLOAT_MUL");
 
 		/// <summary>
 		/// FDIVP: pop operands from %st(0) and %st(1), push %st(0) / %st(1) back to %st(0).
 		/// </summary>
-		public void FDIVP() => this.os.WriteLine("    fdivp");
+		public void FDIVP() => this.os.WriteLine("    FLOAT_DIV");
 
 		/// <summary>
 		/// PUSHL: push long into stack.
@@ -703,7 +703,7 @@ namespace CodeGeneration
 		/// <summary>
 		/// SETLE: set if less than or equal to (signed).
 		/// </summary>
-	
+
 		public void SETLE(Reg dst) => SETG("SETLESSEQUAL_REG", RegToString(dst));
 
 		/// <summary>

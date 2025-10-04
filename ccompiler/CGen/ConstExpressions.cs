@@ -65,7 +65,7 @@ namespace ABT {
             byte[] bytes = BitConverter.GetBytes(this.Value);
             Int32 intval = BitConverter.ToInt32(bytes, 0);
             String name = state.CGenLongConst(intval);
-            state.FLDS(name);
+            state.FLDS("FLOAT_LOAD_LONG", name);
             return Reg.ST0;
         }
     }
@@ -79,7 +79,7 @@ namespace ABT {
             Int32 firstInt = BitConverter.ToInt32(bytes, 0);
             Int32 secondInt = BitConverter.ToInt32(bytes, 4);
             String name = state.CGenLongLongConst(firstInt, secondInt);
-            state.FLDL(name);
+            state.FLDL("DOUBLE_LOAD_LONG", name);
             return Reg.ST0;
         }
     }

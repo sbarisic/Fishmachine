@@ -27,6 +27,21 @@ namespace Fishmachine
 		JUMP_IF_ZERO_LONG,
 		JUMP_IF_NOT_ZERO_LONG,
 
+		FLOAT_ADD,
+		FLOAT_SUB,
+		FLOAT_MUL,
+		FLOAT_DIV,
+
+		FLOAT_LOAD_LONG,
+		DOUBLE_LOAD_LONG,
+
+		FLOAT_LOAD_OFFSET_REG,
+		FLOAT_STORE_OFFSET_REG,
+		FLOAT_POP_OFFSET_REG,
+		DOUBLE_LOAD_OFFSET_REG,
+		DOUBLE_STORE_OFFSET_REG,
+		DOUBLE_POP_OFFSET_REG,
+
 		CALL_REG,
 		CALL_LONG,
 
@@ -75,6 +90,7 @@ namespace Fishmachine
 
 	public struct FishRegisters
 	{
+		public float[] ST;
 		public uint[] Regs;
 		public uint IP;
 
@@ -85,6 +101,44 @@ namespace Fishmachine
 		public bool LessThan;
 		public bool Equal;
 		public bool GreaterThan;
+
+		public void FpuPush(float Val)
+		{
+			Console.ForegroundColor = ConsoleColor.DarkBlue;
+			Console.WriteLine("FPU Push {0}", Val);
+			Console.ResetColor();
+
+			for (int i = ST.Length - 1; i >= 1; i--)
+			{
+				ST[i] = ST[i - 1];
+			}
+
+			ST[0] = Val;
+		}
+
+		public float FpuPop()
+		{
+			float Val = ST[0];
+
+			for (int i = 1; i < ST.Length; i++)
+			{
+				ST[i - 1] = ST[i];
+			}
+
+			Console.ForegroundColor = ConsoleColor.DarkBlue;
+			Console.WriteLine("FPU Pop {0}", Val);
+			Console.ResetColor();
+			return Val;
+		}
+
+		public float FpuPeek()
+		{
+			Console.ForegroundColor = ConsoleColor.DarkBlue;
+			Console.WriteLine("FPU Peek {0}", ST[0]);
+			Console.ResetColor();
+
+			return ST[0];
+		}
 
 		public uint Read(CodeGeneration.Reg Reg)
 		{
@@ -109,6 +163,9 @@ namespace Fishmachine
 
 				case Reg.BX:
 					return Read(Reg.EBX) & 0xFFFF;
+
+				case Reg.ST0:
+					return (uint)ST[0];
 
 				default:
 					break;
@@ -141,6 +198,10 @@ namespace Fishmachine
 					Write(Reg.EBX, Val & 0xFFFF);
 					return;
 
+				case Reg.ST0:
+					ST[0] = (float)Val;
+					return;
+
 				default:
 					break;
 			}
@@ -151,6 +212,7 @@ namespace Fishmachine
 		public FishRegisters()
 		{
 			Regs = new uint[24];
+			ST = new float[8];
 		}
 	}
 
@@ -166,6 +228,10 @@ namespace Fishmachine
 				case FishInst.RET:
 				case FishInst.DBG_BREAK:
 				case FishInst.SYSCALL_2:
+				case FishInst.FLOAT_ADD:
+				case FishInst.FLOAT_SUB:
+				case FishInst.FLOAT_MUL:
+				case FishInst.FLOAT_DIV:
 					return 1;
 
 				// One register, 2 byte total
@@ -197,6 +263,8 @@ namespace Fishmachine
 				// One 32-bit operand, 5 byte total
 				case FishInst.SYSCALL:
 
+				case FishInst.FLOAT_LOAD_LONG:
+				case FishInst.DOUBLE_LOAD_LONG:
 				case FishInst.JUMP_LONG:
 				case FishInst.PUSH_LONG:
 				case FishInst.CALL_LONG:
@@ -212,6 +280,12 @@ namespace Fishmachine
 				case FishInst.MOVEZ_LONG_REG:
 				case FishInst.MOVES_LONG_REG:
 				case FishInst.CMP_LONG_REG:
+				case FishInst.FLOAT_LOAD_OFFSET_REG:
+				case FishInst.FLOAT_POP_OFFSET_REG:
+				case FishInst.FLOAT_STORE_OFFSET_REG:
+				case FishInst.DOUBLE_LOAD_OFFSET_REG:
+				case FishInst.DOUBLE_POP_OFFSET_REG:
+				case FishInst.DOUBLE_STORE_OFFSET_REG:
 					return 6;
 
 				// One 32 bit operand, two 8-bit operands, 7 byte total
@@ -862,6 +936,7 @@ namespace Fishmachine
 				case FishInst.JUMP_IF_NOT_ZERO_LONG:
 				case FishInst.JUMP_IF_ZERO_LONG:
 				case FishInst.JUMP_LONG:
+				case FishInst.FLOAT_LOAD_LONG:
 					{
 						uint Addr = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
 
@@ -883,6 +958,83 @@ namespace Fishmachine
 						{
 							Jump(Addr);
 						}
+						else if (Inst == FishInst.FLOAT_LOAD_LONG)
+						{
+							float Val = BitConverter.ToSingle(ReadBytes(Addr, 4));
+							Regs.FpuPush(Val);
+						}
+
+						break;
+					}
+
+				case FishInst.DOUBLE_STORE_OFFSET_REG:
+				case FishInst.FLOAT_STORE_OFFSET_REG:
+				case FishInst.DOUBLE_POP_OFFSET_REG:
+				case FishInst.FLOAT_POP_OFFSET_REG:
+					{
+						int Offset = BitConverter.ToInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
+						Reg R1 = (Reg)ReadByteFromIP();
+
+						float FVal = 0;
+
+						if (Inst == FishInst.FLOAT_POP_OFFSET_REG || Inst == FishInst.DOUBLE_POP_OFFSET_REG)
+						{
+							FVal = Regs.FpuPop();
+						}
+						else if (Inst == FishInst.FLOAT_STORE_OFFSET_REG || Inst == FishInst.DOUBLE_STORE_OFFSET_REG)
+						{
+							FVal = Regs.FpuPeek();
+						}
+
+						byte[] FBytes = BitConverter.GetBytes(FVal);
+						uint Addr = (uint)(Regs.Read(R1) + Offset);
+
+						Console.ForegroundColor = ConsoleColor.DarkBlue;
+						Console.WriteLine("FPU {0} {1} store to 0x{2:X}", Inst, FVal, Addr);
+						Console.ResetColor();
+
+						WriteBytes(Addr, FBytes);
+
+						break;
+					}
+
+				case FishInst.DOUBLE_LOAD_OFFSET_REG:
+				case FishInst.FLOAT_LOAD_OFFSET_REG:
+					{
+						int Offset = BitConverter.ToInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
+						Reg R1 = (Reg)ReadByteFromIP();
+
+						uint Addr = (uint)(Regs.Read(R1) + Offset);
+						byte[] FBytes = ReadBytes(Addr, 4);
+						float FVal = BitConverter.ToSingle(FBytes);
+						Regs.FpuPush(FVal);
+
+						Console.ForegroundColor = ConsoleColor.DarkBlue;
+						Console.WriteLine("FPU {0} {1} read from 0x{2:X}", Inst, FVal, Addr);
+						Console.ResetColor();
+
+						break;
+					}
+
+				case FishInst.FLOAT_ADD:
+				case FishInst.FLOAT_SUB:
+				case FishInst.FLOAT_MUL:
+				case FishInst.FLOAT_DIV:
+					{
+						float Val1 = Regs.FpuPop();
+						float Val2 = Regs.FpuPop();
+						float Result = 0;
+
+						if (Inst == FishInst.FLOAT_ADD)
+							Result = Val2 + Val1;
+						else if (Inst == FishInst.FLOAT_SUB)
+							Result = Val2 - Val1;
+						else if (Inst == FishInst.FLOAT_MUL)
+							Result = Val2 * Val1;
+						else if (Inst == FishInst.FLOAT_DIV)
+							Result = Val2 / Val1;
+
+						Regs.FpuPush(Result);
 						break;
 					}
 

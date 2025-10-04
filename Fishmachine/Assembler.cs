@@ -1,6 +1,7 @@
 ﻿using CodeGeneration;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -44,6 +45,9 @@ namespace Fishmachine
 		public AsmToken Op3Token { get; private set; }
 
 		public byte[] Raw;
+		public bool IsAlign = false;
+		public int AlignSize = 0;
+		int AlignOffset = 0;
 
 		public AsmInstr(FishInst Inst)
 		{
@@ -94,6 +98,12 @@ namespace Fishmachine
 
 		public void WriteBytes(BinaryWriter BW)
 		{
+			if (IsAlign && AlignSize != 0)
+			{
+				BW.Write(new byte[AlignOffset]);
+				return;
+			}
+
 			if (Raw != null)
 			{
 				BW.Write(Raw);
@@ -113,8 +123,22 @@ namespace Fishmachine
 			}
 		}
 
-		public int Size()
+		public int Size(uint CurAddr)
 		{
+			if (IsAlign && AlignSize != 0)
+			{
+				int Offset = 0;
+
+				while ((CurAddr % AlignSize) != 0)
+				{
+					CurAddr++;
+					Offset++;
+				}
+
+				AlignOffset = Offset;
+				return Offset;
+			}
+
 			if (Raw != null)
 			{
 				return Raw.Length;
@@ -208,7 +232,7 @@ namespace Fishmachine
 		{
 			Instr.Address = CurAddr;
 			Assembly.Add(Instr);
-			CurAddr += (uint)Instr.Size();
+			CurAddr += (uint)Instr.Size(CurAddr);
 		}
 
 		bool TryParseToken(string TokenStr, out AsmToken Token, out uint Value)
@@ -270,9 +294,30 @@ namespace Fishmachine
 						case ".text":
 							break;
 
+						case ".align":
+							{
+								int Align = int.Parse(Tokens[1]);
+								AsmInstr AlignInstr = new AsmInstr(FishInst.NOP);
+								AlignInstr.IsAlign = true;
+								AlignInstr.AlignSize = Align;
+								AddAsmInstr(AlignInstr);
+								break;
+							}
+
 						case ".globl":
 							DefineToken(Tokens[1], 0, true);
 							break;
+
+						case ".long":
+							{
+								AsmInstr RawStr = new AsmInstr(FishInst.NOP);
+								string QStr = L.Substring(".long".Length).Trim();
+
+								int val = int.Parse(QStr);
+								RawStr.Raw = BitConverter.GetBytes(val);
+								AddAsmInstr(RawStr);
+								break;
+							}
 
 						case ".String":
 							{
@@ -382,6 +427,24 @@ namespace Fishmachine
 								break;
 							}
 
+						case "FLOAT_LOAD_OFFSET_REG":
+						case "FLOAT_POP_OFFSET_REG":
+						case "FLOAT_STORE_OFFSET_REG":
+						case "DOUBLE_LOAD_OFFSET_REG":
+						case "DOUBLE_POP_OFFSET_REG":
+						case "DOUBLE_STORE_OFFSET_REG":
+							{
+								if (Tokens.Length != 3)
+									Throw(i, $"{Tokens[0]} requires 2 operands");
+
+								Instr = new AsmInstr(Enum.Parse<FishInst>(Tokens[0]));
+								Instr.SetOp1((uint)ParseOffset(Tokens[1]), 4);
+								Instr.SetOp2((byte)ParseReg(i, Tokens[2]), 1);
+
+								AddAsmInstr(Instr);
+								break;
+							}
+
 						case "LEA_ADDR_REG":
 							if (Tokens.Length != 3)
 								Throw(i, $"{Tokens[0]} requires 2 operands");
@@ -425,6 +488,8 @@ namespace Fishmachine
 						case "JUMP_IF_ZERO_LONG":
 						case "JUMP_IF_NOT_ZERO_LONG":
 						case "JUMP_LONG":
+						case "FLOAT_LOAD_LONG":
+						case "DOUBLE_LOAD_LONG":
 							{
 
 								if (Tokens.Length != 2)
@@ -458,6 +523,10 @@ namespace Fishmachine
 						case "LEAVE":
 						case "RET":
 						case "SYSCALL_2":
+						case "FLOAT_ADD":
+						case "FLOAT_SUB":
+						case "FLOAT_MUL":
+						case "FLOAT_DIV":
 							if (Tokens.Length != 1)
 								Throw(i, $"{Tokens[0]} requires 0 operands");
 

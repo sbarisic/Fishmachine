@@ -160,11 +160,11 @@ namespace ABT
 							return Reg.EAX;
 
 						case ExprTypeKind.FLOAT:
-							state.FLDS(this.Name);
+							state.FLDS("FLOAT_LOAD_LONG", this.Name);
 							return Reg.ST0;
 
 						case ExprTypeKind.DOUBLE:
-							state.FLDL(this.Name);
+							state.FLDL("DOUBLE_LOAD_LONG", this.Name);
 							return Reg.ST0;
 
 						case ExprTypeKind.STRUCT_OR_UNION:
