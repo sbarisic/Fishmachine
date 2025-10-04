@@ -123,6 +123,28 @@ namespace Fishmachine
 			Console.WriteLine(": Write {0} = 0x{2:X} - {2}", Reg, Regs[(int)Reg], Val);
 			Console.ResetColor();
 
+			switch (Reg)
+			{
+				case Reg.AL:
+					Write(Reg.EAX, Val & 0xFF);
+					return;
+
+				case Reg.AX:
+					Write(Reg.EAX, Val & 0xFFFF);
+					return;
+
+				case Reg.BL:
+					Write(Reg.EBX, Val & 0xFF);
+					return;
+
+				case Reg.BX:
+					Write(Reg.EBX, Val & 0xFFFF);
+					return;
+
+				default:
+					break;
+			}
+
 			Regs[(int)Reg] = Val;
 		}
 
@@ -458,8 +480,8 @@ namespace Fishmachine
 						}
 						else if (Inst == FishInst.MOVEZ_REG_REG)
 						{
-							// Zero extend word (keep lower 16 bits)
-							R1Val = (Regs.Read(R1) & 0xFFFF);
+							// Zero extend word (keep lower 8 bits)
+							R1Val = (Regs.Read(R1) & 0xFF);
 						}
 
 						Regs.Write(R2, R1Val);

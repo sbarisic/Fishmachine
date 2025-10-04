@@ -1,13 +1,29 @@
 ﻿using Driver;
+using System.Text;
+using System.Text.Unicode;
 
 namespace Fishmachine
 {
 	static class Console
 	{
+		static FileStream FS;
+
+		static void OpenWrite()
+		{
+			if (FS == null)
+			{
+				FS = File.OpenWrite("vm_out.txt");
+			}
+		}
+
 		public static void Write(string Str)
 		{
 			System.Console.Write(Str);
-			File.AppendAllText("vm_out.txt", Str);
+
+			OpenWrite();
+			FS.Write(Encoding.UTF8.GetBytes(Str));
+			FS.Flush();
+			//File.AppendAllText("vm_out.txt", Str);
 		}
 
 		public static void Write(string Fmt, params object[] Args)
