@@ -151,7 +151,14 @@ namespace Fishmachine
 
 			VM.Regs.Write(CodeGeneration.Reg.ESP, 0x2000);
 			VM.Jump(KMainAddr);
-			VM.Run();
+
+			FishException Ex = FishException.None;
+			while (VM.Run(out Ex))
+			{
+			}
+
+			if (Ex != FishException.None)
+				throw new Exception($"VM stopped with exception {Ex}");
 
 			Console.WriteLine("Done!");
 			Console.ReadLine();

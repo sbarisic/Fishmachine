@@ -384,6 +384,15 @@ namespace ABT
 			throw new InvalidOperationException("Error: cannot get the address of a function call.");
 		}
 
+		public bool IsSpecialFunction(out string FuncName)
+		{
+			Variable FuncVar = Func as Variable;
+			bool Ret = (this.Func.Type is FunctionType && this.Func is ABT.Variable && (FuncVar.Name == "syscall" || FuncVar.Name == "dbg_break" || FuncVar.Name == "__asm"));
+
+			FuncName = FuncVar.Name;
+			return Ret;
+		}
+
 		public override Reg CGenValue(CGenState state)
 		{
 
@@ -426,15 +435,10 @@ namespace ABT
 			//      +--------+
 			// 
 
-			bool is_special_function = false;
-			Variable FuncVar = Func as Variable;
-			is_special_function = (this.Func.Type is FunctionType && this.Func is ABT.Variable && (FuncVar.Name == "syscall" || FuncVar.Name == "dbg_break" || FuncVar.Name == "__asm"));
-
+			bool is_special_function = IsSpecialFunction(out string FuncName);
 			if (is_special_function)
 			{
-				state.NEWLINE();
-
-				switch (FuncVar.Name)
+				switch (FuncName)
 				{
 					case "__asm":
 						{
@@ -446,7 +450,7 @@ namespace ABT
 							}
 							else if (Args.Count == 2 && Args[0] is ConstStringLiteral ArgE2 && Args[1] is Variable ArgVar)
 							{
-								int EaxSize = state.CGenPushLong(Reg.EAX); 
+								int EaxSize = state.CGenPushLong(Reg.EAX);
 								//state.MOVL(Reg.ESP, Reg.EDX); // save stack pointer in %edx	
 
 								ArgVar.CGenAddress(state);

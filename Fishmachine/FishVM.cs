@@ -9,6 +9,18 @@ using System.Threading.Tasks;
 
 namespace Fishmachine
 {
+	public enum FishException : byte
+	{
+		None = 0,
+		InvalidInstruction,
+		DivisionByZero,
+		AccessViolation,
+		StackOverflow,
+		StackUnderflow,
+		FloatInfinity,
+		FloatNaN
+	}
+
 	public enum FishInst : byte
 	{
 		INVALID = 0,
@@ -222,6 +234,7 @@ namespace Fishmachine
 		{
 			switch (Inst)
 			{
+				case FishInst.INVALID:
 				case FishInst.NOP:
 				case FishInst.HALT:
 				case FishInst.LEAVE:
@@ -332,51 +345,115 @@ namespace Fishmachine
 			return Address;
 		}
 
-		public byte[] MemoryBankForRealAddress(uint Address)
+		public byte[] MemoryBankForRealAddress(uint Address, out FishException E)
 		{
+			E = FishException.None;
+
+			if (Address == 0)
+			{
+				E = FishException.AccessViolation;
+				return null;
+			}
+
+			if (Address >= Memory.Length)
+			{
+				E = FishException.AccessViolation;
+				return null;
+			}
+
 			return Memory;
 		}
 
-		public byte ReadByte(uint Address)
+		public byte ReadByte(uint Address, out FishException E)
 		{
 			Address = VirtualToReal(Address);
-			return MemoryBankForRealAddress(Address)[Address];
+			return MemoryBankForRealAddress(Address, out E)[Address];
 		}
 
-		public byte[] ReadBytes(uint VirtAddr, int Count)
+		public byte[] ReadBytes(uint VirtAddr, int Count, out FishException E)
 		{
 			VirtAddr = VirtualToReal(VirtAddr);
-			byte[] Bytes = MemoryBankForRealAddress(VirtAddr);
+
+			byte[] Bytes = MemoryBankForRealAddress(VirtAddr, out E);
+			if (E != FishException.None)
+				return null;
+
 			byte[] Result = new byte[Count];
 			Array.Copy(Bytes, VirtAddr, Result, 0, Count);
 			return Result;
 		}
 
-		public uint ReadUInt32(uint VirtAddr)
+		public uint ReadUInt32(uint VirtAddr, out FishException E)
 		{
 			VirtAddr = VirtualToReal(VirtAddr);
-			byte[] Bytes = MemoryBankForRealAddress(VirtAddr);
+			byte[] Bytes = MemoryBankForRealAddress(VirtAddr, out E);
+			if (E != FishException.None)
+				return 0;
 
 			return BitConverter.ToUInt32(Bytes, (int)VirtAddr);
 		}
 
-		byte ReadByteFromIP()
+		byte ReadByteFromIP(out FishException E)
 		{
-			byte Value = ReadByte(Regs.IP);
+			byte Value = ReadByte(Regs.IP, out E);
+			if (E != FishException.None)
+				return 0;
+
 			Regs.IP = Regs.IP + 1;
 			return Value;
 		}
 
-		public void WriteByte(uint VirtAddress, byte Value)
+		void ReadBytes4FromIP(byte[] Bytes, out FishException E)
 		{
-			VirtAddress = VirtualToReal(VirtAddress);
-			MemoryBankForRealAddress(VirtAddress)[VirtAddress] = Value;
+			Bytes[0] = ReadByteFromIP(out E);
+			if (E != FishException.None)
+				return;
+
+			Bytes[1] = ReadByteFromIP(out E);
+			if (E != FishException.None)
+				return;
+
+			Bytes[2] = ReadByteFromIP(out E);
+			if (E != FishException.None)
+				return;
+
+			Bytes[3] = ReadByteFromIP(out E);
+			if (E != FishException.None)
+				return;
 		}
 
-		public void WriteBytes(uint VirtAddress, byte[] Value)
+		int ReadInt32FromIP(out FishException E)
+		{
+			byte[] Bytes = new byte[4];
+
+			ReadBytes4FromIP(Bytes, out E);
+			if (E != FishException.None)
+				return 0;
+
+			return BitConverter.ToInt32(Bytes);
+		}
+
+		uint ReadUInt32FromIP(out FishException E)
+		{
+			byte[] Bytes = new byte[4];
+
+			ReadBytes4FromIP(Bytes, out E);
+			if (E != FishException.None)
+				return 0;
+
+			return BitConverter.ToUInt32(Bytes);
+		}
+
+		public void WriteByte(uint VirtAddress, byte Value, out FishException E)
 		{
 			VirtAddress = VirtualToReal(VirtAddress);
-			Array.Copy(Value, 0, MemoryBankForRealAddress(VirtAddress), VirtAddress, Value.Length);
+			MemoryBankForRealAddress(VirtAddress, out E)[VirtAddress] = Value;
+		}
+
+		public void WriteBytes(uint VirtAddress, byte[] Value, out FishException E)
+		{
+			VirtAddress = VirtualToReal(VirtAddress);
+			Array.Copy(Value, 0, MemoryBankForRealAddress(VirtAddress, out E), VirtAddress, Value.Length);
 		}
 
 		public void Jump(uint VirtAddress)
@@ -387,8 +464,10 @@ namespace Fishmachine
 			Console.ResetColor();
 		}
 
-		public void Syscall(uint Num, uint Arg1)
+		public void Syscall(uint Num, uint Arg1, out FishException E)
 		{
+			E = FishException.None;
+
 			Console.ForegroundColor = ConsoleColor.Red;
 			Console.WriteLine("SYSCALL {0}", Num);
 			Console.ResetColor();
@@ -415,7 +494,10 @@ namespace Fishmachine
 			else if (Num == 5)
 			{
 				uint EAX = Regs.Read(Reg.EAX);
-				EAX = ReadUInt32(EAX);
+				EAX = ReadUInt32(EAX, out E);
+
+				if (E != FishException.None)
+					return;
 
 				Console.WriteLine("EAX: {0}", EAX);
 			}
@@ -423,18 +505,30 @@ namespace Fishmachine
 			{
 				uint EAX = Regs.Read(Reg.EAX);
 				uint EBX = Regs.Read(Reg.EBX);
-				EAX = ReadUInt32(EAX);
-				EBX = ReadUInt32(EBX);
+				EAX = ReadUInt32(EAX, out E);
+
+				if (E != FishException.None)
+					return;
+
+				EBX = ReadUInt32(EBX, out E);
+
+				if (E != FishException.None)
+					return;
 
 				Console.WriteLine("EAX: {0}; EBX: {1}", EAX, EBX);
 			}
 		}
 
-		bool Step()
+		bool Step(out FishException E)
 		{
+			E = FishException.None;
+
 			Console.Write("{0:X4}: ", Regs.IP);
 
-			FishInst Inst = (FishInst)ReadByteFromIP();
+			FishInst Inst = (FishInst)ReadByteFromIP(out E);
+			if (E != FishException.None)
+				return true;
+
 			Console.WriteLine("{0}", Inst);
 
 			switch (Inst)
@@ -449,17 +543,20 @@ namespace Fishmachine
 						return false;
 					}
 
-				case FishInst.INVALID:
-					throw new Exception("Invalid instruction");
-
 				case FishInst.PUSH_REG:
 					{
-						Reg R = (Reg)ReadByteFromIP();
+						Reg R = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 						uint ESP = Regs.Read(Reg.ESP);
 						uint WriteAddr = ESP - sizeof(uint);
 
 						uint RVal = Regs.Read(R);
-						WriteBytes(WriteAddr, BitConverter.GetBytes(RVal));
+						WriteBytes(WriteAddr, BitConverter.GetBytes(RVal), out E);
+						if (E != FishException.None)
+							return true;
+
 						Regs.Write(Reg.ESP, WriteAddr);
 
 						Console.ForegroundColor = ConsoleColor.DarkYellow;
@@ -471,9 +568,15 @@ namespace Fishmachine
 
 				case FishInst.POP_REG:
 					{
-						Reg R = (Reg)ReadByteFromIP();
+						Reg R = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 						uint ESP = Regs.Read(Reg.ESP);
-						uint RegVal = ReadUInt32(ESP);
+						uint RegVal = ReadUInt32(ESP, out E);
+						if (E != FishException.None)
+							return true;
+
 						Regs.Write(R, RegVal);
 
 						Regs.Write(Reg.ESP, ESP + sizeof(uint));
@@ -486,7 +589,10 @@ namespace Fishmachine
 
 				case FishInst.MUL_REG:
 					{
-						Reg R = (Reg)ReadByteFromIP();
+						Reg R = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 						uint RegVal = Regs.Read(R);
 						uint AX = Regs.Read(Reg.AX);
 						uint Mul = RegVal * AX;
@@ -497,7 +603,10 @@ namespace Fishmachine
 
 				case FishInst.IMUL_REG:
 					{
-						Reg R = (Reg)ReadByteFromIP();
+						Reg R = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 						int RegVal = (int)Regs.Read(R);
 						int AX = (int)Regs.Read(Reg.AX);
 						int Mul = RegVal * AX;
@@ -508,10 +617,17 @@ namespace Fishmachine
 
 				case FishInst.PUSH_LONG:
 					{
-						uint Val = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
+						uint Val = ReadUInt32FromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 						uint ESP = Regs.Read(Reg.ESP);
 						uint WriteAddr = ESP - sizeof(uint);
-						WriteBytes(WriteAddr, BitConverter.GetBytes(Val));
+
+						WriteBytes(WriteAddr, BitConverter.GetBytes(Val), out E);
+						if (E != FishException.None)
+							return true;
+
 						Regs.Write(Reg.ESP, WriteAddr);
 						Console.ForegroundColor = ConsoleColor.DarkYellow;
 						Console.WriteLine("Push long {0} to {1}", Val, WriteAddr);
@@ -520,8 +636,14 @@ namespace Fishmachine
 					}
 				case FishInst.MOVEBYTE_REG_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP();
-						Reg R2 = (Reg)ReadByteFromIP();
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R2 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 						byte Val = (byte)(Regs.Read(R1) & 0xFF);
 						Regs.Write(R2, Val);
 						Console.ForegroundColor = ConsoleColor.Yellow;
@@ -531,8 +653,14 @@ namespace Fishmachine
 					}
 				case FishInst.LEA_ADDR_REG:
 					{
-						uint Addr = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
-						Reg R2 = (Reg)ReadByteFromIP();
+						uint Addr = ReadUInt32FromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R2 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 						Regs.Write(R2, Addr);
 						Console.ForegroundColor = ConsoleColor.Green;
 						Console.WriteLine("LEA_ADDR_REG: Write address {0:X8} to {1}", Addr, R2);
@@ -541,9 +669,18 @@ namespace Fishmachine
 					}
 				case FishInst.LEA_OFFSET_REG_REG:
 					{
-						int Offset = BitConverter.ToInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
-						Reg R1 = (Reg)ReadByteFromIP();
-						Reg R2 = (Reg)ReadByteFromIP();
+						int Offset = ReadInt32FromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R2 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 						uint Addr = (uint)(Regs.Read(R1) + Offset);
 						Regs.Write(R2, Addr);
 						Console.ForegroundColor = ConsoleColor.Green;
@@ -555,8 +692,13 @@ namespace Fishmachine
 				case FishInst.MOVES_REG_REG:
 				case FishInst.MOVE_REG_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP();
-						Reg R2 = (Reg)ReadByteFromIP();
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R2 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
 
 						uint R1Val = 0;
 
@@ -580,8 +722,13 @@ namespace Fishmachine
 
 				case FishInst.TEST_REG_REG:
 					{
-						Reg R2 = (Reg)ReadByteFromIP();
-						Reg R1 = (Reg)ReadByteFromIP();
+						Reg R2 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
 
 						uint R1Val = Regs.Read(R1);
 						uint R2Val = Regs.Read(R2);
@@ -603,8 +750,13 @@ namespace Fishmachine
 
 				case FishInst.CMP_REG_REG:
 					{
-						Reg R2 = (Reg)ReadByteFromIP();
-						Reg R1 = (Reg)ReadByteFromIP();
+						Reg R2 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
 
 						uint R1Val = Regs.Read(R1);
 						uint R2Val = Regs.Read(R2);
@@ -628,7 +780,10 @@ namespace Fishmachine
 
 				case FishInst.SETNOTEQUAL_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP();
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 						uint Val = !Regs.Equal ? (uint)1 : (uint)0;
 						Regs.Write(R1, Val);
 
@@ -640,7 +795,10 @@ namespace Fishmachine
 
 				case FishInst.SETEQUAL_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP();
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 						uint Val = Regs.Equal ? (uint)1 : (uint)0;
 						Regs.Write(R1, Val);
 
@@ -652,7 +810,10 @@ namespace Fishmachine
 
 				case FishInst.SETGREATEREQUAL_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP();
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 						uint Val = Regs.GreaterThan || Regs.Equal ? (uint)1 : (uint)0;
 						Regs.Write(R1, Val);
 
@@ -664,7 +825,10 @@ namespace Fishmachine
 
 				case FishInst.SETGREATER_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP();
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 						uint Val = Regs.GreaterThan ? (uint)1 : (uint)0;
 						Regs.Write(R1, Val);
 
@@ -676,7 +840,10 @@ namespace Fishmachine
 
 				case FishInst.SETLESS_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP();
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 						uint Val = Regs.LessThan ? (uint)1 : (uint)0;
 						Regs.Write(R1, Val);
 
@@ -688,7 +855,10 @@ namespace Fishmachine
 
 				case FishInst.SETLESSEQUAL_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP();
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 						uint Val = Regs.LessThan || Regs.Equal ? (uint)1 : (uint)0;
 						Regs.Write(R1, Val);
 
@@ -701,9 +871,18 @@ namespace Fishmachine
 				case FishInst.MOVEBYTE_REG_OFFSET_REG:
 				case FishInst.MOVE_REG_OFFSET_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP();
-						int Offset = BitConverter.ToInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
-						Reg R2 = (Reg)ReadByteFromIP();
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						int Offset = ReadInt32FromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R2 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 
 						uint R1Val = Regs.Read(R1);
 						uint Addr = (uint)(Regs.Read(R2) + Offset);
@@ -711,7 +890,10 @@ namespace Fishmachine
 						if (Inst == FishInst.MOVE_REG_OFFSET_REG)
 						{
 							byte[] WriteVal = BitConverter.GetBytes(R1Val);
-							WriteBytes(Addr, WriteVal);
+							WriteBytes(Addr, WriteVal, out E);
+							if (E != FishException.None)
+								return true;
+
 
 							Console.ForegroundColor = ConsoleColor.Yellow;
 							Console.WriteLine("Wrote bytes ({5:X8}; {5}) {{ {0:X2} {1:X2} {2:X2} {3:X2} }} to {4:X4}", WriteVal[0], WriteVal[1], WriteVal[2], WriteVal[3], Addr, R1Val);
@@ -720,7 +902,10 @@ namespace Fishmachine
 						else
 						{
 							byte WriteB = (byte)(R1Val & 0xFF);
-							WriteByte(Addr, WriteB);
+							WriteByte(Addr, WriteB, out E);
+							if (E != FishException.None)
+								return true;
+
 
 							Console.ForegroundColor = ConsoleColor.Yellow;
 							Console.WriteLine("Wrote byte {0:X2} to {1:X4}", WriteB, Addr);
@@ -732,13 +917,25 @@ namespace Fishmachine
 
 				case FishInst.MOVEZ_OFFSET_REG_REG:
 					{
-						int Offset = BitConverter.ToInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
-						Reg R1 = (Reg)ReadByteFromIP();
-						Reg R2 = (Reg)ReadByteFromIP();
+						int Offset = ReadInt32FromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R2 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 
 						uint Addr = (uint)(Regs.Read(R1) + Offset);
 						// Zero extend word from memory
-						byte[] wordBytes = ReadBytes(Addr, 2);
+						byte[] wordBytes = ReadBytes(Addr, 2, out E);
+						if (E != FishException.None)
+							return true;
+
 						ushort wordVal = BitConverter.ToUInt16(wordBytes, 0);
 						uint R1Val = wordVal;
 
@@ -752,13 +949,25 @@ namespace Fishmachine
 
 				case FishInst.MOVES_OFFSET_REG_REG:
 					{
-						int Offset = BitConverter.ToInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
-						Reg R1 = (Reg)ReadByteFromIP();
-						Reg R2 = (Reg)ReadByteFromIP();
+						int Offset = ReadInt32FromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R2 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 
 						uint Addr = (uint)(Regs.Read(R1) + Offset);
 						// Sign extend byte from memory
-						byte byteVal = ReadByte(Addr);
+						byte byteVal = ReadByte(Addr, out E);
+						if (E != FishException.None)
+							return true;
+
 						uint R1Val = (uint)(sbyte)byteVal;
 
 						Console.ForegroundColor = ConsoleColor.Yellow;
@@ -771,13 +980,25 @@ namespace Fishmachine
 
 				case FishInst.MOVE_OFFSET_REG_REG:
 					{
-						int Offset = BitConverter.ToInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
-						Reg R1 = (Reg)ReadByteFromIP();
-						Reg R2 = (Reg)ReadByteFromIP();
+						int Offset = ReadInt32FromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R2 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 
 						uint Addr = (uint)(Regs.Read(R1) + Offset);
 						// Regular 32-bit read
-						uint R1Val = ReadUInt32(Addr);
+						uint R1Val = ReadUInt32(Addr, out E);
+						if (E != FishException.None)
+							return true;
+
 						byte[] ReadVal = BitConverter.GetBytes(R1Val);
 
 						Console.ForegroundColor = ConsoleColor.Yellow;
@@ -790,8 +1011,14 @@ namespace Fishmachine
 
 				case FishInst.SUB_LONG_REG:
 					{
-						uint L1 = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
-						Reg R2 = (Reg)ReadByteFromIP();
+						uint L1 = ReadUInt32FromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R2 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 
 						uint RVal = Regs.Read(R2);
 						Regs.Write(R2, RVal - L1);
@@ -800,8 +1027,14 @@ namespace Fishmachine
 
 				case FishInst.SUB_REG_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP();
-						Reg R2 = (Reg)ReadByteFromIP();
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R2 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 
 						uint R1Val = Regs.Read(R1);
 						uint R2Val = Regs.Read(R2);
@@ -816,8 +1049,14 @@ namespace Fishmachine
 
 				case FishInst.ADD_REG_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP();
-						Reg R2 = (Reg)ReadByteFromIP();
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R2 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 
 						uint R1Val = Regs.Read(R1);
 						uint R2Val = Regs.Read(R2);
@@ -832,8 +1071,14 @@ namespace Fishmachine
 
 				case FishInst.ADD_LONG_REG:
 					{
-						uint L1 = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
-						Reg R2 = (Reg)ReadByteFromIP();
+						uint L1 = ReadUInt32FromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R2 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 
 						uint Result = L1 + Regs.Read(R2);
 						Regs.Write(R2, Result);
@@ -842,8 +1087,14 @@ namespace Fishmachine
 
 				case FishInst.MOVE_LONG_REG:
 					{
-						uint L1 = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
-						Reg R2 = (Reg)ReadByteFromIP();
+						uint L1 = ReadUInt32FromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R2 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 
 						Regs.Write(R2, L1);
 						break;
@@ -851,8 +1102,14 @@ namespace Fishmachine
 
 				case FishInst.MOVEZ_LONG_REG:
 					{
-						uint L1 = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
-						Reg R2 = (Reg)ReadByteFromIP();
+						uint L1 = ReadUInt32FromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R2 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 
 						// Zero extend the lower 16 bits of the immediate value
 						uint Result = L1 & 0xFFFF;
@@ -862,8 +1119,14 @@ namespace Fishmachine
 
 				case FishInst.MOVES_LONG_REG:
 					{
-						uint L1 = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
-						Reg R2 = (Reg)ReadByteFromIP();
+						uint L1 = ReadUInt32FromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R2 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 
 						// Sign extend the lower 8 bits of the immediate value
 						byte byteVal = (byte)(L1 & 0xFF);
@@ -874,8 +1137,14 @@ namespace Fishmachine
 
 				case FishInst.CMP_LONG_REG:
 					{
-						uint L1 = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
-						Reg R2 = (Reg)ReadByteFromIP();
+						uint L1 = ReadUInt32FromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R2 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 
 						uint R2Val = Regs.Read(R2);
 						int Result = (int)R2Val - (int)L1;
@@ -896,14 +1165,20 @@ namespace Fishmachine
 
 				case FishInst.CALL_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP();
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 						uint RetAddr = Regs.IP;
 						uint Addr = Regs.Read(R1);
 
 
 						uint ESP = Regs.Read(Reg.ESP);
 						uint WriteAddr = ESP - sizeof(uint);
-						WriteBytes(WriteAddr, BitConverter.GetBytes(RetAddr));
+						WriteBytes(WriteAddr, BitConverter.GetBytes(RetAddr), out E);
+						if (E != FishException.None)
+							return true;
+
 
 						Regs.Write(Reg.ESP, WriteAddr);
 						Jump(Addr);
@@ -912,12 +1187,18 @@ namespace Fishmachine
 
 				case FishInst.CALL_LONG:
 					{
-						uint Addr = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
+						uint Addr = ReadUInt32FromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 						uint RetAddr = Regs.IP;
 
 						uint ESP = Regs.Read(Reg.ESP);
 						uint WriteAddr = ESP - sizeof(uint);
-						WriteBytes(WriteAddr, BitConverter.GetBytes(RetAddr));
+						WriteBytes(WriteAddr, BitConverter.GetBytes(RetAddr), out E);
+						if (E != FishException.None)
+							return true;
+
 
 						Regs.Write(Reg.ESP, WriteAddr);
 						Jump(Addr);
@@ -927,7 +1208,10 @@ namespace Fishmachine
 				case FishInst.RET:
 					{
 						uint ESP = Regs.Read(Reg.ESP);
-						uint RetAddr = ReadUInt32(ESP);
+						uint RetAddr = ReadUInt32(ESP, out E);
+						if (E != FishException.None)
+							return true;
+
 						Regs.Write(Reg.ESP, ESP + sizeof(uint));
 						Jump(RetAddr);
 						break;
@@ -936,16 +1220,31 @@ namespace Fishmachine
 				case FishInst.SYSCALL_2:
 					{
 						uint ESP = Regs.Read(Reg.ESP);
-						uint SyscallNum = ReadUInt32(ESP);
-						uint Arg1 = ReadUInt32(ESP + 4);
-						Syscall(SyscallNum, Arg1);
+						uint SyscallNum = ReadUInt32(ESP, out E);
+						if (E != FishException.None)
+							return true;
+
+						uint Arg1 = ReadUInt32(ESP + 4, out E);
+						if (E != FishException.None)
+							return true;
+
+						Syscall(SyscallNum, Arg1, out E);
+						if (E != FishException.None)
+							return true;
+
 						break;
 					}
 
 				case FishInst.SYSCALL:
 					{
-						uint SyscallNum = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
-						Syscall(SyscallNum, 0);
+						uint SyscallNum = ReadUInt32FromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Syscall(SyscallNum, 0, out E);
+						if (E != FishException.None)
+							return true;
+
 						break;
 					}
 
@@ -954,7 +1253,10 @@ namespace Fishmachine
 				case FishInst.JUMP_LONG:
 				case FishInst.FLOAT_LOAD_LONG:
 					{
-						uint Addr = BitConverter.ToUInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
+						uint Addr = ReadUInt32FromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 
 						if (Inst == FishInst.JUMP_IF_ZERO_LONG)
 						{
@@ -976,7 +1278,10 @@ namespace Fishmachine
 						}
 						else if (Inst == FishInst.FLOAT_LOAD_LONG)
 						{
-							float Val = BitConverter.ToSingle(ReadBytes(Addr, 4));
+							float Val = BitConverter.ToSingle(ReadBytes(Addr, 4, out E));
+							if (E != FishException.None)
+								return true;
+
 							Regs.FpuPush(Val);
 						}
 
@@ -988,8 +1293,14 @@ namespace Fishmachine
 				case FishInst.DOUBLE_POP_OFFSET_REG:
 				case FishInst.FLOAT_POP_OFFSET_REG:
 					{
-						int Offset = BitConverter.ToInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
-						Reg R1 = (Reg)ReadByteFromIP();
+						int Offset = ReadInt32FromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 
 						float FVal = 0;
 
@@ -1009,7 +1320,9 @@ namespace Fishmachine
 						Console.WriteLine("FPU {0} {1} store to 0x{2:X}", Inst, FVal, Addr);
 						Console.ResetColor();
 
-						WriteBytes(Addr, FBytes);
+						WriteBytes(Addr, FBytes, out E);
+						if (E != FishException.None)
+							return true;
 
 						break;
 					}
@@ -1017,11 +1330,20 @@ namespace Fishmachine
 				case FishInst.DOUBLE_LOAD_OFFSET_REG:
 				case FishInst.FLOAT_LOAD_OFFSET_REG:
 					{
-						int Offset = BitConverter.ToInt32(new byte[] { ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP(), ReadByteFromIP() });
-						Reg R1 = (Reg)ReadByteFromIP();
+						int Offset = ReadInt32FromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 
 						uint Addr = (uint)(Regs.Read(R1) + Offset);
-						byte[] FBytes = ReadBytes(Addr, 4);
+						byte[] FBytes = ReadBytes(Addr, 4, out E);
+						if (E != FishException.None)
+							return true;
+
 						float FVal = BitConverter.ToSingle(FBytes);
 						Regs.FpuPush(FVal);
 
@@ -1042,13 +1364,25 @@ namespace Fishmachine
 						float Result = 0;
 
 						if (Inst == FishInst.FLOAT_ADD)
-							Result = Val2 + Val1;
+							Result = Val1 + Val2;
 						else if (Inst == FishInst.FLOAT_SUB)
-							Result = Val2 - Val1;
+							Result = Val1 - Val2;
 						else if (Inst == FishInst.FLOAT_MUL)
-							Result = Val2 * Val1;
+							Result = Val1 * Val2;
 						else if (Inst == FishInst.FLOAT_DIV)
-							Result = Val2 / Val1;
+							Result = Val1 / Val2;
+
+						if (float.IsInfinity(Result))
+						{
+							E = FishException.FloatInfinity;
+							return true;
+						}
+
+						if (float.IsNaN(Result))
+						{
+							E = FishException.FloatNaN;
+							return true;
+						}
 
 						Regs.FpuPush(Result);
 						break;
@@ -1056,7 +1390,10 @@ namespace Fishmachine
 
 				case FishInst.JUMP_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP();
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
 						uint Addr = Regs.Read(R1);
 						Jump(Addr);
 						break;
@@ -1069,7 +1406,10 @@ namespace Fishmachine
 
 						// Pop EBP
 						uint ESP = Regs.Read(Reg.ESP);
-						uint RegVal = ReadUInt32(ESP);
+						uint RegVal = ReadUInt32(ESP, out E);
+						if (E != FishException.None)
+							return true;
+
 						Regs.Write(Reg.EBP, RegVal);
 
 						Regs.Write(Reg.ESP, ESP + sizeof(uint));
@@ -1087,21 +1427,50 @@ namespace Fishmachine
 
 
 				default:
-					throw new Exception(string.Format("Unknown instruction {0}", Inst));
+					{
+						E = FishException.InvalidInstruction;
+						return true;
+					}
 			}
 
 			return true;
 		}
 
-		public void Run()
+		FishException LastException;
+
+		public bool Run(out FishException E)
 		{
 			Halted = false;
+			E = FishException.None;
 
-			while (Step())
+			int YieldCounter = 0;
+
+			while (Step(out E))
 			{
+				if (E != FishException.None && LastException != FishException.None)
+				{
+					throw new Exception("VM double fault");
+				}
+				LastException = E;
+
 				if (Halted)
 					break;
+
+				if (E != FishException.None)
+				{
+					return true;
+				}
+
+				YieldCounter++;
+
+				if (YieldCounter >= 8)
+				{
+					YieldCounter = 0;
+					return true;
+				}
 			}
+
+			return false;
 		}
 	}
 }

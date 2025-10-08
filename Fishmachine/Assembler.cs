@@ -537,6 +537,8 @@ namespace Fishmachine
 								break;
 							}
 
+						case "HALT":
+						case "INVALID":
 						case "DBG_BREAK":
 						case "NOP":
 						case "LEAVE":
