@@ -7,9 +7,9 @@ namespace CodeGeneration
 	public enum Reg
 	{
 		EAX,
+		EBX,
 		ECX,
 		EDX,
-		EBX,
 
 		EBP,
 		ESP,
@@ -22,8 +22,9 @@ namespace CodeGeneration
 		BX,
 		CL,
 
-		ST0
+		ST0,
 
+		XSC, // special register for syscall number
 	}
 
 	public class CGenState
@@ -50,7 +51,8 @@ namespace CodeGeneration
 			[Reg.BL] = "%bl",
 			[Reg.BX] = "%bx",
 			[Reg.CL] = "%cl",
-			[Reg.ST0] = "%st0"
+			[Reg.ST0] = "%st0",
+			[Reg.XSC] = "%xsc",
 		};
 
 		public static String RegToString(Reg reg) => reg_strs[reg];

@@ -187,6 +187,11 @@ namespace Fishmachine
 			return Tok;
 		}
 
+		public void ClearLocalTokens()
+		{
+			Tokens.RemoveAll(T => !T.Global);
+		}
+
 		public AsmToken DefineToken(string TokenName, uint Addr, bool Global)
 		{
 			AsmToken Tok = RefToken(TokenName);
@@ -282,7 +287,7 @@ namespace Fishmachine
 		public void Assemble(AssemblerState state, string assemblyCode)
 		{
 			string[] Lines = assemblyCode.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-
+			state.ClearLocalTokens();
 
 			for (int i = 0; i < Lines.Length; i++)
 			{

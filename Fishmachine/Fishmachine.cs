@@ -1,4 +1,5 @@
 ﻿using Driver;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Unicode;
 
@@ -74,48 +75,71 @@ namespace Fishmachine
 				File.Delete("vm_out.txt");
 		}
 
-		static void Main(string[] args)
+		static void Compile(string CFile)
 		{
 			// Compile
 			string Src = "";
 
-			if (File.Exists("test.c"))
+			if (File.Exists(CFile))
 			{
-				Src = File.ReadAllText("test.c").Trim() + "\n";
+				Src = File.ReadAllText(CFile).Trim() + "\n";
 			}
 
 			Compiler compiler = Compiler.FromSource(Src);
 			//Console.WriteLine(compiler.Assembly);
 
-			if (File.Exists("out.asm"))
-				File.Delete("out.asm");
+			string OutAsmName = Path.GetFileNameWithoutExtension(CFile) + ".asm";
 
-			File.WriteAllText("out.asm", compiler.Assembly);
+			if (File.Exists(OutAsmName))
+				File.Delete(OutAsmName);
 
-			if (File.Exists("out_asm.txt"))
+			File.WriteAllText(OutAsmName, compiler.Assembly);
+
+			/*if (File.Exists("out_asm.txt"))
 				File.Delete("out_asm.txt");
 
-			File.Copy("out.asm", "out_asm.txt");
+			File.Copy("out.asm", "out_asm.txt");*/
+		}
 
+		static byte[] Assemble(string[] AsmFiles, out uint KMainAddr)
+		{
 			// Assemble
 			byte[] Bytecode = null;
-			uint KMainAddr = 0;
+			KMainAddr = 0;
 
-			if (File.Exists("out.asm"))
+			AssemblerState AsmState = new AssemblerState();
+			Assembler Asm = new Assembler(0x1000);
+
+			string AllSrc = "";
+
+			foreach (var F in AsmFiles)
 			{
-				AssemblerState AsmState = new AssemblerState();
-
-				Assembler Asm = new Assembler(0x1000);
-				Asm.Assemble(AsmState, File.ReadAllText("out.asm"));
-
-				//Asm.LoadOffset(0x1000);
-				Bytecode = Asm.Link();
-
-				KMainAddr = AsmState.GetSymbolOffset("kmain");
+				if (File.Exists(F))
+				{
+					string Src = File.ReadAllText(F).Trim();
+					AllSrc += Src + "\n";
+					Asm.Assemble(AsmState, Src);
+				}
 			}
 
+			Bytecode = Asm.Link();
+			KMainAddr = AsmState.GetSymbolOffset("kmain");
+
 			if (Bytecode != null)
+			{
+				File.WriteAllText("out.asm", AllSrc);
 				File.WriteAllBytes("bytecode.bin", Bytecode);
+			}
+
+			return Bytecode;
+		}
+
+		static void Main(string[] args)
+		{
+			Compile("stdfish.c");
+			Compile("test.c");
+
+			byte[] Bytecode = Assemble(new[] { "stdfish.asm", "test.asm" }, out uint KMainAddr);
 
 			// Setup VM, load program and run
 			HookOutput();

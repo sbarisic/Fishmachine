@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Resources;
 using CodeGeneration;
 
 namespace ABT
@@ -427,12 +428,57 @@ namespace ABT
 
 			bool is_special_function = false;
 			Variable FuncVar = Func as Variable;
-			is_special_function = (this.Func.Type is FunctionType && this.Func is ABT.Variable && (FuncVar.Name == "syscall" || FuncVar.Name == "dbg_break"));
+			is_special_function = (this.Func.Type is FunctionType && this.Func is ABT.Variable && (FuncVar.Name == "syscall" || FuncVar.Name == "dbg_break" || FuncVar.Name == "__asm"));
 
 			if (is_special_function)
 			{
+				state.NEWLINE();
+
 				switch (FuncVar.Name)
 				{
+					case "__asm":
+						{
+							if (Args.Count == 1 && Args[0] is ConstStringLiteral ArgE)
+							{
+								string InlineAsm = ArgE.Value;
+
+								state.__INLINE(InlineAsm);
+							}
+							else if (Args.Count == 2 && Args[0] is ConstStringLiteral ArgE2 && Args[1] is Variable ArgVar)
+							{
+								int EaxSize = state.CGenPushLong(Reg.EAX); 
+								//state.MOVL(Reg.ESP, Reg.EDX); // save stack pointer in %edx	
+
+								ArgVar.CGenAddress(state);
+								string InlineAsm = ArgE2.Value;
+								state.__INLINE(InlineAsm);
+
+								//state.MOVL(Reg.EDX, Reg.ESP); // restore stack pointer from %edx
+								state.CGenPopLong(EaxSize, Reg.EAX);
+							}
+							else if (Args.Count == 3 && Args[0] is ConstStringLiteral ArgE3 && Args[1] is Variable ArgVar1 && Args[2] is Variable ArgVar2)
+							{
+								int EaxSize = state.CGenPushLong(Reg.EAX);
+								int EbxSize = state.CGenPushLong(Reg.EBX);
+								//state.MOVL(Reg.ESP, Reg.EDX); // save stack pointer in %edx	
+
+								ArgVar2.CGenAddress(state);
+								state.MOVL(Reg.EAX, Reg.EBX);
+								ArgVar1.CGenAddress(state);
+								string InlineAsm = ArgE3.Value;
+								state.__INLINE(InlineAsm);
+
+								//state.MOVL(Reg.EDX, Reg.ESP); // restore stack pointer from %edx
+								state.CGenPopLong(EbxSize, Reg.EBX);
+								state.CGenPopLong(EaxSize, Reg.EAX);
+							}
+							else
+							{
+								throw new Exception("Invalid number or type of arguments to __asm.");
+							}
+							break;
+						}
+
 					case "syscall":
 						{
 							if (Args.Count != 1 || (Args.Count == 1 && Args[0] is not ConstLong))

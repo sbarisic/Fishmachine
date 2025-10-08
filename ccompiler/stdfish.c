@@ -1,4 +1,7 @@
+void syscall(const long num);
 void syscall_2(const long num, long arg1);
+void dbg_break();
+void __asm();
 
 void print(const char* str) {
 	int i = 0;

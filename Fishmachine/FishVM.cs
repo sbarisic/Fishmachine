@@ -412,6 +412,22 @@ namespace Fishmachine
 				Console.WriteLine("VM: 0x{0:X} = '{1}'", Arg1, (char)Arg1);
 				File.AppendAllText("vm_sys.txt", ((char)Arg1).ToString());
 			}
+			else if (Num == 5)
+			{
+				uint EAX = Regs.Read(Reg.EAX);
+				EAX = ReadUInt32(EAX);
+
+				Console.WriteLine("EAX: {0}", EAX);
+			}
+			else if (Num == 6)
+			{
+				uint EAX = Regs.Read(Reg.EAX);
+				uint EBX = Regs.Read(Reg.EBX);
+				EAX = ReadUInt32(EAX);
+				EBX = ReadUInt32(EBX);
+
+				Console.WriteLine("EAX: {0}; EBX: {1}", EAX, EBX);
+			}
 		}
 
 		bool Step()
