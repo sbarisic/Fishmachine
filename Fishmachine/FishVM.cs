@@ -507,6 +507,11 @@ namespace Fishmachine
 				Console.WriteLine("VM: 0x{0:X} = '{1}'", Arg1, (char)Arg1);
 				File.AppendAllText("vm_sys.txt", ((char)Arg1).ToString());
 			}
+			else if (Num == 2)
+			{
+				Console.WriteLine("Interrupt 1!");
+				Regs.Write(Reg.XSC, 1);
+			}
 			else if (Num == 5)
 			{
 				uint EAX = Regs.Read(Reg.EAX);
@@ -535,12 +540,41 @@ namespace Fishmachine
 			}
 		}
 
+		bool CallLong(uint Addr, out FishException E)
+		{
+			uint RetAddr = Regs.IP;
+
+			uint ESP = Regs.Read(Reg.ESP);
+			uint WriteAddr = ESP - sizeof(uint);
+			WriteBytes(WriteAddr, BitConverter.GetBytes(RetAddr), out E);
+			if (E != FishException.None)
+				return true;
+
+			Regs.Write(Reg.ESP, WriteAddr);
+			Jump(Addr);
+			return false;
+		}
+
 		bool Step(out FishException E)
 		{
 			E = FishException.None;
 
-			Console.Write("{0:X4}: ", Regs.IP);
+			// Handle interrupts
+			uint IntNum = Regs.Read(Reg.XSC);
+			if (IntNum != 0)
+			{
+				Regs.Write(Reg.XSC, 0);
+				// Handle interrupt
 
+				uint IntAddr = ReadUInt32(0x100 + (IntNum * 4), out E);
+				if (E != FishException.None)
+					return true;
+
+				CallLong(IntAddr, out E);
+				return true;
+			}
+
+			Console.Write("{0:X4}: ", Regs.IP);
 			FishInst Inst = (FishInst)ReadByteFromIP(out E);
 			if (E != FishException.None)
 				return true;
@@ -1207,17 +1241,9 @@ namespace Fishmachine
 						if (E != FishException.None)
 							return true;
 
-						uint RetAddr = Regs.IP;
-
-						uint ESP = Regs.Read(Reg.ESP);
-						uint WriteAddr = ESP - sizeof(uint);
-						WriteBytes(WriteAddr, BitConverter.GetBytes(RetAddr), out E);
-						if (E != FishException.None)
+						if (CallLong(Addr, out E))
 							return true;
 
-
-						Regs.Write(Reg.ESP, WriteAddr);
-						Jump(Addr);
 						break;
 					}
 

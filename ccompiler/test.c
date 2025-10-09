@@ -12,6 +12,9 @@ void kmain() {
 	int_table[1] = &int1_handler;
 	dbg_break();
 
+	__asm("SYSCALL $2");
+	dbg_break();
+
 	print(str);
 	__asm("SYSCALL $0");
 }

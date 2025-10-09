@@ -16,7 +16,7 @@ namespace CodeGeneration
 		EDI,
 		ESI,
 
-		XSC, // special register for syscall number
+		XSC, // special register for interrupt number
 
 		MAX_VALUE, // Max allocated register array length, registers below this are mapped on top of this
 
