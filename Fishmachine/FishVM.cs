@@ -508,12 +508,12 @@ namespace Fishmachine
 		{
 			E = FishException.None;
 
-			if (FishSettings.DebugPrint)
-			{
-				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("SYSCALL {0}", Num);
-				Console.ResetColor();
-			}
+			//if (FishSettings.DebugPrint)
+			//{
+			Console.ForegroundColor = ConsoleColor.Red;
+			Console.WriteLine("SYSCALL {0}", Num);
+			Console.ResetColor();
+			//}
 
 			//Console.ForegroundColor = ConsoleColor.Yellow;
 			Reg[] RegsEnum = Enum.GetValues<Reg>().ToArray();
@@ -539,7 +539,8 @@ namespace Fishmachine
 					Console.WriteLine("VM: 0x{0:X} = '{1}'", Arg1, (char)Arg1);
 				}
 
-				File.AppendAllText("vm_sys.txt", ((char)Arg1).ToString());
+				Gfx.Write((char)Arg1);
+				//File.AppendAllText("vm_sys.txt", ((char)Arg1).ToString());
 			}
 			else if (Num == 2)
 			{

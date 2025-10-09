@@ -151,7 +151,12 @@ namespace Fishmachine
 			Gfx.Setup(800, 600);
 			Gfx.StartThread();
 
-			FishSettings.DebugPrint = true;
+			/*foreach (char c in "Hello World!")
+			{
+				Gfx.Write(c);
+			}*/
+
+			FishSettings.DebugPrint = false;
 			FishVM VM = new FishVM();
 			VM.Gfx = Gfx;
 

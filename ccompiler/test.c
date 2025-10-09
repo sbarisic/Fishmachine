@@ -9,14 +9,12 @@ void kmain() {
 	char* str = "Hello, linker world!\n";
 	// Test comment
 
-	__asm("SYSCALL $0");
-
 	int_table[1] = &int1_handler;
-	dbg_break();
+	//dbg_break();
 
 	print("Starting syscall test...\n");
 	__asm("SYSCALL $2");
-	dbg_break();
+	//dbg_break();
 
 	print(str);
 	__asm("SYSCALL $0");
