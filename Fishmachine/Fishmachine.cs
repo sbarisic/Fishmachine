@@ -147,13 +147,21 @@ namespace Fishmachine
 			// Setup VM, load program and run
 			HookOutput();
 
+			Graphics Gfx = new Graphics();
+			Gfx.Setup(800, 600);
+			Gfx.StartThread();
+
+			FishSettings.DebugPrint = true;
 			FishVM VM = new FishVM();
+			VM.Gfx = Gfx;
+
 			VM.AllocateMemory(0x1000 * 2);
 			//VM.LoadToMemory(Bytecode, 0x1000);
 			VM.LoadToMemory(Bytecode, 0x1000);
 
 			VM.Regs.Write(CodeGeneration.Reg.ESP, 0x2000);
 			VM.Jump(KMainAddr);
+
 
 			FishException Ex = FishException.None;
 			while (VM.Run(out Ex))

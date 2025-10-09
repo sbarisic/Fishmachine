@@ -122,9 +122,12 @@ namespace Fishmachine
 
 		public void FpuPush(float Val)
 		{
-			Console.ForegroundColor = ConsoleColor.DarkBlue;
-			Console.WriteLine("FPU Push {0}", Val);
-			Console.ResetColor();
+			if (FishSettings.DebugPrint)
+			{
+				Console.ForegroundColor = ConsoleColor.DarkBlue;
+				Console.WriteLine("FPU Push {0}", Val);
+				Console.ResetColor();
+			}
 
 			for (int i = ST.Length - 1; i >= 1; i--)
 			{
@@ -143,17 +146,24 @@ namespace Fishmachine
 				ST[i - 1] = ST[i];
 			}
 
-			Console.ForegroundColor = ConsoleColor.DarkBlue;
-			Console.WriteLine("FPU Pop {0}", Val);
-			Console.ResetColor();
+			if (FishSettings.DebugPrint)
+			{
+				Console.ForegroundColor = ConsoleColor.DarkBlue;
+				Console.WriteLine("FPU Pop {0}", Val);
+				Console.ResetColor();
+			}
+
 			return Val;
 		}
 
 		public float FpuPeek()
 		{
-			Console.ForegroundColor = ConsoleColor.DarkBlue;
-			Console.WriteLine("FPU Peek {0}", ST[0]);
-			Console.ResetColor();
+			if (FishSettings.DebugPrint)
+			{
+				Console.ForegroundColor = ConsoleColor.DarkBlue;
+				Console.WriteLine("FPU Peek {0}", ST[0]);
+				Console.ResetColor();
+			}
 
 			return ST[0];
 		}
@@ -193,9 +203,12 @@ namespace Fishmachine
 					break;
 			}
 
-			Console.ForegroundColor = ConsoleColor.Yellow;
-			Console.WriteLine(": Read {0} = 0x{1:X} - {1}", Reg, Ret);
-			Console.ResetColor();
+			if (FishSettings.DebugPrint)
+			{
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine(": Read {0} = 0x{1:X} - {1}", Reg, Ret);
+				Console.ResetColor();
+			}
 
 			return Ret;
 		}
@@ -232,9 +245,13 @@ namespace Fishmachine
 					break;
 			}
 
-			Console.ForegroundColor = ConsoleColor.Yellow;
-			Console.WriteLine(": Write {0} = 0x{2:X} - {2}", Reg, Regs[(int)Reg], Val);
-			Console.ResetColor();
+			if (FishSettings.DebugPrint)
+			{
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine(": Write {0} = 0x{2:X} - {2}", Reg, Regs[(int)Reg], Val);
+				Console.ResetColor();
+			}
+
 			Regs[(int)Reg] = Val;
 		}
 	}
@@ -329,6 +346,7 @@ namespace Fishmachine
 		FishException LastException;
 		bool Halted;
 
+		public Graphics Gfx;
 		byte[] Memory;
 
 		public FishRegisters Regs = new FishRegisters();
@@ -472,9 +490,13 @@ namespace Fishmachine
 		public void Jump(uint VirtAddress)
 		{
 			Regs.IP = VirtAddress;
-			Console.ForegroundColor = ConsoleColor.Green;
-			Console.WriteLine("IP = 0x{0:X4}", Regs.IP);
-			Console.ResetColor();
+
+			if (FishSettings.DebugPrint)
+			{
+				Console.ForegroundColor = ConsoleColor.Green;
+				Console.WriteLine("IP = 0x{0:X4}", Regs.IP);
+				Console.ResetColor();
+			}
 		}
 
 		public void Interrupt(uint Num)
@@ -486,9 +508,12 @@ namespace Fishmachine
 		{
 			E = FishException.None;
 
-			Console.ForegroundColor = ConsoleColor.Red;
-			Console.WriteLine("SYSCALL {0}", Num);
-			Console.ResetColor();
+			if (FishSettings.DebugPrint)
+			{
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("SYSCALL {0}", Num);
+				Console.ResetColor();
+			}
 
 			//Console.ForegroundColor = ConsoleColor.Yellow;
 			Reg[] RegsEnum = Enum.GetValues<Reg>().ToArray();
@@ -509,7 +534,11 @@ namespace Fishmachine
 			}
 			else if (Num == 1)
 			{
-				Console.WriteLine("VM: 0x{0:X} = '{1}'", Arg1, (char)Arg1);
+				if (FishSettings.DebugPrint)
+				{
+					Console.WriteLine("VM: 0x{0:X} = '{1}'", Arg1, (char)Arg1);
+				}
+
 				File.AppendAllText("vm_sys.txt", ((char)Arg1).ToString());
 			}
 			else if (Num == 2)
@@ -517,7 +546,7 @@ namespace Fishmachine
 				Console.WriteLine("Interrupt 1!");
 				Interrupt(1);
 			}
-			else if (Num == 5)
+			/*else if (Num == 5)
 			{
 				uint EAX = Regs.Read(Reg.EAX);
 				EAX = ReadUInt32(EAX, out E);
@@ -542,7 +571,7 @@ namespace Fishmachine
 					return;
 
 				Console.WriteLine("EAX: {0}; EBX: {1}", EAX, EBX);
-			}
+			}*/
 		}
 
 		bool CallLong(uint Addr, out FishException E)
@@ -579,12 +608,14 @@ namespace Fishmachine
 				return true;
 			}
 
-			Console.Write("{0:X4}: ", Regs.IP);
+			if (FishSettings.DebugPrint)
+				Console.Write("{0:X4}: ", Regs.IP);
 			FishInst Inst = (FishInst)ReadByteFromIP(out E);
 			if (E != FishException.None)
 				return true;
 
-			Console.WriteLine("{0}", Inst);
+			if (FishSettings.DebugPrint)
+				Console.WriteLine("{0}", Inst);
 
 			switch (Inst)
 			{
@@ -614,9 +645,12 @@ namespace Fishmachine
 
 						Regs.Write(Reg.ESP, WriteAddr);
 
-						Console.ForegroundColor = ConsoleColor.DarkYellow;
-						Console.WriteLine("Push ({0}) {1} to {2}", R, RVal, WriteAddr);
-						Console.ResetColor();
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.DarkYellow;
+							Console.WriteLine("Push ({0}) {1} to {2}", R, RVal, WriteAddr);
+							Console.ResetColor();
+						}
 
 						break;
 					}
@@ -636,9 +670,13 @@ namespace Fishmachine
 
 						Regs.Write(Reg.ESP, ESP + sizeof(uint));
 
-						Console.ForegroundColor = ConsoleColor.DarkYellow;
-						Console.WriteLine("Pop ({0}) new {1} from {2}", R, RegVal, ESP);
-						Console.ResetColor();
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.DarkYellow;
+							Console.WriteLine("Pop ({0}) new {1} from {2}", R, RegVal, ESP);
+							Console.ResetColor();
+						}
+
 						break;
 					}
 
@@ -684,9 +722,14 @@ namespace Fishmachine
 							return true;
 
 						Regs.Write(Reg.ESP, WriteAddr);
-						Console.ForegroundColor = ConsoleColor.DarkYellow;
-						Console.WriteLine("Push long {0} to {1}", Val, WriteAddr);
-						Console.ResetColor();
+
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.DarkYellow;
+							Console.WriteLine("Push long {0} to {1}", Val, WriteAddr);
+							Console.ResetColor();
+						}
+
 						break;
 					}
 				case FishInst.MOVEBYTE_REG_REG:
@@ -701,9 +744,14 @@ namespace Fishmachine
 
 						byte Val = (byte)(Regs.Read(R1) & 0xFF);
 						Regs.Write(R2, Val);
-						Console.ForegroundColor = ConsoleColor.Yellow;
-						Console.WriteLine("Move byte from {0} to {1}: {2:X2}", R1, R2, Val);
-						Console.ResetColor();
+
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.Yellow;
+							Console.WriteLine("Move byte from {0} to {1}: {2:X2}", R1, R2, Val);
+							Console.ResetColor();
+						}
+
 						break;
 					}
 				case FishInst.LEA_ADDR_REG:
@@ -717,9 +765,14 @@ namespace Fishmachine
 							return true;
 
 						Regs.Write(R2, Addr);
-						Console.ForegroundColor = ConsoleColor.Green;
-						Console.WriteLine("LEA_ADDR_REG: Write address {0:X8} to {1}", Addr, R2);
-						Console.ResetColor();
+
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.Green;
+							Console.WriteLine("LEA_ADDR_REG: Write address {0:X8} to {1}", Addr, R2);
+							Console.ResetColor();
+						}
+
 						break;
 					}
 				case FishInst.LEA_OFFSET_REG_REG:
@@ -738,9 +791,14 @@ namespace Fishmachine
 
 						uint Addr = (uint)(Regs.Read(R1) + Offset);
 						Regs.Write(R2, Addr);
-						Console.ForegroundColor = ConsoleColor.Green;
-						Console.WriteLine("LEA_OFFSET_REG_REG: Write address {0:X8} to {1}", Addr, R2);
-						Console.ResetColor();
+
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.Green;
+							Console.WriteLine("LEA_OFFSET_REG_REG: Write address {0:X8} to {1}", Addr, R2);
+							Console.ResetColor();
+						}
+
 						break;
 					}
 				case FishInst.MOVEZ_REG_REG:
@@ -796,10 +854,14 @@ namespace Fishmachine
 						Regs.GreaterThan = R1Val > R2Val;
 						Regs.Sign = Result < 0;
 
-						Console.ForegroundColor = ConsoleColor.Cyan;
-						Console.WriteLine("Test ({0}) {1}; 0x{1:X} and ({2}) {3}; 0x{3:X}", R1, R1Val, R2, R2Val);
-						Console.WriteLine("IsZero = {0}, Sign = {1}, GreaterThan = {2}, Equal = {3}, LessThan = {4}", Regs.IsZero, Regs.Sign, Regs.GreaterThan, Regs.Equal, Regs.LessThan);
-						Console.ResetColor();
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.Cyan;
+							Console.WriteLine("Test ({0}) {1}; 0x{1:X} and ({2}) {3}; 0x{3:X}", R1, R1Val, R2, R2Val);
+							Console.WriteLine("IsZero = {0}, Sign = {1}, GreaterThan = {2}, Equal = {3}, LessThan = {4}", Regs.IsZero, Regs.Sign, Regs.GreaterThan, Regs.Equal, Regs.LessThan);
+							Console.ResetColor();
+						}
+
 						break;
 					}
 
@@ -825,10 +887,13 @@ namespace Fishmachine
 						Regs.GreaterThan = R1Val > R2Val;
 						Regs.Sign = Result < 0;
 
-						Console.ForegroundColor = ConsoleColor.Cyan;
-						Console.WriteLine("Cmp ({0}) {1}; 0x{1:X} and ({2}) {3}; 0x{3:X}", R1, R1Val, R2, R2Val);
-						Console.WriteLine("IsZero = {0}, Sign = {1}, GreaterThan = {2}, Equal = {3}, LessThan = {4}", Regs.IsZero, Regs.Sign, Regs.GreaterThan, Regs.Equal, Regs.LessThan);
-						Console.ResetColor();
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.Cyan;
+							Console.WriteLine("Cmp ({0}) {1}; 0x{1:X} and ({2}) {3}; 0x{3:X}", R1, R1Val, R2, R2Val);
+							Console.WriteLine("IsZero = {0}, Sign = {1}, GreaterThan = {2}, Equal = {3}, LessThan = {4}", Regs.IsZero, Regs.Sign, Regs.GreaterThan, Regs.Equal, Regs.LessThan);
+							Console.ResetColor();
+						}
 
 						break;
 					}
@@ -842,9 +907,13 @@ namespace Fishmachine
 						uint Val = !Regs.Equal ? (uint)1 : (uint)0;
 						Regs.Write(R1, Val);
 
-						Console.ForegroundColor = ConsoleColor.Cyan;
-						Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
-						Console.ResetColor();
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.Cyan;
+							Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
+							Console.ResetColor();
+						}
+
 						break;
 					}
 
@@ -857,9 +926,13 @@ namespace Fishmachine
 						uint Val = Regs.Equal ? (uint)1 : (uint)0;
 						Regs.Write(R1, Val);
 
-						Console.ForegroundColor = ConsoleColor.Cyan;
-						Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
-						Console.ResetColor();
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.Cyan;
+							Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
+							Console.ResetColor();
+						}
+
 						break;
 					}
 
@@ -872,9 +945,13 @@ namespace Fishmachine
 						uint Val = Regs.GreaterThan || Regs.Equal ? (uint)1 : (uint)0;
 						Regs.Write(R1, Val);
 
-						Console.ForegroundColor = ConsoleColor.Cyan;
-						Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
-						Console.ResetColor();
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.Cyan;
+							Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
+							Console.ResetColor();
+						}
+
 						break;
 					}
 
@@ -887,9 +964,13 @@ namespace Fishmachine
 						uint Val = Regs.GreaterThan ? (uint)1 : (uint)0;
 						Regs.Write(R1, Val);
 
-						Console.ForegroundColor = ConsoleColor.Cyan;
-						Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
-						Console.ResetColor();
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.Cyan;
+							Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
+							Console.ResetColor();
+						}
+
 						break;
 					}
 
@@ -902,9 +983,13 @@ namespace Fishmachine
 						uint Val = Regs.LessThan ? (uint)1 : (uint)0;
 						Regs.Write(R1, Val);
 
-						Console.ForegroundColor = ConsoleColor.Cyan;
-						Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
-						Console.ResetColor();
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.Cyan;
+							Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
+							Console.ResetColor();
+						}
+
 						break;
 					}
 
@@ -917,9 +1002,13 @@ namespace Fishmachine
 						uint Val = Regs.LessThan || Regs.Equal ? (uint)1 : (uint)0;
 						Regs.Write(R1, Val);
 
-						Console.ForegroundColor = ConsoleColor.Cyan;
-						Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
-						Console.ResetColor();
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.Cyan;
+							Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
+							Console.ResetColor();
+						}
+
 						break;
 					}
 
@@ -949,10 +1038,12 @@ namespace Fishmachine
 							if (E != FishException.None)
 								return true;
 
-
-							Console.ForegroundColor = ConsoleColor.Yellow;
-							Console.WriteLine("Wrote bytes ({5:X8}; {5}) {{ {0:X2} {1:X2} {2:X2} {3:X2} }} to {4:X4}", WriteVal[0], WriteVal[1], WriteVal[2], WriteVal[3], Addr, R1Val);
-							Console.ResetColor();
+							if (FishSettings.DebugPrint)
+							{
+								Console.ForegroundColor = ConsoleColor.Yellow;
+								Console.WriteLine("Wrote bytes ({5:X8}; {5}) {{ {0:X2} {1:X2} {2:X2} {3:X2} }} to {4:X4}", WriteVal[0], WriteVal[1], WriteVal[2], WriteVal[3], Addr, R1Val);
+								Console.ResetColor();
+							}
 						}
 						else
 						{
@@ -961,10 +1052,12 @@ namespace Fishmachine
 							if (E != FishException.None)
 								return true;
 
-
-							Console.ForegroundColor = ConsoleColor.Yellow;
-							Console.WriteLine("Wrote byte {0:X2} to {1:X4}", WriteB, Addr);
-							Console.ResetColor();
+							if (FishSettings.DebugPrint)
+							{
+								Console.ForegroundColor = ConsoleColor.Yellow;
+								Console.WriteLine("Wrote byte {0:X2} to {1:X4}", WriteB, Addr);
+								Console.ResetColor();
+							}
 						}
 						//Regs.Write(R2, R1Val);
 						break;
@@ -994,9 +1087,12 @@ namespace Fishmachine
 						ushort wordVal = BitConverter.ToUInt16(wordBytes, 0);
 						uint R1Val = wordVal;
 
-						Console.ForegroundColor = ConsoleColor.Yellow;
-						Console.WriteLine("Read zero-extended word {0:X4} from {1:X4} -> {2:X8}", wordVal, Addr, R1Val);
-						Console.ResetColor();
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.Yellow;
+							Console.WriteLine("Read zero-extended word {0:X4} from {1:X4} -> {2:X8}", wordVal, Addr, R1Val);
+							Console.ResetColor();
+						}
 
 						Regs.Write(R2, R1Val);
 						break;
@@ -1025,9 +1121,12 @@ namespace Fishmachine
 
 						uint R1Val = (uint)(sbyte)byteVal;
 
-						Console.ForegroundColor = ConsoleColor.Yellow;
-						Console.WriteLine("Read sign-extended byte {0:X2} ({1}) from {2:X4} -> {3:X8}", byteVal, (sbyte)byteVal, Addr, R1Val);
-						Console.ResetColor();
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.Yellow;
+							Console.WriteLine("Read sign-extended byte {0:X2} ({1}) from {2:X4} -> {3:X8}", byteVal, (sbyte)byteVal, Addr, R1Val);
+							Console.ResetColor();
+						}
 
 						Regs.Write(R2, R1Val);
 						break;
@@ -1056,9 +1155,12 @@ namespace Fishmachine
 
 						byte[] ReadVal = BitConverter.GetBytes(R1Val);
 
-						Console.ForegroundColor = ConsoleColor.Yellow;
-						Console.WriteLine("Read bytes ({5:X8}; {5}) {{ {0:X2} {1:X2} {2:X2} {3:X2} }} from {4:X4}", ReadVal[0], ReadVal[1], ReadVal[2], ReadVal[3], Addr, R1Val);
-						Console.ResetColor();
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.Yellow;
+							Console.WriteLine("Read bytes ({5:X8}; {5}) {{ {0:X2} {1:X2} {2:X2} {3:X2} }} from {4:X4}", ReadVal[0], ReadVal[1], ReadVal[2], ReadVal[3], Addr, R1Val);
+							Console.ResetColor();
+						}
 
 						Regs.Write(R2, R1Val);
 						break;
@@ -1094,9 +1196,12 @@ namespace Fishmachine
 						uint R1Val = Regs.Read(R1);
 						uint R2Val = Regs.Read(R2);
 
-						Console.ForegroundColor = ConsoleColor.Magenta;
-						Console.WriteLine("Sub ({0}) {1}, ({2}) {3} = {4}", R1, R1Val, R2, R2Val, R2Val - R1Val);
-						Console.ResetColor();
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.Magenta;
+							Console.WriteLine("Sub ({0}) {1}, ({2}) {3} = {4}", R1, R1Val, R2, R2Val, R2Val - R1Val);
+							Console.ResetColor();
+						}
 
 						Regs.Write(R2, R2Val - R1Val);
 						break;
@@ -1116,9 +1221,12 @@ namespace Fishmachine
 						uint R1Val = Regs.Read(R1);
 						uint R2Val = Regs.Read(R2);
 
-						Console.ForegroundColor = ConsoleColor.Magenta;
-						Console.WriteLine("Add ({0}) {1}, ({2}) {3} = {4}", R1, R1Val, R2, R2Val, R1Val + R2Val);
-						Console.ResetColor();
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.Magenta;
+							Console.WriteLine("Add ({0}) {1}, ({2}) {3} = {4}", R1, R1Val, R2, R2Val, R1Val + R2Val);
+							Console.ResetColor();
+						}
 
 						Regs.Write(R2, R1Val + R2Val);
 						break;
@@ -1210,10 +1318,13 @@ namespace Fishmachine
 						Regs.GreaterThan = R2Val > L1;
 						Regs.Sign = Result < 0;
 
-						Console.ForegroundColor = ConsoleColor.Cyan;
-						Console.WriteLine("Cmp ({0}) {1}; 0x{1:X} and immediate {2}; 0x{2:X}", R2, R2Val, L1);
-						Console.WriteLine("IsZero = {0}, Sign = {1}, GreaterThan = {2}, Equal = {3}, LessThan = {4}", Regs.IsZero, Regs.Sign, Regs.GreaterThan, Regs.Equal, Regs.LessThan);
-						Console.ResetColor();
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.Cyan;
+							Console.WriteLine("Cmp ({0}) {1}; 0x{1:X} and immediate {2}; 0x{2:X}", R2, R2Val, L1);
+							Console.WriteLine("IsZero = {0}, Sign = {1}, GreaterThan = {2}, Equal = {3}, LessThan = {4}", Regs.IsZero, Regs.Sign, Regs.GreaterThan, Regs.Equal, Regs.LessThan);
+							Console.ResetColor();
+						}
 
 						break;
 					}
@@ -1363,9 +1474,12 @@ namespace Fishmachine
 						byte[] FBytes = BitConverter.GetBytes(FVal);
 						uint Addr = (uint)(Regs.Read(R1) + Offset);
 
-						Console.ForegroundColor = ConsoleColor.DarkBlue;
-						Console.WriteLine("FPU {0} {1} store to 0x{2:X}", Inst, FVal, Addr);
-						Console.ResetColor();
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.DarkBlue;
+							Console.WriteLine("FPU {0} {1} store to 0x{2:X}", Inst, FVal, Addr);
+							Console.ResetColor();
+						}
 
 						WriteBytes(Addr, FBytes, out E);
 						if (E != FishException.None)
@@ -1394,9 +1508,12 @@ namespace Fishmachine
 						float FVal = BitConverter.ToSingle(FBytes);
 						Regs.FpuPush(FVal);
 
-						Console.ForegroundColor = ConsoleColor.DarkBlue;
-						Console.WriteLine("FPU {0} {1} read from 0x{2:X}", Inst, FVal, Addr);
-						Console.ResetColor();
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.DarkBlue;
+							Console.WriteLine("FPU {0} {1} read from 0x{2:X}", Inst, FVal, Addr);
+							Console.ResetColor();
+						}
 
 						break;
 					}

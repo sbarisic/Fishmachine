@@ -6,12 +6,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <BaseOutputPath>$(SolutionDir)bin</BaseOutputPath>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
     <Content Include="..\bin\Debug\net8.0\out_asm.txt" Link="out_asm.txt" />
     <Content Include="..\bin\Debug\net8.0\vm_out.txt" Link="vm_out.txt" />
     <Content Include="..\bin\Debug\net8.0\vm_sys.txt" Link="vm_sys.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Raylib-cs" Version="7.0.1" />
   </ItemGroup>
 
   <ItemGroup>
