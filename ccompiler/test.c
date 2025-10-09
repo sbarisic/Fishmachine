@@ -12,6 +12,7 @@ void kmain() {
 	int_table[1] = &int1_handler;
 	dbg_break();
 
+	print("Starting syscall test...\n");
 	__asm("SYSCALL $2");
 	dbg_break();
 
