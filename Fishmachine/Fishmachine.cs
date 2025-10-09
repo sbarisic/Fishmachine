@@ -160,6 +160,7 @@ namespace Fishmachine
 			{
 			}
 
+
 			if (Ex != FishException.None)
 				throw new Exception($"VM stopped with exception {Ex}");
 

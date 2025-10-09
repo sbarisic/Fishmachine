@@ -477,6 +477,11 @@ namespace Fishmachine
 			Console.ResetColor();
 		}
 
+		public void Interrupt(uint Num)
+		{
+			Regs.Write(Reg.XSC, Num);
+		}
+
 		public void Syscall(uint Num, uint Arg1, out FishException E)
 		{
 			E = FishException.None;
@@ -510,7 +515,7 @@ namespace Fishmachine
 			else if (Num == 2)
 			{
 				Console.WriteLine("Interrupt 1!");
-				Regs.Write(Reg.XSC, 1);
+				Interrupt(1);
 			}
 			else if (Num == 5)
 			{
