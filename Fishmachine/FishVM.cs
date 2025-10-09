@@ -21,6 +21,22 @@ namespace Fishmachine
 		FloatNaN
 	}
 
+	public enum FishSyscall : byte
+	{
+		StopMachine,
+		PrintChar,
+		SoftwareInterrupt,
+	}
+
+	public enum FishInterrupt : byte
+	{
+		None,
+		Int0,
+		Int1_KeyboardKey,
+		Int2,
+		Int3,
+	}
+
 	public enum FishInst : byte
 	{
 		INVALID = 0,
@@ -499,19 +515,19 @@ namespace Fishmachine
 			}
 		}
 
-		public void Interrupt(uint Num)
+		public void Interrupt(FishInterrupt Num)
 		{
-			Regs.Write(Reg.XSC, Num);
+			Regs.Write(Reg.XSC, (uint)Num);
 		}
 
-		public void Syscall(uint Num, uint Arg1, out FishException E)
+		public void Syscall(FishSyscall FInt, uint Arg1, out FishException E)
 		{
 			E = FishException.None;
 
 			//if (FishSettings.DebugPrint)
 			//{
 			Console.ForegroundColor = ConsoleColor.Red;
-			Console.WriteLine("SYSCALL {0}", Num);
+			Console.WriteLine("SYSCALL {0}", FInt);
 			Console.ResetColor();
 			//}
 
@@ -528,11 +544,11 @@ namespace Fishmachine
 			//Console.WriteLine();
 			//Console.ResetColor();
 
-			if (Num == 0)
+			if (FInt == FishSyscall.StopMachine)
 			{
 				Halted = true;
 			}
-			else if (Num == 1)
+			else if (FInt == FishSyscall.PrintChar)
 			{
 				if (FishSettings.DebugPrint)
 				{
@@ -542,10 +558,10 @@ namespace Fishmachine
 				Gfx.Write((char)Arg1);
 				//File.AppendAllText("vm_sys.txt", ((char)Arg1).ToString());
 			}
-			else if (Num == 2)
+			else if (FInt == FishSyscall.SoftwareInterrupt)
 			{
-				Console.WriteLine("Interrupt 1!");
-				Interrupt(1);
+				Console.WriteLine("Interrupt {0}!", Arg1);
+				Interrupt((FishInterrupt)Arg1);
 			}
 			/*else if (Num == 5)
 			{
@@ -581,12 +597,75 @@ namespace Fishmachine
 
 			uint ESP = Regs.Read(Reg.ESP);
 			uint WriteAddr = ESP - sizeof(uint);
+
 			WriteBytes(WriteAddr, BitConverter.GetBytes(RetAddr), out E);
 			if (E != FishException.None)
 				return true;
 
 			Regs.Write(Reg.ESP, WriteAddr);
+
 			Jump(Addr);
+			return false;
+		}
+
+		bool PushReg(Reg R, out FishException E)
+		{
+			uint ESP = Regs.Read(Reg.ESP);
+			uint WriteAddr = ESP - sizeof(uint);
+
+			uint RVal = Regs.Read(R);
+			WriteBytes(WriteAddr, BitConverter.GetBytes(RVal), out E);
+			if (E != FishException.None)
+				return true;
+
+			Regs.Write(Reg.ESP, WriteAddr);
+
+			if (FishSettings.DebugPrint)
+			{
+				Console.ForegroundColor = ConsoleColor.DarkYellow;
+				Console.WriteLine("Push ({0}) {1} to {2}", R, RVal, WriteAddr);
+				Console.ResetColor();
+			}
+
+			return false;
+		}
+
+		bool PopReg(Reg R, out FishException E)
+		{
+			uint ESP = Regs.Read(Reg.ESP);
+			uint RegVal = ReadUInt32(ESP, out E);
+			if (E != FishException.None)
+				return true;
+
+			Regs.Write(R, RegVal);
+			Regs.Write(Reg.ESP, ESP + sizeof(uint));
+
+			if (FishSettings.DebugPrint)
+			{
+				Console.ForegroundColor = ConsoleColor.DarkYellow;
+				Console.WriteLine("Pop ({0}) new {1} from {2}", R, RegVal, ESP);
+				Console.ResetColor();
+			}
+
+			return false;
+		}
+
+		bool Enter(uint N, out FishException E)
+		{
+			if (PushReg(Reg.EBP, out E))
+				return true;
+
+			Regs.Write(Reg.EBP, Regs.Read(Reg.ESP));
+			Regs.Write(Reg.ESP, Regs.Read(Reg.ESP) - N);
+			return false;
+		}
+
+		bool Leave(out FishException E)
+		{
+			Regs.Write(Reg.ESP, Regs.Read(Reg.EBP));
+			if (PopReg(Reg.EBP, out E))
+				return true;
+
 			return false;
 		}
 
@@ -595,13 +674,13 @@ namespace Fishmachine
 			E = FishException.None;
 
 			// Handle interrupts
-			uint IntNum = Regs.Read(Reg.XSC);
+			FishInterrupt IntNum = (FishInterrupt)Regs.Read(Reg.XSC);
 			if (IntNum != 0)
 			{
 				Regs.Write(Reg.XSC, 0);
 				// Handle interrupt
 
-				uint IntAddr = ReadUInt32(0x100 + (IntNum * 4), out E);
+				uint IntAddr = ReadUInt32(0x100 + ((uint)(IntNum - 1) * 4), out E);
 				if (E != FishException.None)
 					return true;
 
@@ -636,22 +715,8 @@ namespace Fishmachine
 						if (E != FishException.None)
 							return true;
 
-						uint ESP = Regs.Read(Reg.ESP);
-						uint WriteAddr = ESP - sizeof(uint);
-
-						uint RVal = Regs.Read(R);
-						WriteBytes(WriteAddr, BitConverter.GetBytes(RVal), out E);
-						if (E != FishException.None)
+						if (PushReg(R, out E))
 							return true;
-
-						Regs.Write(Reg.ESP, WriteAddr);
-
-						if (FishSettings.DebugPrint)
-						{
-							Console.ForegroundColor = ConsoleColor.DarkYellow;
-							Console.WriteLine("Push ({0}) {1} to {2}", R, RVal, WriteAddr);
-							Console.ResetColor();
-						}
 
 						break;
 					}
@@ -662,7 +727,10 @@ namespace Fishmachine
 						if (E != FishException.None)
 							return true;
 
-						uint ESP = Regs.Read(Reg.ESP);
+						if (PopReg(R, out E))
+							return true;
+
+						/*uint ESP = Regs.Read(Reg.ESP);
 						uint RegVal = ReadUInt32(ESP, out E);
 						if (E != FishException.None)
 							return true;
@@ -676,7 +744,7 @@ namespace Fishmachine
 							Console.ForegroundColor = ConsoleColor.DarkYellow;
 							Console.WriteLine("Pop ({0}) new {1} from {2}", R, RegVal, ESP);
 							Console.ResetColor();
-						}
+						}*/
 
 						break;
 					}
@@ -1336,19 +1404,12 @@ namespace Fishmachine
 						if (E != FishException.None)
 							return true;
 
-						uint RetAddr = Regs.IP;
 						uint Addr = Regs.Read(R1);
 
-
-						uint ESP = Regs.Read(Reg.ESP);
-						uint WriteAddr = ESP - sizeof(uint);
-						WriteBytes(WriteAddr, BitConverter.GetBytes(RetAddr), out E);
-						if (E != FishException.None)
+						if (CallLong(Addr, out E))
 							return true;
 
-
-						Regs.Write(Reg.ESP, WriteAddr);
-						Jump(Addr);
+						//Jump(Addr);
 						break;
 					}
 
@@ -1387,7 +1448,7 @@ namespace Fishmachine
 						if (E != FishException.None)
 							return true;
 
-						Syscall(SyscallNum, Arg1, out E);
+						Syscall((FishSyscall)SyscallNum, Arg1, out E);
 						if (E != FishException.None)
 							return true;
 
@@ -1400,7 +1461,7 @@ namespace Fishmachine
 						if (E != FishException.None)
 							return true;
 
-						Syscall(SyscallNum, 0, out E);
+						Syscall((FishSyscall)SyscallNum, 0, out E);
 						if (E != FishException.None)
 							return true;
 
@@ -1443,6 +1504,8 @@ namespace Fishmachine
 
 							Regs.FpuPush(Val);
 						}
+						else
+							throw new NotImplementedException();
 
 						break;
 					}
@@ -1566,7 +1629,9 @@ namespace Fishmachine
 
 				case FishInst.LEAVE:
 					{
-						// Restore ESP from EBP
+						if (Leave(out E))
+							return true;
+						/*// Restore ESP from EBP
 						Regs.Write(Reg.ESP, Regs.Read(Reg.EBP));
 
 						// Pop EBP
@@ -1577,7 +1642,7 @@ namespace Fishmachine
 
 						Regs.Write(Reg.EBP, RegVal);
 
-						Regs.Write(Reg.ESP, ESP + sizeof(uint));
+						Regs.Write(Reg.ESP, ESP + sizeof(uint));*/
 						break;
 					}
 

@@ -11,12 +11,16 @@ namespace Fishmachine
 	{
 		int W;
 		int H;
+		int Scale;
 
 		int CurX = 0;
 		int CurY = 0;
 
 		int FontW = 8;
 		int FontH = 8;
+
+		int CurW;
+		int CurH;
 
 		Image GfxImage;
 		Color* GfxImagePix;
@@ -29,22 +33,32 @@ namespace Fishmachine
 		bool Running = false;
 		bool Dirty = false;
 		object Lock = new object();
+		object RaylibLock = new object();
 
 		public Graphics()
 		{
 
 		}
 
-		public void Setup(int W, int H)
+		public void Setup(int W, int H, int Scale)
 		{
 			this.W = W;
 			this.H = H;
+			this.Scale = Scale;
+
+			CurW = W / FontW - 2;
+			CurH = H / FontH - 2;
+		}
+
+		void WaitForRunning()
+		{
+			while (!Running)
+				Thread.Sleep(1);
 		}
 
 		public void SetPixel(int X, int Y, Color Clr, bool SetDirty = true)
 		{
-			while (!Running)
-				Thread.Sleep(1);
+			WaitForRunning();
 
 			int Idx = Y * W + X;
 			if (Idx < 0 || Idx > W * H)
@@ -61,11 +75,10 @@ namespace Fishmachine
 
 		public void Write(char arg1)
 		{
-			while (!Running)
-				Thread.Sleep(1);
+			WaitForRunning();
 
-			int ScreenX = FontW * CurX;
-			int ScreenY = FontH * CurY;
+			int ScreenX = FontW + FontW * CurX;
+			int ScreenY = FontH + FontH * CurY;
 
 			if (arg1 == ' ')
 			{
@@ -92,14 +105,20 @@ namespace Fishmachine
 					}
 				}
 
-				CurX++;	
+				CurX++;
 				Dirty = true;
 			}
 
-			if (CurX > 60)
+			if (CurX >= CurW)
 			{
 				CurY++;
 				CurX = 0;
+			}
+
+			if (CurY >= CurH)
+			{
+				// TODO, scroll screen up by one row
+				throw new NotImplementedException();
 			}
 		}
 
@@ -107,8 +126,9 @@ namespace Fishmachine
 		{
 			Raylib.SetTraceLogLevel(TraceLogLevel.None);
 
-			Raylib.InitWindow(W, H, "Fishmachine");
+			Raylib.InitWindow(W * Scale, H * Scale, "Fishmachine");
 			Raylib.SetTargetFPS(60);
+
 
 			GfxImage = Raylib.GenImageColor(W, H, Color.Black);
 			Raylib.ImageFormat(ref GfxImage, PixelFormat.UncompressedR8G8B8A8);
@@ -124,6 +144,11 @@ namespace Fishmachine
 
 			while (!Raylib.WindowShouldClose())
 			{
+				if (Raylib.IsMouseButtonPressed(MouseButton.Left))
+				{
+					MousePressedLeft = true;
+				}
+
 				if (Dirty)
 				{
 					lock (Lock)
@@ -134,11 +159,26 @@ namespace Fishmachine
 				}
 
 				Raylib.BeginDrawing();
-				Raylib.DrawTexture(GfxTex, 0, 0, Color.White);
+				//				Raylib.DrawTexture(GfxTex, 0, 0, Color.White);
+				Raylib.DrawTexturePro(GfxTex, new Rectangle(0, 0, GfxTex.Width, GfxTex.Height), new Rectangle(0, 0, W * Scale, H * Scale), System.Numerics.Vector2.Zero, 0, Color.White);
 				Raylib.EndDrawing();
+
 			}
 
 			Raylib.CloseWindow();
+		}
+
+		bool MousePressedLeft = false;
+
+		public bool MousePressed()
+		{
+			if (MousePressedLeft)
+			{
+				MousePressedLeft = false;
+				return true;
+			}
+
+			return false;
 		}
 
 		public void StartThread()

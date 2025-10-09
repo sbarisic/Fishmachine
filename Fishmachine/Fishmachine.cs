@@ -148,7 +148,7 @@ namespace Fishmachine
 			HookOutput();
 
 			Graphics Gfx = new Graphics();
-			Gfx.Setup(800, 600);
+			Gfx.Setup(640, 400, 3);
 			Gfx.StartThread();
 
 			/*foreach (char c in "Hello World!")
@@ -156,21 +156,29 @@ namespace Fishmachine
 				Gfx.Write(c);
 			}*/
 
-			FishSettings.DebugPrint = false;
+			FishSettings.DebugPrint = true;
 			FishVM VM = new FishVM();
 			VM.Gfx = Gfx;
 
-			VM.AllocateMemory(0x1000 * 2);
-			//VM.LoadToMemory(Bytecode, 0x1000);
-			VM.LoadToMemory(Bytecode, 0x1000);
 
-			VM.Regs.Write(CodeGeneration.Reg.ESP, 0x2000);
+			VM.AllocateMemory(0x10000);
+			//VM.LoadToMemory(Bytecode, 0x1000);
+			Console.Write("{0} bytes ", Bytecode.Length);
+			VM.LoadToMemory(Bytecode, 0x1000);
+			Console.WriteLine("loaded");
+
+			VM.Regs.Write(CodeGeneration.Reg.ESP, 0x9000);
 			VM.Jump(KMainAddr);
 
 
 			FishException Ex = FishException.None;
 			while (VM.Run(out Ex))
 			{
+				if (Gfx.MousePressed())
+				{
+					Console.WriteLine("Mouse!");
+					VM.Interrupt(FishInterrupt.Int0);
+				}
 			}
 
 
