@@ -192,14 +192,16 @@ namespace Fishmachine
 			Tokens.RemoveAll(T => !T.Global);
 		}
 
-		public AsmToken DefineToken(string TokenName, uint Addr, bool Global)
+		public AsmToken DefineToken(string TokenName, uint Addr, bool Global, bool ReassignAddress = true)
 		{
 			AsmToken Tok = RefToken(TokenName);
 
 			if (!Tok.Global)
 				Tok.Global = Global;
 
-			Tok.Address = Addr;
+			if (ReassignAddress)
+				Tok.Address = Addr;
+
 			return Tok;
 		}
 
@@ -305,7 +307,7 @@ namespace Fishmachine
 				if (L.StartsWith(".") && !L.EndsWith(":"))
 				{
 					// Directive	
-					string[] Tokens = L.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+					string[] Tokens = L.Split(new[] { ' ', '\t', ',' }, StringSplitOptions.RemoveEmptyEntries);
 
 					switch (Tokens[0])
 					{
@@ -323,9 +325,17 @@ namespace Fishmachine
 								break;
 							}
 
+						case ".comm":
+							{
+								state.DefineToken(Tokens[1], 0, true, false);
+								break;
+							}
+
 						case ".globl":
-							state.DefineToken(Tokens[1], 0, true);
-							break;
+							{
+								state.DefineToken(Tokens[1], 0, true);
+								break;
+							}
 
 						case ".long":
 							{

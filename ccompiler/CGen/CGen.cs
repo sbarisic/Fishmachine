@@ -16,6 +16,10 @@ namespace CodeGeneration
 		EDI,
 		ESI,
 
+		XSC, // special register for syscall number
+
+		MAX_VALUE, // Max allocated register array length, registers below this are mapped on top of this
+
 		AL,
 		AX,
 		BL,
@@ -23,8 +27,6 @@ namespace CodeGeneration
 		CL,
 
 		ST0,
-
-		XSC, // special register for syscall number
 	}
 
 	public class CGenState
@@ -94,7 +96,7 @@ namespace CodeGeneration
 
 		public void ALIGN(Int32 align) => this.os.WriteLine($"    .align {align}");
 
-		public void COMM(String name, Int32 size, Int32 align) => this.os.WriteLine($"    .comm {name},{size},{align}");
+		public void COMM(String name, Int32 size, Int32 align) => this.os.WriteLine($"    .comm {name}, {size}, {align}");
 
 		public void BYTE(Int32 value) => this.os.WriteLine($"    .byte {value}");
 

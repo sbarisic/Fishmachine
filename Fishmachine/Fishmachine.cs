@@ -101,13 +101,13 @@ namespace Fishmachine
 			File.Copy("out.asm", "out_asm.txt");*/
 		}
 
-		static byte[] Assemble(string[] AsmFiles, out uint KMainAddr)
+		static byte[] Assemble(AssemblerState AsmState, string[] AsmFiles, out uint KMainAddr)
 		{
 			// Assemble
 			byte[] Bytecode = null;
 			KMainAddr = 0;
 
-			AssemblerState AsmState = new AssemblerState();
+
 			Assembler Asm = new Assembler(0x1000);
 
 			string AllSrc = "";
@@ -139,7 +139,10 @@ namespace Fishmachine
 			Compile("stdfish.c");
 			Compile("test.c");
 
-			byte[] Bytecode = Assemble(new[] { "stdfish.asm", "test.asm" }, out uint KMainAddr);
+			AssemblerState AsmState = new AssemblerState();
+			AsmState.DefineToken("int_table", 0x100, true);
+
+			byte[] Bytecode = Assemble(AsmState, new[] { "stdfish.asm", "test.asm" }, out uint KMainAddr);
 
 			// Setup VM, load program and run
 			HookOutput();

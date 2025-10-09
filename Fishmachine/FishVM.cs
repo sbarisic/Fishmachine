@@ -114,6 +114,12 @@ namespace Fishmachine
 		public bool Equal;
 		public bool GreaterThan;
 
+		public FishRegisters()
+		{
+			Regs = new uint[(int)Reg.MAX_VALUE];
+			ST = new float[8];
+		}
+
 		public void FpuPush(float Val)
 		{
 			Console.ForegroundColor = ConsoleColor.DarkBlue;
@@ -154,44 +160,48 @@ namespace Fishmachine
 
 		public uint Read(CodeGeneration.Reg Reg)
 		{
-			Console.ForegroundColor = ConsoleColor.Yellow;
-			Console.WriteLine(": Read {0} = 0x{1:X} - {1}", Reg, Regs[(int)Reg]);
-			Console.ResetColor();
-
-			if (Reg == Reg.AX)
-				return Read(Reg.EAX) & 0xFFFF;
-
+			uint Ret = 0;
 
 			switch (Reg)
 			{
 				case Reg.AL:
-					return Read(Reg.EAX) & 0xFF;
+					Ret = Read(Reg.EAX) & 0xFF;
+					break;
 
 				case Reg.AX:
-					return Read(Reg.EAX) & 0xFFFF;
+					Ret = Read(Reg.EAX) & 0xFFFF;
+					break;
 
 				case Reg.BL:
-					return Read(Reg.EBX) & 0xFF;
+					Ret = Read(Reg.EBX) & 0xFF;
+					break;
 
 				case Reg.BX:
-					return Read(Reg.EBX) & 0xFFFF;
+					Ret = Read(Reg.EBX) & 0xFFFF;
+					break;
+
+				case Reg.CL:
+					Ret = Read(Reg.ECX) & 0xFF;
+					break;
 
 				case Reg.ST0:
-					return (uint)ST[0];
+					Ret = (uint)ST[0];
+					break;
 
 				default:
+					Ret = Regs[(int)Reg];
 					break;
 			}
 
-			return Regs[(int)Reg];
+			Console.ForegroundColor = ConsoleColor.Yellow;
+			Console.WriteLine(": Read {0} = 0x{1:X} - {1}", Reg, Ret);
+			Console.ResetColor();
+
+			return Ret;
 		}
 
 		public void Write(CodeGeneration.Reg Reg, uint Val)
 		{
-			Console.ForegroundColor = ConsoleColor.Yellow;
-			Console.WriteLine(": Write {0} = 0x{2:X} - {2}", Reg, Regs[(int)Reg], Val);
-			Console.ResetColor();
-
 			switch (Reg)
 			{
 				case Reg.AL:
@@ -210,6 +220,10 @@ namespace Fishmachine
 					Write(Reg.EBX, Val & 0xFFFF);
 					return;
 
+				case Reg.CL:
+					Write(Reg.ECX, Val & 0xFF);
+					return;
+
 				case Reg.ST0:
 					ST[0] = (float)Val;
 					return;
@@ -218,13 +232,10 @@ namespace Fishmachine
 					break;
 			}
 
+			Console.ForegroundColor = ConsoleColor.Yellow;
+			Console.WriteLine(": Write {0} = 0x{2:X} - {2}", Reg, Regs[(int)Reg], Val);
+			Console.ResetColor();
 			Regs[(int)Reg] = Val;
-		}
-
-		public FishRegisters()
-		{
-			Regs = new uint[24];
-			ST = new float[8];
 		}
 	}
 
@@ -315,10 +326,12 @@ namespace Fishmachine
 			}
 		}
 
+		FishException LastException;
+		bool Halted;
+
 		byte[] Memory;
 
 		public FishRegisters Regs = new FishRegisters();
-		bool Halted;
 
 		public FishVM()
 		{
@@ -476,6 +489,9 @@ namespace Fishmachine
 			Reg[] RegsEnum = Enum.GetValues<Reg>().ToArray();
 			foreach (var R in RegsEnum)
 			{
+				if (R == Reg.MAX_VALUE)
+					continue;
+
 				//Console.Write("{0} = {1:X4} ", R, this.Regs.Read(R));
 				Regs.Read(R);
 			}
@@ -1421,7 +1437,7 @@ namespace Fishmachine
 						/*if (Debugger.IsAttached)
 							Debugger.Break();*/
 
-						Console.ReadLine();
+						Debugger.Break();
 						break;
 					}
 
@@ -1435,8 +1451,6 @@ namespace Fishmachine
 
 			return true;
 		}
-
-		FishException LastException;
 
 		public bool Run(out FishException E)
 		{
