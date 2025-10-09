@@ -179,6 +179,15 @@ namespace Fishmachine
 					Console.WriteLine("Mouse!");
 					VM.Interrupt(FishInterrupt.Int0);
 				}
+				/*else if (Gfx.CharPressed(out uint Char))
+				{
+					VM.Interrupt(FishInterrupt.Int2_KeyboardChar, Char);
+				}*/
+				else if (Gfx.KeyPressed(out uint Key))
+				{
+					VM.Interrupt(FishInterrupt.Int1_KeyboardKey, Key);
+				}
+
 			}
 
 

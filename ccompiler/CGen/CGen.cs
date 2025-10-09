@@ -17,6 +17,7 @@ namespace CodeGeneration
 		ESI,
 
 		XSC, // special register for interrupt number
+		XR1,
 
 		MAX_VALUE, // Max allocated register array length, registers below this are mapped on top of this
 
@@ -55,6 +56,7 @@ namespace CodeGeneration
 			[Reg.CL] = "%cl",
 			[Reg.ST0] = "%st0",
 			[Reg.XSC] = "%xsc",
+			[Reg.XR1] = "%xr1",
 		};
 
 		public static String RegToString(Reg reg) => reg_strs[reg];

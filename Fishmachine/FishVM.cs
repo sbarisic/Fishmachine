@@ -33,7 +33,7 @@ namespace Fishmachine
 		None,
 		Int0,
 		Int1_KeyboardKey,
-		Int2,
+		Int2_KeyboardChar,
 		Int3,
 	}
 
@@ -130,10 +130,13 @@ namespace Fishmachine
 		public bool Equal;
 		public bool GreaterThan;
 
+		public bool IntEnabled;
+
 		public FishRegisters()
 		{
 			Regs = new uint[(int)Reg.MAX_VALUE];
 			ST = new float[8];
+			IntEnabled = true;
 		}
 
 		public void FpuPush(float Val)
@@ -517,7 +520,19 @@ namespace Fishmachine
 
 		public void Interrupt(FishInterrupt Num)
 		{
+			if (!Regs.IntEnabled)
+				return;
+
 			Regs.Write(Reg.XSC, (uint)Num);
+		}
+
+		public void Interrupt(FishInterrupt Num, uint Arg1)
+		{
+			if (!Regs.IntEnabled)
+				return;
+
+			Regs.Write(Reg.XR1, Arg1);
+			Interrupt(Num);
 		}
 
 		public void Syscall(FishSyscall FInt, uint Arg1, out FishException E)
@@ -675,7 +690,7 @@ namespace Fishmachine
 
 			// Handle interrupts
 			FishInterrupt IntNum = (FishInterrupt)Regs.Read(Reg.XSC);
-			if (IntNum != 0)
+			if (IntNum != FishInterrupt.None)
 			{
 				Regs.Write(Reg.XSC, 0);
 				// Handle interrupt
@@ -683,6 +698,12 @@ namespace Fishmachine
 				uint IntAddr = ReadUInt32(0x100 + ((uint)(IntNum - 1) * 4), out E);
 				if (E != FishException.None)
 					return true;
+
+				if (IntNum == FishInterrupt.Int1_KeyboardKey)
+				{
+					if (PushReg(Reg.XR1, out E))
+						return true;
+				}
 
 				CallLong(IntAddr, out E);
 				return true;

@@ -20,10 +20,23 @@ void handler_int0() {
 }
 
 void handler_int1_keyboardkey(long key) {
-	print("INT1\n");
+	if (key == 257) {
+		syscall_2(1, '\n');
+	}
+	else if (key == 259) {
+		syscall_2(1, '\b');
+	}
+	else {
+		syscall_2(1, key);
+	}
+}
+
+void handler_int2_keyboardchar(long key) {
+	syscall_2(1, key);
 }
 
 void fk_init() {
 	int_table[0] = &handler_int0;
 	int_table[1] = &handler_int1_keyboardkey;
+	int_table[2] = &handler_int2_keyboardchar;
 }

@@ -89,6 +89,13 @@ namespace Fishmachine
 				CurX = 0;
 				CurY++;
 			}
+			else if (arg1 == '\b')
+			{
+				CurX--;
+
+				if (CurX < 0)
+					CurX = 0;
+			}
 			else
 			{
 				for (int y = 0; y < FontH; y++)
@@ -149,6 +156,9 @@ namespace Fishmachine
 					MousePressedLeft = true;
 				}
 
+				CharPressedCode = (uint)Raylib.GetCharPressed();
+				KeyPressedCode = (uint)Raylib.GetKeyPressed();
+
 				if (Dirty)
 				{
 					lock (Lock)
@@ -169,6 +179,8 @@ namespace Fishmachine
 		}
 
 		bool MousePressedLeft = false;
+		uint KeyPressedCode = 0;
+		uint CharPressedCode = 0;
 
 		public bool MousePressed()
 		{
@@ -178,6 +190,32 @@ namespace Fishmachine
 				return true;
 			}
 
+			return false;
+		}
+
+		public bool KeyPressed(out uint key)
+		{
+			if (KeyPressedCode != 0)
+			{
+				key = KeyPressedCode;
+				KeyPressedCode = 0;
+				return true;
+			}
+
+			key = 0;
+			return false;
+		}
+
+		public bool CharPressed(out uint key)
+		{
+			if (CharPressedCode != 0)
+			{
+				key = CharPressedCode;
+				CharPressedCode = 0;
+				return true;
+			}
+
+			key = 0;
 			return false;
 		}
 
