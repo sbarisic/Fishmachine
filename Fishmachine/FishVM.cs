@@ -118,19 +118,102 @@ namespace Fishmachine
 
 	public struct FishRegisters
 	{
-		public float[] ST;
-		public uint[] Regs;
 		public uint IP;
 
+		float[] ST;
+		uint[] Regs;
+		uint RFLAGS;
 
-		public bool IsZero;
-		public bool Sign;
+		bool GetRFLAGS(int Bit)
+		{
+			return ((RFLAGS >> Bit) & 0x1) == 1;
+		}
 
-		public bool LessThan;
-		public bool Equal;
-		public bool GreaterThan;
+		void SetRFLAGS(int Bit, bool Val)
+		{
+			if (Val)
+			{
+				RFLAGS = RFLAGS | (0x1u << Bit);
+			}
+			else
+			{
+				RFLAGS = RFLAGS & ~(0x1u << Bit);
+			}
+		}
 
-		public bool IntEnabled;
+		public bool IsZero
+		{
+			get
+			{
+				return GetRFLAGS(0);
+			}
+			set
+			{
+				SetRFLAGS(0, value);
+			}
+		}
+
+		public bool Sign
+		{
+			get
+			{
+				return GetRFLAGS(1);
+			}
+			set
+			{
+				SetRFLAGS(1, value);
+			}
+		}
+
+		public bool LessThan
+		{
+			get
+			{
+				return GetRFLAGS(2);
+			}
+			set
+			{
+				SetRFLAGS(2, value);
+			}
+		}
+
+		public bool Equal
+		{
+			get
+			{
+				return GetRFLAGS(3);
+			}
+			set
+			{
+				SetRFLAGS(3, value);
+			}
+		}
+
+		public bool GreaterThan
+		{
+			get
+			{
+				return GetRFLAGS(4);
+			}
+			set
+			{
+				SetRFLAGS(4, value);
+			}
+		}
+
+
+		public bool IntEnabled
+		{
+			get
+			{
+				return GetRFLAGS(5);
+			}
+			set
+			{
+				SetRFLAGS(5, value);
+			}
+		}
+
 
 		public FishRegisters()
 		{
@@ -217,6 +300,10 @@ namespace Fishmachine
 					Ret = (uint)ST[0];
 					break;
 
+				case Reg.RFLAGS:
+					Ret = RFLAGS;
+					break;
+
 				default:
 					Ret = Regs[(int)Reg];
 					break;
@@ -258,6 +345,14 @@ namespace Fishmachine
 
 				case Reg.ST0:
 					ST[0] = (float)Val;
+					return;
+
+				case Reg.RFLAGS:
+					RFLAGS = Val;
+
+					if (IntEnabled == false)
+						Debugger.Break();
+
 					return;
 
 				default:
@@ -362,11 +457,12 @@ namespace Fishmachine
 			}
 		}
 
+		Stack<uint> IRETStack = new Stack<uint>();
 		FishException LastException;
 		bool Halted;
+		byte[] Memory;
 
 		public Graphics Gfx;
-		byte[] Memory;
 
 		public FishRegisters Regs = new FishRegisters();
 
@@ -529,6 +625,9 @@ namespace Fishmachine
 		public void Interrupt(FishInterrupt Num, uint Arg1)
 		{
 			if (!Regs.IntEnabled)
+				return;
+
+			if (IRETStack.Count > 0)
 				return;
 
 			Regs.Write(Reg.XR1, Arg1);
@@ -699,10 +798,29 @@ namespace Fishmachine
 				if (E != FishException.None)
 					return true;
 
-				if (IntNum == FishInterrupt.Int1_KeyboardKey)
+				// Preserve EFLAGS
+				IRETStack.Push(Regs.IP);
+				if (PushReg(Reg.RFLAGS, out E))
+					return true;
+
+				// Push interrupt arguments
+				switch (IntNum)
 				{
-					if (PushReg(Reg.XR1, out E))
-						return true;
+					case FishInterrupt.Int1_KeyboardKey:
+					case FishInterrupt.Int2_KeyboardChar:
+						if (PushReg(Reg.XR1, out E))
+							return true;
+
+						Regs.Write(Reg.XR1, 0);
+						break;
+
+					case FishInterrupt.None:
+					case FishInterrupt.Int0:
+					case FishInterrupt.Int3:
+						break;
+
+					default:
+						throw new NotImplementedException();
 				}
 
 				CallLong(IntAddr, out E);
@@ -711,6 +829,16 @@ namespace Fishmachine
 
 			if (FishSettings.DebugPrint)
 				Console.Write("{0:X4}: ", Regs.IP);
+
+			if (IRETStack.Count > 0 && IRETStack.TryPeek(out uint IRETAddr) && IRETAddr == Regs.IP)
+			{
+				if (PopReg(Reg.RFLAGS, out E))
+					return true;
+
+				IRETStack.Pop();
+			}
+
+
 			FishInst Inst = (FishInst)ReadByteFromIP(out E);
 			if (E != FishException.None)
 				return true;
@@ -1712,7 +1840,7 @@ namespace Fishmachine
 
 				YieldCounter++;
 
-				if (YieldCounter >= 8)
+				if (YieldCounter >= 0)
 				{
 					YieldCounter = 0;
 					return true;

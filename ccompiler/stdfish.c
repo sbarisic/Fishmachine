@@ -31,8 +31,10 @@ void handler_int1_keyboardkey(long key) {
 	}
 }
 
-void handler_int2_keyboardchar(long key) {
-	syscall_2(1, key);
+void handler_int2_keyboardchar(long key2) {
+	long k2 = 0;
+	k2 = key2;
+	syscall_2(1, k2);
 }
 
 void fk_init() {

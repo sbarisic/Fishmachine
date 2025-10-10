@@ -27,6 +27,8 @@ namespace CodeGeneration
 		BX,
 		CL,
 
+		RFLAGS,
+
 		ST0,
 	}
 
@@ -54,6 +56,7 @@ namespace CodeGeneration
 			[Reg.BL] = "%bl",
 			[Reg.BX] = "%bx",
 			[Reg.CL] = "%cl",
+			[Reg.RFLAGS] = "%rflags",
 			[Reg.ST0] = "%st0",
 			[Reg.XSC] = "%xsc",
 			[Reg.XR1] = "%xr1",

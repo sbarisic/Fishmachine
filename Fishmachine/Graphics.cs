@@ -157,6 +157,13 @@ namespace Fishmachine
 				}
 
 				CharPressedCode = (uint)Raylib.GetCharPressed();
+
+				if (CharPressedCode != 0 && Ascii.IsValid((char)CharPressedCode))
+				{
+				}
+				else
+					CharPressedCode = 0;
+
 				KeyPressedCode = (uint)Raylib.GetKeyPressed();
 
 				if (Dirty)
