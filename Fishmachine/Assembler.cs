@@ -1,4 +1,5 @@
 ﻿using CodeGeneration;
+using Fishmachine.VM;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

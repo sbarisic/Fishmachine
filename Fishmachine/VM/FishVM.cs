@@ -7,369 +7,8 @@ using System.Security.AccessControl;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Fishmachine
+namespace Fishmachine.VM
 {
-	public enum FishException : byte
-	{
-		None = 0,
-		InvalidInstruction,
-		DivisionByZero,
-		AccessViolation,
-		StackOverflow,
-		StackUnderflow,
-		FloatInfinity,
-		FloatNaN
-	}
-
-	public enum FishSyscall : byte
-	{
-		StopMachine,
-		PrintChar,
-		SoftwareInterrupt,
-	}
-
-	public enum FishInterrupt : byte
-	{
-		None,
-		Int0,
-		Int1_KeyboardKey,
-		Int2_KeyboardChar,
-		Int3,
-	}
-
-	public enum FishInst : byte
-	{
-		INVALID = 0,
-
-		NOP,
-		HALT,
-		LEAVE,
-		RET,
-		DBG_BREAK,
-		SYSCALL,
-		SYSCALL_2,
-
-		JUMP_REG,
-		JUMP_LONG,
-
-		JUMP_IF_ZERO_LONG,
-		JUMP_IF_NOT_ZERO_LONG,
-
-		FLOAT_ADD,
-		FLOAT_SUB,
-		FLOAT_MUL,
-		FLOAT_DIV,
-
-		FLOAT_LOAD_LONG,
-		DOUBLE_LOAD_LONG,
-
-		FLOAT_LOAD_OFFSET_REG,
-		FLOAT_STORE_OFFSET_REG,
-		FLOAT_POP_OFFSET_REG,
-		DOUBLE_LOAD_OFFSET_REG,
-		DOUBLE_STORE_OFFSET_REG,
-		DOUBLE_POP_OFFSET_REG,
-
-		CALL_REG,
-		CALL_LONG,
-
-		PUSH_REG,
-		PUSH_LONG,
-
-		POP_REG,
-
-		TEST_REG_REG,
-		MOVE_REG_REG,
-		MOVE_LONG_REG,
-		MOVE_OFFSET_REG_REG,
-		MOVE_REG_OFFSET_REG,
-
-		MOVEZ_LONG_REG,
-		MOVEZ_OFFSET_REG_REG,
-		MOVEZ_REG_REG,
-		MOVES_LONG_REG,
-		MOVES_OFFSET_REG_REG,
-		MOVES_REG_REG,
-		MOVEBYTE_REG_OFFSET_REG,
-		MOVEBYTE_REG_REG,
-
-		CMP_REG_REG,
-		CMP_LONG_REG,
-
-		SETNOTEQUAL_REG,
-		SETEQUAL_REG,
-		SETGREATER_REG,
-		SETGREATEREQUAL_REG,
-		SETLESS_REG,
-		SETLESSEQUAL_REG,
-
-		SUB_LONG_REG,
-		SUB_REG_REG,
-
-		ADD_LONG_REG,
-		ADD_REG_REG,
-
-		MUL_REG,
-		IMUL_REG,
-
-		LEA_ADDR_REG,
-		LEA_OFFSET_REG_REG,
-	}
-
-	public struct FishRegisters
-	{
-		public uint IP;
-
-		float[] ST;
-		uint[] Regs;
-		uint RFLAGS;
-
-		bool GetRFLAGS(int Bit)
-		{
-			return ((RFLAGS >> Bit) & 0x1) == 1;
-		}
-
-		void SetRFLAGS(int Bit, bool Val)
-		{
-			if (Val)
-			{
-				RFLAGS = RFLAGS | (0x1u << Bit);
-			}
-			else
-			{
-				RFLAGS = RFLAGS & ~(0x1u << Bit);
-			}
-		}
-
-		public bool IsZero
-		{
-			get
-			{
-				return GetRFLAGS(0);
-			}
-			set
-			{
-				SetRFLAGS(0, value);
-			}
-		}
-
-		public bool Sign
-		{
-			get
-			{
-				return GetRFLAGS(1);
-			}
-			set
-			{
-				SetRFLAGS(1, value);
-			}
-		}
-
-		public bool LessThan
-		{
-			get
-			{
-				return GetRFLAGS(2);
-			}
-			set
-			{
-				SetRFLAGS(2, value);
-			}
-		}
-
-		public bool Equal
-		{
-			get
-			{
-				return GetRFLAGS(3);
-			}
-			set
-			{
-				SetRFLAGS(3, value);
-			}
-		}
-
-		public bool GreaterThan
-		{
-			get
-			{
-				return GetRFLAGS(4);
-			}
-			set
-			{
-				SetRFLAGS(4, value);
-			}
-		}
-
-
-		public bool IntEnabled
-		{
-			get
-			{
-				return GetRFLAGS(5);
-			}
-			set
-			{
-				SetRFLAGS(5, value);
-			}
-		}
-
-
-		public FishRegisters()
-		{
-			Regs = new uint[(int)Reg.MAX_VALUE];
-			ST = new float[8];
-			IntEnabled = true;
-		}
-
-		public void FpuPush(float Val)
-		{
-			if (FishSettings.DebugPrint)
-			{
-				Console.ForegroundColor = ConsoleColor.DarkBlue;
-				Console.WriteLine("FPU Push {0}", Val);
-				Console.ResetColor();
-			}
-
-			for (int i = ST.Length - 1; i >= 1; i--)
-			{
-				ST[i] = ST[i - 1];
-			}
-
-			ST[0] = Val;
-		}
-
-		public float FpuPop()
-		{
-			float Val = ST[0];
-
-			for (int i = 1; i < ST.Length; i++)
-			{
-				ST[i - 1] = ST[i];
-			}
-
-			if (FishSettings.DebugPrint)
-			{
-				Console.ForegroundColor = ConsoleColor.DarkBlue;
-				Console.WriteLine("FPU Pop {0}", Val);
-				Console.ResetColor();
-			}
-
-			return Val;
-		}
-
-		public float FpuPeek()
-		{
-			if (FishSettings.DebugPrint)
-			{
-				Console.ForegroundColor = ConsoleColor.DarkBlue;
-				Console.WriteLine("FPU Peek {0}", ST[0]);
-				Console.ResetColor();
-			}
-
-			return ST[0];
-		}
-
-		public uint Read(CodeGeneration.Reg Reg)
-		{
-			uint Ret = 0;
-
-			switch (Reg)
-			{
-				case Reg.AL:
-					Ret = Read(Reg.EAX) & 0xFF;
-					break;
-
-				case Reg.AX:
-					Ret = Read(Reg.EAX) & 0xFFFF;
-					break;
-
-				case Reg.BL:
-					Ret = Read(Reg.EBX) & 0xFF;
-					break;
-
-				case Reg.BX:
-					Ret = Read(Reg.EBX) & 0xFFFF;
-					break;
-
-				case Reg.CL:
-					Ret = Read(Reg.ECX) & 0xFF;
-					break;
-
-				case Reg.ST0:
-					Ret = (uint)ST[0];
-					break;
-
-				case Reg.RFLAGS:
-					Ret = RFLAGS;
-					break;
-
-				default:
-					Ret = Regs[(int)Reg];
-					break;
-			}
-
-			if (FishSettings.DebugPrint)
-			{
-				Console.ForegroundColor = ConsoleColor.Yellow;
-				Console.WriteLine(": Read {0} = 0x{1:X} - {1}", Reg, Ret);
-				Console.ResetColor();
-			}
-
-			return Ret;
-		}
-
-		public void Write(CodeGeneration.Reg Reg, uint Val)
-		{
-			switch (Reg)
-			{
-				case Reg.AL:
-					Write(Reg.EAX, Val & 0xFF);
-					return;
-
-				case Reg.AX:
-					Write(Reg.EAX, Val & 0xFFFF);
-					return;
-
-				case Reg.BL:
-					Write(Reg.EBX, Val & 0xFF);
-					return;
-
-				case Reg.BX:
-					Write(Reg.EBX, Val & 0xFFFF);
-					return;
-
-				case Reg.CL:
-					Write(Reg.ECX, Val & 0xFF);
-					return;
-
-				case Reg.ST0:
-					ST[0] = (float)Val;
-					return;
-
-				case Reg.RFLAGS:
-					RFLAGS = Val;
-
-					if (IntEnabled == false)
-						Debugger.Break();
-
-					return;
-
-				default:
-					break;
-			}
-
-			if (FishSettings.DebugPrint)
-			{
-				Console.ForegroundColor = ConsoleColor.Yellow;
-				Console.WriteLine(": Write {0} = 0x{2:X} - {2}", Reg, Regs[(int)Reg], Val);
-				Console.ResetColor();
-			}
-
-			Regs[(int)Reg] = Val;
-		}
-	}
-
 	public class FishVM
 	{
 		public static int FishInstSize(FishInst Inst)
@@ -794,7 +433,7 @@ namespace Fishmachine
 				Regs.Write(Reg.XSC, 0);
 				// Handle interrupt
 
-				uint IntAddr = ReadUInt32(0x100 + ((uint)(IntNum - 1) * 4), out E);
+				uint IntAddr = ReadUInt32(0x100 + (uint)(IntNum - 1) * 4, out E);
 				if (E != FishException.None)
 					return true;
 
@@ -1044,7 +683,7 @@ namespace Fishmachine
 						else if (Inst == FishInst.MOVEZ_REG_REG)
 						{
 							// Zero extend word (keep lower 8 bits)
-							R1Val = (Regs.Read(R1) & 0xFF);
+							R1Val = Regs.Read(R1) & 0xFF;
 						}
 
 						Regs.Write(R2, R1Val);
@@ -1122,7 +761,7 @@ namespace Fishmachine
 						if (E != FishException.None)
 							return true;
 
-						uint Val = !Regs.Equal ? (uint)1 : (uint)0;
+						uint Val = !Regs.Equal ? 1u : 0u;
 						Regs.Write(R1, Val);
 
 						if (FishSettings.DebugPrint)
@@ -1141,7 +780,7 @@ namespace Fishmachine
 						if (E != FishException.None)
 							return true;
 
-						uint Val = Regs.Equal ? (uint)1 : (uint)0;
+						uint Val = Regs.Equal ? 1u : 0u;
 						Regs.Write(R1, Val);
 
 						if (FishSettings.DebugPrint)
@@ -1160,7 +799,7 @@ namespace Fishmachine
 						if (E != FishException.None)
 							return true;
 
-						uint Val = Regs.GreaterThan || Regs.Equal ? (uint)1 : (uint)0;
+						uint Val = Regs.GreaterThan || Regs.Equal ? 1u : 0u;
 						Regs.Write(R1, Val);
 
 						if (FishSettings.DebugPrint)
@@ -1179,7 +818,7 @@ namespace Fishmachine
 						if (E != FishException.None)
 							return true;
 
-						uint Val = Regs.GreaterThan ? (uint)1 : (uint)0;
+						uint Val = Regs.GreaterThan ? 1u : 0u;
 						Regs.Write(R1, Val);
 
 						if (FishSettings.DebugPrint)
@@ -1198,7 +837,7 @@ namespace Fishmachine
 						if (E != FishException.None)
 							return true;
 
-						uint Val = Regs.LessThan ? (uint)1 : (uint)0;
+						uint Val = Regs.LessThan ? 1u : 0u;
 						Regs.Write(R1, Val);
 
 						if (FishSettings.DebugPrint)
@@ -1217,7 +856,7 @@ namespace Fishmachine
 						if (E != FishException.None)
 							return true;
 
-						uint Val = Regs.LessThan || Regs.Equal ? (uint)1 : (uint)0;
+						uint Val = Regs.LessThan || Regs.Equal ? 1u : 0u;
 						Regs.Write(R1, Val);
 
 						if (FishSettings.DebugPrint)
