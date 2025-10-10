@@ -15,6 +15,10 @@ void print(const char* str) {
 	}
 }
 
+void printnum(long num) {
+	syscall_2(2, num);
+}
+
 void handler_int0() {
 	print("INT0\n");
 }
@@ -32,9 +36,12 @@ void handler_int1_keyboardkey(long key) {
 }
 
 void handler_int2_keyboardchar(long key2) {
-	long k2 = 0;
-	k2 = key2;
-	syscall_2(1, k2);
+	print("Key: '");
+	syscall_2(1, key2);
+
+	print("' Num: ");
+	printnum(key2);
+	print("\n");
 }
 
 void fk_init() {

@@ -73,6 +73,14 @@ namespace Fishmachine
 			}
 		}
 
+		public void Write(string Str)
+		{
+			foreach (var C in Str)
+			{
+				Write(C);
+			}
+		}
+
 		public void Write(char arg1)
 		{
 			WaitForRunning();
@@ -158,13 +166,32 @@ namespace Fishmachine
 
 				CharPressedCode = (uint)Raylib.GetCharPressed();
 
-				if (CharPressedCode != 0 && Ascii.IsValid((char)CharPressedCode))
+				if (CharPressedCode != 0)
 				{
+					if (Ascii.IsValid((char)CharPressedCode))
+					{
+					}
+					else
+					{
+						CharPressedCode = 0;
+					}
 				}
 				else
+				{
 					CharPressedCode = 0;
+				}
 
 				KeyPressedCode = (uint)Raylib.GetKeyPressed();
+
+				
+				if (KeyPressedCode != 0)
+				{
+					if (KeyPressedCode == 0x101 || KeyPressedCode == 0x14f)
+					{
+						KeyPressedCode = 0;
+						CharPressedCode = (uint)'\n';
+					}
+				}
 
 				if (Dirty)
 				{

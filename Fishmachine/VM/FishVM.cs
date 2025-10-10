@@ -96,7 +96,7 @@ namespace Fishmachine.VM
 			}
 		}
 
-		Stack<uint> IRETStack = new Stack<uint>();
+		Stack<(uint, FishInterrupt)> IRETStack = new Stack<(uint, FishInterrupt)>();
 		FishException LastException;
 		bool Halted;
 		byte[] Memory;
@@ -311,6 +311,16 @@ namespace Fishmachine.VM
 				Gfx.Write((char)Arg1);
 				//File.AppendAllText("vm_sys.txt", ((char)Arg1).ToString());
 			}
+			else if (FInt == FishSyscall.PrintNum)
+			{
+				if (FishSettings.DebugPrint)
+				{
+					Console.WriteLine("VM: 0x{0:X} = '{1}'", Arg1, Arg1);
+				}
+
+				Gfx.Write(Arg1.ToString());
+				//File.AppendAllText("vm_sys.txt", ((char)Arg1).ToString());
+			}
 			else if (FInt == FishSyscall.SoftwareInterrupt)
 			{
 				Console.WriteLine("Interrupt {0}!", Arg1);
@@ -438,7 +448,7 @@ namespace Fishmachine.VM
 					return true;
 
 				// Preserve EFLAGS
-				IRETStack.Push(Regs.IP);
+				IRETStack.Push((Regs.IP, IntNum));
 				if (PushReg(Reg.RFLAGS, out E))
 					return true;
 
@@ -469,8 +479,25 @@ namespace Fishmachine.VM
 			if (FishSettings.DebugPrint)
 				Console.Write("{0:X4}: ", Regs.IP);
 
-			if (IRETStack.Count > 0 && IRETStack.TryPeek(out uint IRETAddr) && IRETAddr == Regs.IP)
+			if (IRETStack.Count > 0 && IRETStack.TryPeek(out (uint, FishInterrupt) IRETAddr) && IRETAddr.Item1 == Regs.IP)
 			{
+				switch (IRETAddr.Item2)
+				{
+					case FishInterrupt.Int1_KeyboardKey:
+					case FishInterrupt.Int2_KeyboardChar:
+						if (PopReg(Reg.XR1, out E))
+							return true;
+						break;
+
+					case FishInterrupt.None:
+					case FishInterrupt.Int0:
+					case FishInterrupt.Int3:
+						break;
+
+					default:
+						throw new NotImplementedException();
+				}
+
 				if (PopReg(Reg.RFLAGS, out E))
 					return true;
 

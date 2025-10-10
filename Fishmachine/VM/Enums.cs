@@ -22,6 +22,7 @@ namespace Fishmachine.VM
 	{
 		StopMachine,
 		PrintChar,
+		PrintNum,
 		SoftwareInterrupt,
 	}
 
