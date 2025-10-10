@@ -147,7 +147,7 @@ namespace Fishmachine
 				CurX = 0;
 			}
 
-			if (CurY >= CurH)
+			if (CurY > CurH)
 			{
 				CurY--;
 				CurX = 0;
