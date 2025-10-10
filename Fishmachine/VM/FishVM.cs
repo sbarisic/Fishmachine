@@ -279,9 +279,12 @@ namespace Fishmachine.VM
 
 			//if (FishSettings.DebugPrint)
 			//{
-			Console.ForegroundColor = ConsoleColor.Red;
-			Console.WriteLine("SYSCALL {0}", FInt);
-			Console.ResetColor();
+			if (FishSettings.DebugPrintSyscall)
+			{
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("SYSCALL {0}", FInt);
+				Console.ResetColor();
+			}
 			//}
 
 			//Console.ForegroundColor = ConsoleColor.Yellow;
@@ -476,7 +479,7 @@ namespace Fishmachine.VM
 				return true;
 			}
 
-			if (FishSettings.DebugPrint)
+			if (FishSettings.DebugPrint || FishSettings.DebugPrintInstruction)
 				Console.Write("{0:X4}: ", Regs.IP);
 
 			if (IRETStack.Count > 0 && IRETStack.TryPeek(out (uint, FishInterrupt) IRETAddr) && IRETAddr.Item1 == Regs.IP)
@@ -509,7 +512,7 @@ namespace Fishmachine.VM
 			if (E != FishException.None)
 				return true;
 
-			if (FishSettings.DebugPrint)
+			if (FishSettings.DebugPrint || FishSettings.DebugPrintInstruction)
 				Console.WriteLine("{0}", Inst);
 
 			switch (Inst)
