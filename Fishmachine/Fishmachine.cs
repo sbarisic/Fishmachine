@@ -151,10 +151,10 @@ namespace Fishmachine
 					continue;
 
 				uint Val = VM.Regs.Read(Regs[i]);
-				string FmtStr = string.Format("| {0} = 0x{1:X} ({1})",Regs[i], Val);
+				string FmtStr = string.Format("| {0} = 0x{1:X} ({1})", Regs[i], Val);
 
 				if (FmtStr.Length < Sep.Length - 1)
-					FmtStr = FmtStr + new string(' ', Sep.Length - FmtStr.Length -  1) + "|";
+					FmtStr = FmtStr + new string(' ', Sep.Length - FmtStr.Length - 1) + "|";
 
 
 				Console.WriteLine(FmtStr);

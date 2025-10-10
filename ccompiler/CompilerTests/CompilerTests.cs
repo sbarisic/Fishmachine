@@ -6,30 +6,34 @@ using LexicalAnalysis;
 using NUnit.Framework;
 using Parsing;
 
-namespace CompilerTests {
-    [TestFixture]
-    public class CompilerTests {
+namespace CompilerTests
+{
+	[TestFixture]
+	public class CompilerTests
+	{
 
-        [Test]
-        public void TestCompiler() {
-            Console.WriteLine(Directory.GetCurrentDirectory());
+		[Test]
+		public void TestCompiler()
+		{
+			Console.WriteLine(Directory.GetCurrentDirectory());
 
-            var files = Directory
-                .GetFiles("../../TestPrograms")
-                .Where(_ => _.EndsWith(".c"));
+			var files = Directory
+				.GetFiles("../../TestPrograms")
+				.Where(_ => _.EndsWith(".c"));
 
-            var sources = files.Select(File.ReadAllText).ToArray();
+			var sources = files.Select(File.ReadAllText).ToArray();
 
-            foreach (var source in sources) {
-                var scanner = new Scanner(source);
-                var tokens = scanner.Tokens;
-                var env = new ParserEnvironment();
-                var input = new ParserInput(env, tokens);
-                var parserResult = CParsers.TranslationUnit.Parse(input);
-                var semantResult = parserResult.Result.GetTranslnUnit();
-                semantResult.Value.CodeGenerate(new CGenState());
-            }
-        }
+			foreach (var source in sources)
+			{
+				var scanner = new Scanner(source);
+				var tokens = scanner.Tokens;
+				var env = new ParserEnvironment();
+				var input = new ParserInput(env, tokens);
+				var parserResult = CParsers.TranslationUnit.Parse(input);
+				var semantResult = parserResult.Result.GetTranslnUnit();
+				semantResult.Value.CodeGenerate(new CGenState());
+			}
+		}
 
-    }
+	}
 }
