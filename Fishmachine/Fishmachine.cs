@@ -183,7 +183,10 @@ namespace Fishmachine
 				Gfx.Write(c);
 			}*/
 
-			FishSettings.DebugPrint = true;
+			FishSettings.DebugPrint = false;
+			FishSettings.DebugPrintInstruction = false;
+			FishSettings.DebugPrintSyscall = false;
+
 			FishVM VM = new FishVM();
 			VM.Gfx = Gfx;
 
