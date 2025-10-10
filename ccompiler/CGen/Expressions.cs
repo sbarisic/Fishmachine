@@ -152,8 +152,12 @@ namespace ABT
 
 						case ExprTypeKind.LONG:
 						case ExprTypeKind.ULONG:
+							state.LEA(this.Name, Reg.EAX);
+							state.MOVL(0, Reg.EAX, Reg.EAX);
+							return Reg.EAX;
+
 						case ExprTypeKind.POINTER:
-							state.MOVL(this.Name, Reg.EAX);
+							state.LEA(this.Name, Reg.EAX);
 							return Reg.EAX;
 
 						case ExprTypeKind.FUNCTION:

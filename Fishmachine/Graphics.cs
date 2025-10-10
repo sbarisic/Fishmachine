@@ -170,10 +170,7 @@ namespace Fishmachine
 					}
 				}
 
-				SetPixel(0, 0, GetPixel(0, 0));
-
-				// TODO, scroll screen up by one row
-				//throw new NotImplementedException();
+				Dirty = true;
 			}
 		}
 

@@ -314,6 +314,7 @@ namespace Fishmachine
 					{
 						case ".section":
 						case ".text":
+						case ".data":
 							break;
 
 						case ".align":

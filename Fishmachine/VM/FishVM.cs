@@ -99,6 +99,9 @@ namespace Fishmachine.VM
 		Stack<(uint, FishInterrupt)> IRETStack = new Stack<(uint, FishInterrupt)>();
 		FishException LastException;
 		bool Halted;
+
+		uint MemAllocPtrStart = 0x0;
+		uint MemAllocPtr = 0x0;
 		byte[] Memory;
 
 		public Graphics Gfx;
@@ -112,6 +115,12 @@ namespace Fishmachine.VM
 		public void AllocateMemory(int Size)
 		{
 			Memory = new byte[Size];
+		}
+
+		public void SetMemMgrPointer(uint Addr)
+		{
+			MemAllocPtrStart = Addr;
+			MemAllocPtr = Addr;
 		}
 
 		public int LoadToMemory(byte[] Input, int Offset)
@@ -238,7 +247,16 @@ namespace Fishmachine.VM
 		public void WriteBytes(uint VirtAddress, byte[] Value, out FishException E)
 		{
 			VirtAddress = VirtualToReal(VirtAddress);
-			Array.Copy(Value, 0, MemoryBankForRealAddress(VirtAddress, out E), VirtAddress, Value.Length);
+			byte[] MemBank = MemoryBankForRealAddress(VirtAddress, out E);
+			if (E != FishException.None)
+				return;
+
+			Array.Copy(Value, 0, MemBank, VirtAddress, Value.Length);
+		}
+
+		public void WriteUInt32(uint VirtAddress, uint UInt, out FishException E)
+		{
+			WriteBytes(VirtAddress, BitConverter.GetBytes(UInt), out E);
 		}
 
 		public void Jump(uint VirtAddress)
@@ -328,6 +346,37 @@ namespace Fishmachine.VM
 			{
 				Console.WriteLine("Interrupt {0}!", Arg1);
 				Interrupt((FishInterrupt)Arg1);
+			}
+			else if (FInt == FishSyscall.Alloc)
+			{
+				bool Failed = false;
+
+				uint BytesPtr = Arg1;
+				uint Bytes = ReadUInt32(BytesPtr, out E);
+
+				if (E == FishException.None)
+				{
+					MemAllocPtr = MemAllocPtr - Bytes;
+					uint AllocMem = MemAllocPtr;
+
+					if (Bytes == 0)
+						AllocMem = 0;
+
+					WriteUInt32(BytesPtr, AllocMem, out E);
+					if (E == FishException.None && FishSettings.DebugPrintMemory)
+					{
+						Console.WriteLine("Alloc {0} bytes at 0x{1:X} ({1})", Bytes, AllocMem);
+					}
+					else
+						Failed = true;
+				}
+				else
+					Failed = true;
+
+				if (Failed && FishSettings.DebugPrintMemory)
+				{
+					Console.WriteLine("FAIL - Alloc {0} bytes at 0x{1:X} ({1})", Arg1, 0);
+				}
 			}
 			/*else if (Num == 5)
 			{
@@ -450,33 +499,36 @@ namespace Fishmachine.VM
 				if (E != FishException.None)
 					return true;
 
-				// Preserve EFLAGS
-				IRETStack.Push((Regs.IP, IntNum));
-				if (PushReg(Reg.RFLAGS, out E))
-					return true;
-
-				// Push interrupt arguments
-				switch (IntNum)
+				if (IntAddr != 0)
 				{
-					case FishInterrupt.Int1_KeyboardKey:
-					case FishInterrupt.Int2_KeyboardChar:
-						if (PushReg(Reg.XR1, out E))
-							return true;
+					// Preserve EFLAGS
+					IRETStack.Push((Regs.IP, IntNum));
+					if (PushReg(Reg.RFLAGS, out E))
+						return true;
 
-						Regs.Write(Reg.XR1, 0);
-						break;
+					// Push interrupt arguments
+					switch (IntNum)
+					{
+						case FishInterrupt.Int1_KeyboardKey:
+						case FishInterrupt.Int2_KeyboardChar:
+							if (PushReg(Reg.XR1, out E))
+								return true;
 
-					case FishInterrupt.None:
-					case FishInterrupt.Int0:
-					case FishInterrupt.Int3:
-						break;
+							Regs.Write(Reg.XR1, 0);
+							break;
 
-					default:
-						throw new NotImplementedException();
+						case FishInterrupt.None:
+						case FishInterrupt.Int0:
+						case FishInterrupt.Int3:
+							break;
+
+						default:
+							throw new NotImplementedException();
+					}
+
+					CallLong(IntAddr, out E);
+					return true;
 				}
-
-				CallLong(IntAddr, out E);
-				return true;
 			}
 
 			if (FishSettings.DebugPrint || FishSettings.DebugPrintInstruction)

@@ -183,15 +183,17 @@ namespace Fishmachine
 				Gfx.Write(c);
 			}*/
 
-			FishSettings.DebugPrint = false;
-			FishSettings.DebugPrintInstruction = false;
-			FishSettings.DebugPrintSyscall = false;
+			uint AA = AsmState.GetSymbolOffset("input_array");
+			uint BB = AsmState.GetSymbolOffset("input_length");
+			uint CC = AsmState.GetSymbolOffset("input_count");
 
 			FishVM VM = new FishVM();
 			VM.Gfx = Gfx;
 
 
 			VM.AllocateMemory(0x10000);
+			VM.SetMemMgrPointer(0x10000 - 1);
+
 			//VM.LoadToMemory(Bytecode, 0x1000);
 			Console.Write("{0} bytes ", Bytecode.Length);
 			VM.LoadToMemory(Bytecode, 0x1000);
@@ -221,7 +223,7 @@ namespace Fishmachine
 					VM.Interrupt(FishInterrupt.Int1_KeyboardKey, Key);
 				}*/
 
-				FormatPrint(VM);
+				//FormatPrint(VM);
 			}
 
 

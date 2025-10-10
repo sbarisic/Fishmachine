@@ -5,6 +5,10 @@ void __asm();
 
 long* int_table;
 
+long input_array = 0;
+long input_length = 0;
+long input_count = 0;
+
 void print(const char* str) {
 	int i = 0;
 
@@ -17,6 +21,12 @@ void print(const char* str) {
 
 void printnum(long num) {
 	syscall_2(2, num);
+}
+
+void* alloc(long bytes) {
+	void* ptr = bytes;
+	syscall_2(4, &ptr);
+	return ptr;
 }
 
 void handler_int0() {
@@ -48,4 +58,12 @@ void fk_init() {
 	int_table[0] = &handler_int0;
 	int_table[1] = &handler_int1_keyboardkey;
 	int_table[2] = &handler_int2_keyboardchar;
+
+	input_length = 0x100;
+	input_count = 0;
+	input_array = alloc(input_length);
+
+	print("input_array: ");
+	printnum(input_array);
+	print("\n");
 }
