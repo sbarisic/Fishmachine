@@ -407,6 +407,7 @@ namespace Fishmachine
 
 							break;
 
+						case "SUB_REG_REG":
 						case "CMP_REG_REG":
 						case "MOVEZ_REG_REG":
 						case "MOVES_REG_REG":
@@ -549,6 +550,7 @@ namespace Fishmachine
 								break;
 							}
 
+						case "WAIT":
 						case "HALT":
 						case "INVALID":
 						case "DBG_BREAK":

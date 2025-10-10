@@ -144,14 +144,17 @@ namespace Fishmachine
 			string Sep = "|--------------------------|";
 			Console.WriteLine("|---- REGS ----------------|");
 
+			uint Val = 0;
+			string FmtStr = "";
+
 			Reg[] Regs = Enum.GetValues<CodeGeneration.Reg>();
 			for (int i = 0; i < Regs.Length; i++)
 			{
 				if (Regs[i] == Reg.MAX_VALUE)
 					continue;
 
-				uint Val = VM.Regs.Read(Regs[i]);
-				string FmtStr = string.Format("| {0} = 0x{1:X} ({1})", Regs[i], Val);
+				Val = VM.Regs.Read(Regs[i]);
+				FmtStr = string.Format("| {0} = 0x{1:X} ({1})", Regs[i], Val);
 
 				if (FmtStr.Length < Sep.Length - 1)
 					FmtStr = FmtStr + new string(' ', Sep.Length - FmtStr.Length - 1) + "|";
@@ -159,6 +162,13 @@ namespace Fishmachine
 
 				Console.WriteLine(FmtStr);
 			}
+
+			Val = VM.Regs.IP;
+			FmtStr = string.Format("| {0} = 0x{1:X} ({1})", "IP", Val);
+
+			if (FmtStr.Length < Sep.Length - 1)
+				FmtStr = FmtStr + new string(' ', Sep.Length - FmtStr.Length - 1) + "|";
+			Console.WriteLine(FmtStr);
 		}
 
 		static void Main(string[] args)
@@ -191,39 +201,50 @@ namespace Fishmachine
 			VM.Gfx = Gfx;
 
 
-			VM.AllocateMemory(0x10000);
-			VM.SetMemMgrPointer(0x10000 - 1);
+			VM.AllocateMemory(0x30000);
+			VM.SetMemMgrPointer(0x30000 - 1);
 
 			//VM.LoadToMemory(Bytecode, 0x1000);
 			Console.Write("{0} bytes ", Bytecode.Length);
 			VM.LoadToMemory(Bytecode, 0x1000);
 			Console.WriteLine("loaded");
 
-			VM.Regs.Write(CodeGeneration.Reg.ESP, 0x9000);
+			VM.Regs.Write(CodeGeneration.Reg.ESP, 0x20000);
 			VM.Jump(KMainAddr);
 
 
 			FishException Ex = FishException.None;
 			while (VM.Run(out Ex))
 			{
-				if (Gfx.MousePressed())
-				{
-					Console.WriteLine("Mouse!");
-					VM.Interrupt(FishInterrupt.Int0);
-				}
-				else if (Gfx.CharPressed(out uint Char))
-				{
+				bool Interrupted = false;
 
-					byte B = Encoding.ASCII.GetBytes(new[] { (char)Char })[0];
+				while (!Interrupted)
+				{
+					if (Gfx.MousePressed())
+					{
+						Console.WriteLine("Mouse!");
+						//VM.Interrupt(FishInterrupt.Int0);
+						Interrupted = true;
+					}
+					else if (Gfx.CharPressed(out uint Char))
+					{
 
-					VM.Interrupt(FishInterrupt.Int2_KeyboardChar, B);
+						byte B = Encoding.ASCII.GetBytes(new[] { (char)Char })[0];
+						VM.Interrupt(FishInterrupt.Int2_KeyboardChar, B);
+						Interrupted = true;
+					}
+
+					if (Ex != FishException.RequestWait)
+						break;
 				}
+
 				/*else if (Gfx.KeyPressed(out uint Key))
 				{
 					VM.Interrupt(FishInterrupt.Int1_KeyboardKey, Key);
 				}*/
 
-				//FormatPrint(VM);
+				if (FishSettings.FormatPrint)
+					FormatPrint(VM);
 			}
 
 

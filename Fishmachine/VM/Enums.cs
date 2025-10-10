@@ -15,7 +15,8 @@ namespace Fishmachine.VM
 		StackOverflow,
 		StackUnderflow,
 		FloatInfinity,
-		FloatNaN
+		FloatNaN,
+		RequestWait,
 	}
 
 	public enum FishSyscall : byte
@@ -42,6 +43,7 @@ namespace Fishmachine.VM
 
 		NOP,
 		HALT,
+		WAIT,
 		LEAVE,
 		RET,
 		DBG_BREAK,

@@ -18,6 +18,7 @@ namespace Fishmachine.VM
 				case FishInst.INVALID:
 				case FishInst.NOP:
 				case FishInst.HALT:
+				case FishInst.WAIT:
 				case FishInst.LEAVE:
 				case FishInst.RET:
 				case FishInst.DBG_BREAK:
@@ -276,6 +277,9 @@ namespace Fishmachine.VM
 			if (!Regs.IntEnabled)
 				return;
 
+			if (IRETStack.Count > 0)
+				return;
+
 			Regs.Write(Reg.XSC, (uint)Num);
 		}
 
@@ -429,7 +433,7 @@ namespace Fishmachine.VM
 			uint WriteAddr = ESP - sizeof(uint);
 
 			uint RVal = Regs.Read(R);
-			WriteBytes(WriteAddr, BitConverter.GetBytes(RVal), out E);
+			WriteUInt32(WriteAddr, RVal, out E);
 			if (E != FishException.None)
 				return true;
 
@@ -506,6 +510,8 @@ namespace Fishmachine.VM
 					if (PushReg(Reg.RFLAGS, out E))
 						return true;
 
+					Regs.IntEnabled = false;
+
 					// Push interrupt arguments
 					switch (IntNum)
 					{
@@ -542,6 +548,8 @@ namespace Fishmachine.VM
 					case FishInterrupt.Int2_KeyboardChar:
 						if (PopReg(Reg.XR1, out E))
 							return true;
+
+						Regs.Write(Reg.XR1, 0);
 						break;
 
 					case FishInterrupt.None:
@@ -572,6 +580,12 @@ namespace Fishmachine.VM
 				case FishInst.NOP:
 					{
 						break;
+					}
+
+				case FishInst.WAIT:
+					{
+						E = FishException.RequestWait;
+						return true;
 					}
 
 				case FishInst.HALT:
@@ -1546,6 +1560,9 @@ namespace Fishmachine.VM
 
 			while (Step(out E))
 			{
+				if (E != FishException.None && E != FishException.RequestWait)
+					throw new Exception(string.Format("VM {0}", E));
+
 				if (E != FishException.None && LastException != FishException.None)
 				{
 					throw new Exception("VM double fault");
