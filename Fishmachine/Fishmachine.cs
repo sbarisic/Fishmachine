@@ -1,4 +1,5 @@
-﻿using Driver;
+﻿using CodeGeneration;
+using Driver;
 using Fishmachine.VM;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -135,6 +136,31 @@ namespace Fishmachine
 			return Bytecode;
 		}
 
+		static void FormatPrint(FishVM VM)
+		{
+			System.Console.CursorLeft = 0;
+			System.Console.CursorTop = 1;
+
+			string Sep = "|--------------------------|";
+			Console.WriteLine("|---- REGS ----------------|");
+
+			Reg[] Regs = Enum.GetValues<CodeGeneration.Reg>();
+			for (int i = 0; i < Regs.Length; i++)
+			{
+				if (Regs[i] == Reg.MAX_VALUE)
+					continue;
+
+				uint Val = VM.Regs.Read(Regs[i]);
+				string FmtStr = string.Format("| {0} = 0x{1:X} ({1})",Regs[i], Val);
+
+				if (FmtStr.Length < Sep.Length - 1)
+					FmtStr = FmtStr + new string(' ', Sep.Length - FmtStr.Length -  1) + "|";
+
+
+				Console.WriteLine(FmtStr);
+			}
+		}
+
 		static void Main(string[] args)
 		{
 			Compile("stdfish.c");
@@ -192,6 +218,7 @@ namespace Fishmachine
 					VM.Interrupt(FishInterrupt.Int1_KeyboardKey, Key);
 				}*/
 
+				FormatPrint(VM);
 			}
 
 
