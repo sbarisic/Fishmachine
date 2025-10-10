@@ -1489,6 +1489,7 @@ namespace Fishmachine.VM
 			Halted = false;
 			E = FishException.None;
 
+			const int YieldInstr = 24;
 			int YieldCounter = 0;
 
 			while (Step(out E))
@@ -1509,7 +1510,7 @@ namespace Fishmachine.VM
 
 				YieldCounter++;
 
-				if (YieldCounter >= 0)
+				if (YieldCounter >= YieldInstr)
 				{
 					YieldCounter = 0;
 					return true;
