@@ -510,6 +510,7 @@ namespace Fishmachine.VM
 					if (PushReg(Reg.RFLAGS, out E))
 						return true;
 
+					// IntEnabled is restored by popping RFLAGS below, as it is just a bit field in RFLAGS
 					Regs.IntEnabled = false;
 
 					// Push interrupt arguments
@@ -832,7 +833,7 @@ namespace Fishmachine.VM
 						uint R2Val = Regs.Read(R2);
 
 						int Result = (int)R1Val - (int)R2Val;
-						Regs.Write(R2, (uint)Result);
+						//Regs.Write(R2, (uint)Result);
 
 						Regs.LessThan = R1Val < R2Val;
 						Regs.Equal = R1Val == R2Val;

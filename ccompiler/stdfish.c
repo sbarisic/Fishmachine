@@ -10,7 +10,7 @@ long input_length = 0;
 long input_count = 0;
 
 void print(const char* str) {
-	int i = 0;
+	long i = 0;
 
 	while (str[i] != 0) {
 		syscall_2(1, str[i]);
@@ -42,14 +42,12 @@ void input_add(char c) {
 		}
 	}
 
-	input_array[input_count] = c;
-	input_count++;
-
-	if (input_count >= input_length) {
-		input_count--;
+	// Only add if there is space for at least one more character (for newline)
+	if (input_count < input_length - 1) {
+		input_array[input_count] = c;
+		input_count++;
+		syscall_2(1, c);
 	}
-
-	syscall_2(1, c);
 }
 
 void memory_copy(char* dest, char* source, long len) {
