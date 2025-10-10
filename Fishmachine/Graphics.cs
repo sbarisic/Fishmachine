@@ -1,9 +1,10 @@
-﻿using System;
+﻿using Raylib_cs;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.ConstrainedExecution;
 using System.Text;
 using System.Threading.Tasks;
-using Raylib_cs;
 
 namespace Fishmachine
 {
@@ -28,6 +29,9 @@ namespace Fishmachine
 		Image FontImage;
 		Color* FontPix;
 
+		Color BackgroundColor = Color.Black;
+		Color ForegroundColor = Color.LightGray;
+
 		Texture2D GfxTex;
 
 		bool Running = false;
@@ -37,7 +41,6 @@ namespace Fishmachine
 
 		public Graphics()
 		{
-
 		}
 
 		public void Setup(int W, int H, int Scale)
@@ -54,6 +57,20 @@ namespace Fishmachine
 		{
 			while (!Running)
 				Thread.Sleep(1);
+		}
+
+		public Color GetPixel(int X, int Y)
+		{
+			WaitForRunning();
+
+			int Idx = Y * W + X;
+			if (Idx < 0 || Idx > W * H)
+				return Color.Pink;
+
+			lock (Lock)
+			{
+				return GfxImagePix[Idx];
+			}
 		}
 
 		public void SetPixel(int X, int Y, Color Clr, bool SetDirty = true)
@@ -114,9 +131,9 @@ namespace Fishmachine
 						//int ScreenIdx = (ScreenY + y) * W + (ScreenX + x);
 
 						if (FontPix[FontIdx].A > 0)
-							SetPixel(ScreenX + x, ScreenY + y, FontPix[FontIdx], false);
+							SetPixel(ScreenX + x, ScreenY + y, Raylib.ColorTint(FontPix[FontIdx], ForegroundColor), false);
 						else
-							SetPixel(ScreenX + x, ScreenY + y, Color.Black, false);
+							SetPixel(ScreenX + x, ScreenY + y, BackgroundColor, false);
 					}
 				}
 
@@ -132,8 +149,31 @@ namespace Fishmachine
 
 			if (CurY >= CurH)
 			{
+				CurY--;
+				CurX = 0;
+
+				for (int y = FontH; y < H; y++)
+				{
+					for (int x = 0; x < W; x++)
+					{
+						Color C = GetPixel(x, y);
+						SetPixel(x, y - FontH, C, false);
+					}
+				}
+
+				for (int y = 0; y < FontH; y++)
+				{
+					for (int x = 0; x < W; x++)
+					{
+						SetPixel(x, H - y - 2, BackgroundColor, false);
+						SetPixel(x, y, BackgroundColor, false);
+					}
+				}
+
+				SetPixel(0, 0, GetPixel(0, 0));
+
 				// TODO, scroll screen up by one row
-				throw new NotImplementedException();
+				//throw new NotImplementedException();
 			}
 		}
 
@@ -183,7 +223,7 @@ namespace Fishmachine
 
 				KeyPressedCode = (uint)Raylib.GetKeyPressed();
 
-				
+
 				if (KeyPressedCode != 0)
 				{
 					if (KeyPressedCode == 0x101 || KeyPressedCode == 0x14f)
