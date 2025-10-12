@@ -1,4 +1,3 @@
-.globl syscall_2
 .globl print
 print:
     PUSH_REG %ebp
@@ -6,16 +5,6 @@ print:
     SUB_LONG_REG $4, %esp
     MOVE_LONG_REG $0, %eax
     MOVE_REG_OFFSET_REG %eax, -4, %ebp
-    SUB_LONG_REG $4, %esp
-    MOVE_LONG_REG $0, %eax
-    MOVE_REG_OFFSET_REG %eax, -8, %ebp
-    MOVE_LONG_REG $0, %eax
-    MOVE_REG_REG %eax, %ebx
-    MOVE_OFFSET_REG_REG 8, %ebp, %eax
-    ADD_REG_REG %ebx, %eax
-    MOVES_OFFSET_REG_REG 0, %eax, %eax
-    MOVE_REG_OFFSET_REG %eax, -8, %ebp
-    DBG_BREAK
     .WHILE_0000:
     MOVE_OFFSET_REG_REG -4, %ebp, %eax
     MOVE_REG_REG %eax, %ebx
