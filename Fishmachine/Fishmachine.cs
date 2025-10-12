@@ -210,6 +210,7 @@ namespace Fishmachine
 			Console.WriteLine("loaded");
 
 			VM.Regs.Write(CodeGeneration.Reg.ESP, 0x20000);
+			//VM.Regs.Write(CodeGeneration.Reg.EBP, 0x20000);
 			VM.Jump(KMainAddr);
 
 

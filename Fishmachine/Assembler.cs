@@ -335,7 +335,11 @@ namespace Fishmachine
 
 						case ".globl":
 							{
-								state.DefineToken(Tokens[1], 0, true);
+								AsmToken Tok = state.FindToken(Tokens[1]);
+								if (Tok == null)
+								{
+									state.DefineToken(Tokens[1], 0, true);
+								}
 								break;
 							}
 

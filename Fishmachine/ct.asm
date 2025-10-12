@@ -1,45 +1,96 @@
+# VariableDef BEGIN - int_table
+    .globl int_table
+# VariableDef END - int_table
 .globl print
 print:
     PUSH_REG %ebp
     MOVE_REG_REG %esp, %ebp
-    SUB_LONG_REG $4, %esp
+    # VariableDef BEGIN - i
+        SUB_LONG_REG $4, %esp
+    # VariableDef END - i
     MOVE_LONG_REG $0, %eax
     MOVE_REG_OFFSET_REG %eax, -4, %ebp
-    .WHILE_0000:
-    MOVE_OFFSET_REG_REG -4, %ebp, %eax
-    MOVE_REG_REG %eax, %ebx
-    MOVE_OFFSET_REG_REG 8, %ebp, %eax
-    ADD_REG_REG %ebx, %eax
-    MOVES_OFFSET_REG_REG 0, %eax, %eax
-    MOVE_REG_REG %eax, %ebx
-    MOVE_LONG_REG $0, %eax
-    CMP_REG_REG %eax, %ebx
-    JUMP_IF_ZERO_LONG .ENDWHILE_0001
-    MOVE_OFFSET_REG_REG -4, %ebp, %eax
-    MOVE_REG_REG %eax, %ebx
-    MOVE_OFFSET_REG_REG 8, %ebp, %eax
-    ADD_REG_REG %ebx, %eax
-    MOVES_OFFSET_REG_REG 0, %eax, %eax
-    PUSH_REG %eax
-    MOVE_LONG_REG $1, %eax
-    PUSH_REG %eax
-    SYSCALL_2 
-    MOVE_OFFSET_REG_REG -4, %ebp, %eax
-    MOVE_REG_REG %eax, %ebx
-    MOVE_LONG_REG $1, %eax
-    ADD_REG_REG %ebx, %eax
-    MOVE_REG_OFFSET_REG %eax, -4, %ebp
-    JUMP_LONG .WHILE_0000
-    .ENDWHILE_0001:
+    # While BEGIN
+        .WHILE_0002:
+        # IndexOp BEGIN
+            MOVE_OFFSET_REG_REG -4, %ebp, %eax
+            MOVE_REG_REG %eax, %ebx
+            MOVE_OFFSET_REG_REG 8, %ebp, %eax
+            ADD_REG_REG %ebx, %eax
+            MOVES_OFFSET_REG_REG 0, %eax, %eax
+        # IndexOp END
+        MOVE_REG_REG %eax, %ebx
+        MOVE_LONG_REG $0, %eax
+        CMP_REG_REG %eax, %ebx
+        JUMP_IF_ZERO_LONG .ENDWHILE_0004
+        # syscall_2 BEGIN
+            # IndexOp BEGIN
+                MOVE_OFFSET_REG_REG -4, %ebp, %eax
+                MOVE_REG_REG %eax, %ebx
+                MOVE_OFFSET_REG_REG 8, %ebp, %eax
+                ADD_REG_REG %ebx, %eax
+                MOVES_OFFSET_REG_REG 0, %eax, %eax
+            # IndexOp END
+            PUSH_REG %eax
+            MOVE_LONG_REG $1, %eax
+            PUSH_REG %eax
+            SYSCALL_2 
+        # syscall_2 END
+        # MathOp BEGIN (+)
+            PUSH_REG %ebx
+            MOVE_OFFSET_REG_REG -4, %ebp, %eax
+            MOVE_REG_REG %eax, %ebx
+            MOVE_LONG_REG $1, %eax
+            ADD_REG_REG %ebx, %eax
+            POP_REG %ebx
+        # MathOp END (+)
+        MOVE_REG_OFFSET_REG %eax, -4, %ebp
+        JUMP_LONG .WHILE_0002
+        .ENDWHILE_0004:
+    # While END
+    LEAVE 
+    RET 
+.globl handler_int0
+handler_int0:
+    PUSH_REG %ebp
+    MOVE_REG_REG %esp, %ebp
+    # FuncCall BEGIN - print
+        MOVE_LONG_REG .L_0007, %eax
+        PUSH_REG %eax
+        MOVE_LONG_REG print, %eax
+        CALL_REG %eax
+        ADD_LONG_REG $4, %esp
+    # FuncCall END - print
     LEAVE 
     RET 
 .globl kmain
 kmain:
-    MOVE_LONG_REG .L_0002, %eax
-    PUSH_REG %eax
-    MOVE_LONG_REG print, %eax
-    CALL_REG %eax
-    ADD_LONG_REG $4, %esp
+    PUSH_REG %ebp
+    MOVE_REG_REG %esp, %ebp
+    # Expr_AssignValue BEGIN
+        # IndexOp BEGIN
+            MOVE_LONG_REG $0, %eax
+            MOVE_REG_REG %eax, %ebx
+            MOVE_LONG_REG int_table, %eax
+            ADD_REG_REG %ebx, %eax
+        # IndexOp END
+        MOVE_REG_REG %eax, %ebx
+        # Expr_AddressOfOp BEGIN
+            MOVE_LONG_REG handler_int0, %eax
+        # Expr_AddressOfOp END
+        MOVE_REG_OFFSET_REG %eax, 0, %ebx
+    # Expr_AssignValue END
+    # FuncCall BEGIN - print
+        MOVE_LONG_REG .L_0009, %eax
+        PUSH_REG %eax
+        MOVE_LONG_REG print, %eax
+        CALL_REG %eax
+        ADD_LONG_REG $4, %esp
+    # FuncCall END - print
     SYSCALL $0
-.L_0002:
+    LEAVE 
+    RET 
+.L_0007:
+    .String "INT0\n"
+.L_0009:
     .String "Hello, World!\n"
