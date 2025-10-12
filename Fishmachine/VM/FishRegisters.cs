@@ -204,7 +204,7 @@ namespace Fishmachine.VM
 			if (FishSettings.DebugPrint)
 			{
 				Console.ForegroundColor = ConsoleColor.Yellow;
-				Console.WriteLine(": Read {0} = 0x{1:X} - {1}", Reg, Ret);
+				Console.WriteLine(": Read {0} = 0x{1:X} hex; {1} dec", Reg, Ret);
 				Console.ResetColor();
 			}
 
@@ -254,7 +254,7 @@ namespace Fishmachine.VM
 			if (FishSettings.DebugPrint)
 			{
 				Console.ForegroundColor = ConsoleColor.Yellow;
-				Console.WriteLine(": Write {0} = 0x{2:X} - {2}", Reg, Regs[(int)Reg], Val);
+				Console.WriteLine(": Write {0} = 0x{2:X} hex; {2} dec", Reg, Regs[(int)Reg], Val);
 				Console.ResetColor();
 			}
 

@@ -173,13 +173,13 @@ namespace Fishmachine
 
 		static void Main(string[] args)
 		{
-			Compile("stdfish.c");
-			Compile("test.c");
+			//Compile("stdfish.c");
+			//Compile("test.c");
 
 			AssemblerState AsmState = new AssemblerState();
 			AsmState.DefineToken("int_table", 0x100, true);
 
-			byte[] Bytecode = Assemble(AsmState, new[] { "stdfish.asm", "test.asm" }, out uint KMainAddr);
+			byte[] Bytecode = Assemble(AsmState, new[] {/* "stdfish.asm", "test.asm"*/ "ct.asm" }, out uint KMainAddr);
 
 			// Setup VM, load program and run
 			HookOutput();
@@ -193,9 +193,9 @@ namespace Fishmachine
 				Gfx.Write(c);
 			}*/
 
-			uint AA = AsmState.GetSymbolOffset("input_array");
-			uint BB = AsmState.GetSymbolOffset("input_length");
-			uint CC = AsmState.GetSymbolOffset("input_count");
+			//uint AA = AsmState.GetSymbolOffset("input_array");
+			//uint BB = AsmState.GetSymbolOffset("input_length");
+			//uint CC = AsmState.GetSymbolOffset("input_count");
 
 			FishVM VM = new FishVM();
 			VM.Gfx = Gfx;

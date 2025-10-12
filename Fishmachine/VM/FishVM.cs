@@ -1112,7 +1112,7 @@ namespace Fishmachine.VM
 						if (FishSettings.DebugPrint)
 						{
 							Console.ForegroundColor = ConsoleColor.Yellow;
-							Console.WriteLine("Read bytes ({5:X8}; {5}) {{ {0:X2} {1:X2} {2:X2} {3:X2} }} from {4:X4}", ReadVal[0], ReadVal[1], ReadVal[2], ReadVal[3], Addr, R1Val);
+							Console.WriteLine("Read bytes (0x{5:X8}; {5}) {{ 0x{0:X2} 0x{1:X2} 0x{2:X2} 0x{3:X2} }} from 0x{4:X4}", ReadVal[0], ReadVal[1], ReadVal[2], ReadVal[3], Addr, R1Val);
 							Console.ResetColor();
 						}
 

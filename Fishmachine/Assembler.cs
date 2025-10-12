@@ -517,6 +517,7 @@ namespace Fishmachine
 							break;
 
 						case "SYSCALL":
+						case "PUSH_LONG":
 						case "JUMP_IF_ZERO_LONG":
 						case "JUMP_IF_NOT_ZERO_LONG":
 						case "JUMP_LONG":
