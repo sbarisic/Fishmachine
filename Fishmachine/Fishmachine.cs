@@ -219,24 +219,23 @@ namespace Fishmachine
 			{
 				bool Interrupted = false;
 
-				while (!Interrupted)
+				//while (!Interrupted)
 				{
 					if (Gfx.MousePressed())
 					{
 						Console.WriteLine("Mouse!");
-						//VM.Interrupt(FishInterrupt.Int0);
+						VM.Interrupt(FishInterrupt.Int0);
 						Interrupted = true;
 					}
 					else if (Gfx.CharPressed(out uint Char))
 					{
-
 						byte B = Encoding.ASCII.GetBytes(new[] { (char)Char })[0];
 						VM.Interrupt(FishInterrupt.Int2_KeyboardChar, B);
 						Interrupted = true;
 					}
 
-					if (Ex != FishException.RequestWait)
-						break;
+					/*if (Ex != FishException.RequestWait)
+						break;*/
 				}
 
 				/*else if (Gfx.KeyPressed(out uint Key))

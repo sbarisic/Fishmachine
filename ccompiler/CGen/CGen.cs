@@ -23,6 +23,8 @@ namespace CodeGeneration
 
 		AL,
 		AX,
+		AH,
+		BH,
 		BL,
 		BX,
 		CL,
@@ -52,6 +54,8 @@ namespace CodeGeneration
 			[Reg.EDI] = "%edi",
 			[Reg.ESI] = "%esi",
 			[Reg.AL] = "%al",
+			[Reg.AH] = "%ah",
+			[Reg.BH] = "%bh",
 			[Reg.AX] = "%ax",
 			[Reg.BL] = "%bl",
 			[Reg.BX] = "%bx",

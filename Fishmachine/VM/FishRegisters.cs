@@ -172,6 +172,14 @@ namespace Fishmachine.VM
 					Ret = Read(Reg.EAX) & 0xFF;
 					break;
 
+				case Reg.AH:
+					Ret = (Read(Reg.EAX) >> 8) & 0xFF;
+					break;
+
+				case Reg.BH:
+					Ret = (Read(Reg.EBX) >> 8) & 0xFF;
+					break;
+
 				case Reg.AX:
 					Ret = Read(Reg.EAX) & 0xFFFF;
 					break;
@@ -218,6 +226,14 @@ namespace Fishmachine.VM
 				case Reg.AL:
 					Write(Reg.EAX, Val & 0xFF);
 					return;
+
+				case Reg.AH:
+					Write(Reg.EAX, (Read(Reg.EAX) & 0xFFFF00FF) | ((Val & 0xFF) << 8));
+					break;
+
+				case Reg.BH:
+					Write(Reg.EBX, (Read(Reg.EBX) & 0xFFFF00FF) | ((Val & 0xFF) << 8));
+					break;
 
 				case Reg.AX:
 					Write(Reg.EAX, Val & 0xFFFF);
