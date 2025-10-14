@@ -116,7 +116,7 @@ namespace Fishmachine.VM
 
 		public void FpuPush(float Val)
 		{
-			if (FishSettings.DebugPrint)
+			if (FishSettings.DebugPrint || FishSettings.DebugPrintFloats)
 			{
 				Console.ForegroundColor = ConsoleColor.DarkBlue;
 				Console.WriteLine("FPU Push {0}", Val);
@@ -140,7 +140,7 @@ namespace Fishmachine.VM
 				ST[i - 1] = ST[i];
 			}
 
-			if (FishSettings.DebugPrint)
+			if (FishSettings.DebugPrint || FishSettings.DebugPrintFloats)
 			{
 				Console.ForegroundColor = ConsoleColor.DarkBlue;
 				Console.WriteLine("FPU Pop {0}", Val);
@@ -152,7 +152,7 @@ namespace Fishmachine.VM
 
 		public float FpuPeek()
 		{
-			if (FishSettings.DebugPrint)
+			if (FishSettings.DebugPrint || FishSettings.DebugPrintFloats)
 			{
 				Console.ForegroundColor = ConsoleColor.DarkBlue;
 				Console.WriteLine("FPU Peek {0}", ST[0]);
@@ -267,10 +267,10 @@ namespace Fishmachine.VM
 					break;
 			}
 
-			if (FishSettings.DebugPrint)
+			if (FishSettings.DebugPrint || FishSettings.DebugRegisterWrite)
 			{
 				Console.ForegroundColor = ConsoleColor.Yellow;
-				Console.WriteLine(": Write {0} = 0x{2:X} hex; {2} dec", Reg, Regs[(int)Reg], Val);
+				Console.WriteLine(": Write {0} = 0x{1:X} hex; {2} dec", Reg, Regs[(int)Reg], Val);
 				Console.ResetColor();
 			}
 

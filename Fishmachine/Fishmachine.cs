@@ -100,7 +100,7 @@ namespace Fishmachine
 
 		public static void PrintReg(Reg R, uint Val)
 		{
-			PrintReg(R, string.Format("0x{0:X} hex, {0} dec; ", Val));
+			PrintReg(R, string.Format("0x{0:X8} hex, {0} dec; ", Val));
 		}
 
 		public static void Write(string Fmt, params object[] Args)
