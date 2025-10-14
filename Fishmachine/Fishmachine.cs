@@ -15,6 +15,9 @@ namespace Fishmachine
 		{
 			if (FS == null)
 			{
+				if (File.Exists("vm_out.txt"))
+					File.Delete("vm_out.txt");
+
 				FS = File.OpenWrite("vm_out.txt");
 			}
 		}
@@ -27,6 +30,77 @@ namespace Fishmachine
 			FS.Write(Encoding.UTF8.GetBytes(Str));
 			FS.Flush();
 			//File.AppendAllText("vm_out.txt", Str);
+		}
+
+		public static void PrintInst(FishInst Inst, string Str)
+		{
+			ForegroundColor = ConsoleColor.DarkGray;
+			Write(Inst.ToString());
+
+			if (!string.IsNullOrEmpty(Str))
+			{
+				Write(" " + Str);
+			}
+
+			WriteLine();
+			ResetColor();
+		}
+
+		public static void PrintInst(FishInst Inst)
+		{
+			PrintInst(Inst, "");
+		}
+
+		public static void PrintInst(FishInst Inst, int Offset, Reg R1, Reg R2)
+		{
+			PrintInst(Inst, string.Format("{0}(%{1}), %{2}", Offset, R1, R2));
+		}
+
+		public static void PrintInst(FishInst Inst, Reg R1, int Offset, Reg R2)
+		{
+			PrintInst(Inst, string.Format("%{0}, {1}(%{2})", R1, Offset, R2));
+		}
+
+		public static void PrintInst(FishInst Inst, uint A1)
+		{
+			PrintInst(Inst, string.Format("0x{0:X}", A1));
+		}
+
+		public static void PrintInst(FishInst Inst, uint A1, Reg R)
+		{
+			PrintInst(Inst, string.Format("0x{0:X}, %{1}", A1, R));
+		}
+
+		public static void PrintInst(FishInst Inst, int Offset, Reg R)
+		{
+			PrintInst(Inst, string.Format("{0}(%{1})", Offset, R));
+		}
+
+		public static void PrintInst(FishInst Inst, Reg R)
+		{
+			PrintInst(Inst, "%" + R.ToString());
+		}
+
+		public static void PrintInst(FishInst Inst, Reg R1, Reg R2)
+		{
+			PrintInst(Inst, string.Format("%{0}, %{1}", R1, R2));
+		}
+
+		public static void PrintReg(string Str)
+		{
+			ForegroundColor = ConsoleColor.DarkYellow;
+			Write(Str);
+			ResetColor();
+		}
+
+		public static void PrintReg(Reg R, string Val)
+		{
+			PrintReg(string.Format("{0} = {1}", R, Val));
+		}
+
+		public static void PrintReg(Reg R, uint Val)
+		{
+			PrintReg(R, string.Format("0x{0:X} hex, {0} dec; ", Val));
 		}
 
 		public static void Write(string Fmt, params object[] Args)
@@ -207,10 +281,12 @@ namespace Fishmachine
 			//VM.LoadToMemory(Bytecode, 0x1000);
 			Console.Write("{0} bytes ", Bytecode.Length);
 			VM.LoadToMemory(Bytecode, 0x1000);
-			Console.WriteLine("loaded");
+			Console.WriteLine("loaded @ 0x{0:X}", 0x1000);
 
 			VM.Regs.Write(CodeGeneration.Reg.ESP, 0x20000);
 			//VM.Regs.Write(CodeGeneration.Reg.EBP, 0x20000);
+
+			Console.WriteLine("Jumping to kmain @ 0x{0:X}", KMainAddr);
 			VM.Jump(KMainAddr);
 
 

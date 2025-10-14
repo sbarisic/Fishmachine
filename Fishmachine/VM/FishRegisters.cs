@@ -276,6 +276,43 @@ namespace Fishmachine.VM
 
 			Regs[(int)Reg] = Val;
 		}
+
+		public void PrintAll()
+		{
+			if (!FishSettings.DebugPrintRegisters)
+				return;
+
+			Reg[] RegsEnum = Enum.GetValues<Reg>().ToArray();
+			int c = 1;
+
+			Console.PrintReg(string.Format("EIP 0x{0:X} hex, {0} dec; ", IP));
+			Console.PrintReg(string.Format("RFLAGS 0x{0:X4} hex, {0} dec; ", RFLAGS));
+			Console.WriteLine();
+			Console.PrintReg(string.Format("IsZero {0}; Sign {1}; LessThan {1}; Equal {3}; GreaterThan {4}; IntEnabled {5}", IsZero ? 1 : 0, Sign ? 1 : 0, LessThan ? 1 : 0, Equal ? 1 : 0, GreaterThan ? 1 : 0, IntEnabled ? 1 : 0));
+			Console.WriteLine();
+
+			foreach (var R in RegsEnum)
+			{
+				if (R == Reg.MAX_VALUE)
+					continue;
+
+				//Console.Write("{0} = {1:X4} ", R, this.Regs.Read(R));
+				Console.PrintReg(R, Read(R));
+
+				if (c++ % 4 == 0) 
+					Console.WriteLine();
+			}
+			Console.WriteLine();
+
+			c = 1;
+			for (int i = 0; i < ST.Length; i++)
+			{
+				Console.PrintReg(string.Format("ST[{0}] {1}; ", i, ST[i]));
+				if (c++ % 4 == 0)
+					Console.WriteLine();
+			}
+			Console.WriteLine();
+		}
 	}
 
 }

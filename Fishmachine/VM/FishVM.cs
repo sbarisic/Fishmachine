@@ -310,7 +310,7 @@ namespace Fishmachine.VM
 			//}
 
 			//Console.ForegroundColor = ConsoleColor.Yellow;
-			Reg[] RegsEnum = Enum.GetValues<Reg>().ToArray();
+			/*Reg[] RegsEnum = Enum.GetValues<Reg>().ToArray();
 			foreach (var R in RegsEnum)
 			{
 				if (R == Reg.MAX_VALUE)
@@ -318,7 +318,7 @@ namespace Fishmachine.VM
 
 				//Console.Write("{0} = {1:X4} ", R, this.Regs.Read(R));
 				Regs.Read(R);
-			}
+			}*/
 			//Console.WriteLine();
 			//Console.ResetColor();
 
@@ -538,8 +538,8 @@ namespace Fishmachine.VM
 				}
 			}
 
-			if (FishSettings.DebugPrint || FishSettings.DebugPrintInstruction)
-				Console.Write("{0:X4}: ", Regs.IP);
+			if (FishSettings.DebugPrint || FishSettings.DebugPrintInstruction || FishSettings.DebugPrintIP)
+				Console.Write("IP 0x{0:X}: ", Regs.IP);
 
 			if (IRETStack.Count > 0 && IRETStack.TryPeek(out (uint, FishInterrupt) IRETAddr) && IRETAddr.Item1 == Regs.IP)
 			{
@@ -580,17 +580,20 @@ namespace Fishmachine.VM
 			{
 				case FishInst.NOP:
 					{
+						Console.PrintInst(Inst);
 						break;
 					}
 
 				case FishInst.WAIT:
 					{
+						Console.PrintInst(Inst);
 						E = FishException.RequestWait;
 						return true;
 					}
 
 				case FishInst.HALT:
 					{
+						Console.PrintInst(Inst);
 						return false;
 					}
 
@@ -599,6 +602,8 @@ namespace Fishmachine.VM
 						Reg R = (Reg)ReadByteFromIP(out E);
 						if (E != FishException.None)
 							return true;
+
+						Console.PrintInst(Inst, R);
 
 						if (PushReg(R, out E))
 							return true;
@@ -609,8 +614,11 @@ namespace Fishmachine.VM
 				case FishInst.POP_REG:
 					{
 						Reg R = (Reg)ReadByteFromIP(out E);
+
 						if (E != FishException.None)
 							return true;
+
+						Console.PrintInst(Inst, R);
 
 						if (PopReg(R, out E))
 							return true;
@@ -640,6 +648,8 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, R);
+
 						uint RegVal = Regs.Read(R);
 						uint AX = Regs.Read(Reg.AX);
 						uint Mul = RegVal * AX;
@@ -654,6 +664,8 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, R);
+
 						int RegVal = (int)Regs.Read(R);
 						int AX = (int)Regs.Read(Reg.AX);
 						int Mul = RegVal * AX;
@@ -667,6 +679,8 @@ namespace Fishmachine.VM
 						uint Val = ReadUInt32FromIP(out E);
 						if (E != FishException.None)
 							return true;
+
+						Console.PrintInst(Inst, Val);
 
 						uint ESP = Regs.Read(Reg.ESP);
 						uint WriteAddr = ESP - sizeof(uint);
@@ -696,6 +710,8 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, R1, R2);
+
 						byte Val = (byte)(Regs.Read(R1) & 0xFF);
 						Regs.Write(R2, Val);
 
@@ -717,6 +733,8 @@ namespace Fishmachine.VM
 						Reg R2 = (Reg)ReadByteFromIP(out E);
 						if (E != FishException.None)
 							return true;
+
+						Console.PrintInst(Inst, Addr, R2);
 
 						Regs.Write(R2, Addr);
 
@@ -743,6 +761,8 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, Offset, R1, R2);
+
 						uint Addr = (uint)(Regs.Read(R1) + Offset);
 						Regs.Write(R2, Addr);
 
@@ -766,6 +786,8 @@ namespace Fishmachine.VM
 						Reg R2 = (Reg)ReadByteFromIP(out E);
 						if (E != FishException.None)
 							return true;
+
+						Console.PrintInst(Inst, R1, R2);
 
 						uint R1Val = 0;
 
@@ -796,6 +818,8 @@ namespace Fishmachine.VM
 						Reg R1 = (Reg)ReadByteFromIP(out E);
 						if (E != FishException.None)
 							return true;
+
+						Console.PrintInst(Inst, R1, R2);
 
 						uint R1Val = Regs.Read(R1);
 						uint R2Val = Regs.Read(R2);
@@ -829,6 +853,8 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, R1, R2);
+
 						uint R1Val = Regs.Read(R1);
 						uint R2Val = Regs.Read(R2);
 
@@ -858,6 +884,8 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, R1);
+
 						uint Val = !Regs.Equal ? 1u : 0u;
 						Regs.Write(R1, Val);
 
@@ -876,6 +904,8 @@ namespace Fishmachine.VM
 						Reg R1 = (Reg)ReadByteFromIP(out E);
 						if (E != FishException.None)
 							return true;
+
+						Console.PrintInst(Inst, R1);
 
 						uint Val = Regs.Equal ? 1u : 0u;
 						Regs.Write(R1, Val);
@@ -896,6 +926,8 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, R1);
+
 						uint Val = Regs.GreaterThan || Regs.Equal ? 1u : 0u;
 						Regs.Write(R1, Val);
 
@@ -914,6 +946,8 @@ namespace Fishmachine.VM
 						Reg R1 = (Reg)ReadByteFromIP(out E);
 						if (E != FishException.None)
 							return true;
+
+						Console.PrintInst(Inst, R1);
 
 						uint Val = Regs.GreaterThan ? 1u : 0u;
 						Regs.Write(R1, Val);
@@ -934,6 +968,8 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, R1);
+
 						uint Val = Regs.LessThan ? 1u : 0u;
 						Regs.Write(R1, Val);
 
@@ -952,6 +988,8 @@ namespace Fishmachine.VM
 						Reg R1 = (Reg)ReadByteFromIP(out E);
 						if (E != FishException.None)
 							return true;
+
+						Console.PrintInst(Inst, R1);
 
 						uint Val = Regs.LessThan || Regs.Equal ? 1u : 0u;
 						Regs.Write(R1, Val);
@@ -981,6 +1019,7 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, R1, Offset, R2);
 
 						uint R1Val = Regs.Read(R1);
 						uint Addr = (uint)(Regs.Read(R2) + Offset);
@@ -1031,6 +1070,7 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, Offset, R1, R2);
 
 						uint Addr = (uint)(Regs.Read(R1) + Offset);
 						// Zero extend word from memory
@@ -1066,6 +1106,7 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, Offset, R1, R2);
 
 						uint Addr = (uint)(Regs.Read(R1) + Offset);
 						// Sign extend byte from memory
@@ -1100,6 +1141,7 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, Offset, R1, R2);
 
 						uint Addr = (uint)(Regs.Read(R1) + Offset);
 						// Regular 32-bit read
@@ -1130,6 +1172,7 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, L1, R2);
 
 						uint RVal = Regs.Read(R2);
 						Regs.Write(R2, RVal - L1);
@@ -1146,6 +1189,7 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, R1, R2);
 
 						uint R1Val = Regs.Read(R1);
 						uint R2Val = Regs.Read(R2);
@@ -1171,6 +1215,7 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, R1, R2);
 
 						uint R1Val = Regs.Read(R1);
 						uint R2Val = Regs.Read(R2);
@@ -1196,6 +1241,7 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, L1, R2);
 
 						uint Result = L1 + Regs.Read(R2);
 						Regs.Write(R2, Result);
@@ -1212,6 +1258,7 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, L1, R2);
 
 						Regs.Write(R2, L1);
 						break;
@@ -1227,6 +1274,7 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, L1, R2);
 
 						// Zero extend the lower 16 bits of the immediate value
 						uint Result = L1 & 0xFFFF;
@@ -1244,6 +1292,7 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, L1, R2);
 
 						// Sign extend the lower 8 bits of the immediate value
 						byte byteVal = (byte)(L1 & 0xFF);
@@ -1262,6 +1311,7 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, L1, R2);
 
 						uint R2Val = Regs.Read(R2);
 						int Result = (int)R2Val - (int)L1;
@@ -1289,6 +1339,7 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, R1);
 						uint Addr = Regs.Read(R1);
 
 						if (CallLong(Addr, out E))
@@ -1304,6 +1355,7 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, Addr);
 						if (CallLong(Addr, out E))
 							return true;
 
@@ -1312,6 +1364,8 @@ namespace Fishmachine.VM
 
 				case FishInst.RET:
 					{
+						Console.PrintInst(Inst);
+
 						uint ESP = Regs.Read(Reg.ESP);
 						uint RetAddr = ReadUInt32(ESP, out E);
 						if (E != FishException.None)
@@ -1324,6 +1378,8 @@ namespace Fishmachine.VM
 
 				case FishInst.SYSCALL_2:
 					{
+						Console.PrintInst(Inst);
+
 						uint ESP = Regs.Read(Reg.ESP);
 						uint SyscallNum = ReadUInt32(ESP, out E);
 						if (E != FishException.None)
@@ -1346,6 +1402,8 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, SyscallNum);
+
 						Syscall((FishSyscall)SyscallNum, 0, out E);
 						if (E != FishException.None)
 							return true;
@@ -1362,6 +1420,7 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, Addr);
 
 						if (Inst == FishInst.JUMP_IF_ZERO_LONG)
 						{
@@ -1408,7 +1467,7 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
-
+						Console.PrintInst(Inst, Offset, R1);
 						float FVal = 0;
 
 						if (Inst == FishInst.FLOAT_POP_OFFSET_REG || Inst == FishInst.DOUBLE_POP_OFFSET_REG)
@@ -1448,6 +1507,7 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, Offset, R1);
 
 						uint Addr = (uint)(Regs.Read(R1) + Offset);
 						byte[] FBytes = ReadBytes(Addr, 4, out E);
@@ -1475,6 +1535,8 @@ namespace Fishmachine.VM
 						float Val1 = Regs.FpuPop();
 						float Val2 = Regs.FpuPop();
 						float Result = 0;
+
+						Console.PrintInst(Inst, string.Format("(FPU STACK {0}, {1})", Val1, Val2));
 
 						if (Inst == FishInst.FLOAT_ADD)
 							Result = Val1 + Val2;
@@ -1507,6 +1569,8 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						Console.PrintInst(Inst, R1);
+
 						uint Addr = Regs.Read(R1);
 						Jump(Addr);
 						break;
@@ -1514,6 +1578,8 @@ namespace Fishmachine.VM
 
 				case FishInst.LEAVE:
 					{
+						Console.PrintInst(Inst);
+
 						if (Leave(out E))
 							return true;
 						/*// Restore ESP from EBP
@@ -1535,6 +1601,8 @@ namespace Fishmachine.VM
 					{
 						/*if (Debugger.IsAttached)
 							Debugger.Break();*/
+						Console.PrintInst(Inst);
+						Regs.PrintAll();
 
 						Debugger.Break();
 						break;
@@ -1561,6 +1629,8 @@ namespace Fishmachine.VM
 
 			while (Step(out E))
 			{
+				Regs.PrintAll();
+
 				if (E != FishException.None && E != FishException.RequestWait)
 					throw new Exception(string.Format("VM {0}", E));
 
