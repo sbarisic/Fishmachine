@@ -277,6 +277,7 @@ namespace Fishmachine.VM
 			Regs[(int)Reg] = Val;
 		}
 
+
 		public void PrintAll()
 		{
 			if (!FishSettings.DebugPrintRegisters)
@@ -288,7 +289,7 @@ namespace Fishmachine.VM
 			Console.PrintReg(string.Format("EIP 0x{0:X} hex, {0} dec; ", IP));
 			Console.PrintReg(string.Format("RFLAGS 0x{0:X4} hex, {0} dec; ", RFLAGS));
 			Console.WriteLine();
-			Console.PrintReg(string.Format("IsZero {0}; Sign {1}; LessThan {1}; Equal {3}; GreaterThan {4}; IntEnabled {5}", IsZero ? 1 : 0, Sign ? 1 : 0, LessThan ? 1 : 0, Equal ? 1 : 0, GreaterThan ? 1 : 0, IntEnabled ? 1 : 0));
+			Console.PrintReg(string.Format("IsZero {0}; Sign {1}; LessThan {2}; Equal {3}; GreaterThan {4}; IntEnabled {5}", IsZero ? 1 : 0, Sign ? 1 : 0, LessThan ? 1 : 0, Equal ? 1 : 0, GreaterThan ? 1 : 0, IntEnabled ? 1 : 0));
 			Console.WriteLine();
 
 			foreach (var R in RegsEnum)
@@ -299,7 +300,7 @@ namespace Fishmachine.VM
 				//Console.Write("{0} = {1:X4} ", R, this.Regs.Read(R));
 				Console.PrintReg(R, Read(R));
 
-				if (c++ % 4 == 0) 
+				if (c++ % 4 == 0)
 					Console.WriteLine();
 			}
 			Console.WriteLine();

@@ -189,12 +189,6 @@ kmain:
         CALL_REG %eax
         ADD_LONG_REG $4, %esp
     # FuncCall END - print
-    # While BEGIN
-        .WHILE_000D:
-        NOP 
-        JUMP_LONG .WHILE_000D
-        .ENDWHILE_000F:
-    # While END
     SYSCALL $0
     LEAVE 
     RET 
