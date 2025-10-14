@@ -505,6 +505,7 @@ namespace Fishmachine
 							AddAsmInstr(Instr);
 							break;
 
+						case "MOVEBYTE_OFFSET_REG_REG":
 						case "MOVEZ_OFFSET_REG_REG":
 						case "MOVES_OFFSET_REG_REG":
 						case "MOVE_OFFSET_REG_REG":

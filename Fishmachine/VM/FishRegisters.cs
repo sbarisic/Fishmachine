@@ -270,7 +270,7 @@ namespace Fishmachine.VM
 			if (FishSettings.DebugPrint || FishSettings.DebugRegisterWrite)
 			{
 				Console.ForegroundColor = ConsoleColor.Yellow;
-				Console.WriteLine(": Write {0} = 0x{1:X} hex; {2} dec", Reg, Regs[(int)Reg], Val);
+				Console.WriteLine(": Write {0} = 0x{1:X} hex; {1} dec; new value 0x{2:X} hex; {2} dec;", Reg, Regs[(int)Reg], Val);
 				Console.ResetColor();
 			}
 

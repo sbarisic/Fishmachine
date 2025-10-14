@@ -1,4 +1,5 @@
-﻿using CodeGeneration;
+﻿using ABT;
+using CodeGeneration;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -86,6 +87,7 @@ namespace Fishmachine.VM
 				// One 32 bit operand, two 8-bit operands, 7 byte total
 				case FishInst.MOVE_REG_OFFSET_REG:
 				case FishInst.MOVEBYTE_REG_OFFSET_REG:
+				case FishInst.MOVEBYTE_OFFSET_REG_REG:
 				case FishInst.MOVE_OFFSET_REG_REG:
 				case FishInst.LEA_OFFSET_REG_REG:
 				case FishInst.MOVEZ_OFFSET_REG_REG:
@@ -328,6 +330,8 @@ namespace Fishmachine.VM
 			}
 			else if (FInt == FishSyscall.PrintChar)
 			{
+				Console.WriteLine("PrintChar '{0}'", (char)Arg1);
+
 				if (FishSettings.DebugPrint)
 				{
 					Console.WriteLine("VM: 0x{0:X} = '{1}'", Arg1, (char)Arg1);
@@ -338,6 +342,8 @@ namespace Fishmachine.VM
 			}
 			else if (FInt == FishSyscall.PrintNum)
 			{
+				Console.WriteLine("PrintNum '{0}'", Arg1);
+
 				if (FishSettings.DebugPrint)
 				{
 					Console.WriteLine("VM: 0x{0:X} = '{1}'", Arg1, Arg1);
@@ -1004,6 +1010,7 @@ namespace Fishmachine.VM
 						break;
 					}
 
+				case FishInst.MOVEBYTE_OFFSET_REG_REG:
 				case FishInst.MOVEBYTE_REG_OFFSET_REG:
 				case FishInst.MOVE_REG_OFFSET_REG:
 					{
@@ -1038,7 +1045,24 @@ namespace Fishmachine.VM
 								Console.ResetColor();
 							}
 						}
-						else
+						else if (Inst == FishInst.MOVEBYTE_OFFSET_REG_REG)
+						{
+							uint ReadAddr = (uint)(R1Val + Offset);
+
+							byte B = ReadByte(ReadAddr, out E);
+							if (E != FishException.None)
+								return true;
+
+							Regs.Write(R2, B);
+
+							if (FishSettings.DebugPrint)
+							{
+								Console.ForegroundColor = ConsoleColor.Yellow;
+								Console.WriteLine("Read byte 0x{0:X} from 0x{1:X4}", B, ReadAddr);
+								Console.ResetColor();
+							}
+						}
+						else if (Inst == FishInst.MOVEBYTE_REG_OFFSET_REG)
 						{
 							byte WriteB = (byte)(R1Val & 0xFF);
 							WriteByte(Addr, WriteB, out E);
@@ -1052,6 +1076,8 @@ namespace Fishmachine.VM
 								Console.ResetColor();
 							}
 						}
+						else throw new NotImplementedException();
+
 						//Regs.Write(R2, R1Val);
 						break;
 					}
