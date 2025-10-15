@@ -1,4 +1,7 @@
 ﻿using CodeGeneration;
+using CTilde;
+using CTilde.FishAsm;
+using CTilde.Langs;
 using Driver;
 using Fishmachine.VM;
 using System.Runtime.CompilerServices;
@@ -260,10 +263,24 @@ namespace Fishmachine
 			Console.WriteLine(FmtStr);
 		}
 
+		static void CTildeCompile()
+		{
+			Tokenizer Tokenizer = new Tokenizer("data/FishAsm.c");
+			Parser Parser = new Parser(Tokenizer);
+
+			FishCompileState State = new FishCompileState();
+			LangProvider Lng = new FishAsmProvider(State);
+			Lng.Compile(Parser.Parse());
+
+			File.WriteAllText("ct.asm", Lng.CompileToSource());
+		}
+
 		static void Main(string[] args)
 		{
 			//Compile("stdfish.c");
 			//Compile("test.c");
+
+			CTildeCompile();
 
 			AssemblerState AsmState = new AssemblerState();
 			AsmState.DefineToken("int_table", 0x100, true);

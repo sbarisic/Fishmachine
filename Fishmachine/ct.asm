@@ -47,19 +47,26 @@ print:
     # VariableAssign END
     # While BEGIN
         .WHILE_000A:
-        # IndexOp BEGIN
-            #: EAX = i
-            LEA_OFFSET_REG_REG -4, %ebp, %eax
-            MOVE_OFFSET_REG_REG 0, %eax, %eax
+        # Expr_ComparisonOp BEGIN
+            MOVE_LONG_REG $0, %eax
+            PUSH_REG %eax
             MOVE_REG_REG %eax, %ebx
-            #: str[EBX]
-            LEA_OFFSET_REG_REG 8, %ebp, %eax
-            ADD_REG_REG %ebx, %eax
-            MOVEBYTE_OFFSET_REG_REG 0, %eax, %eax
-        # IndexOp END
-        MOVE_REG_REG %eax, %ebx
-        MOVE_LONG_REG $0, %eax
-        CMP_REG_REG %eax, %ebx
+            # IndexOp BEGIN
+                #: EAX = i
+                LEA_OFFSET_REG_REG -4, %ebp, %eax
+                MOVE_OFFSET_REG_REG 0, %eax, %eax
+                MOVE_REG_REG %eax, %ebx
+                #: str[EBX]
+                LEA_OFFSET_REG_REG 8, %ebp, %eax
+                ADD_REG_REG %ebx, %eax
+                MOVEBYTE_OFFSET_REG_REG 0, %eax, %eax
+            # IndexOp END
+            MOVE_REG_REG %eax, %ebx
+            POP_REG %eax
+            #: str[i] != 0
+            #: EAX - EBX semantics
+            CMP_REG_REG %eax, %ebx
+        # Expr_ComparisonOp END
         JUMP_IF_ZERO_LONG .ENDWHILE_000C
         PUSH_REG %ebx
         PUSH_REG %eax
@@ -173,13 +180,20 @@ memory_copy:
     # VariableAssign END
     # While BEGIN
         .WHILE_0014:
-        LEA_OFFSET_REG_REG -4, %ebp, %eax
-        MOVE_OFFSET_REG_REG 0, %eax, %eax
-        MOVE_REG_REG %eax, %ebx
-        LEA_OFFSET_REG_REG 16, %ebp, %eax
-        MOVE_OFFSET_REG_REG 0, %eax, %eax
-        CMP_REG_REG %eax, %ebx
-        JUMP_IF_LESS_LONG .ENDWHILE_0016
+        # Expr_ComparisonOp BEGIN
+            LEA_OFFSET_REG_REG 16, %ebp, %eax
+            MOVE_OFFSET_REG_REG 0, %eax, %eax
+            PUSH_REG %eax
+            MOVE_REG_REG %eax, %ebx
+            LEA_OFFSET_REG_REG -4, %ebp, %eax
+            MOVE_OFFSET_REG_REG 0, %eax, %eax
+            MOVE_REG_REG %eax, %ebx
+            POP_REG %eax
+            #: i < len
+            #: EAX - EBX semantics
+            CMP_REG_REG %eax, %ebx
+        # Expr_ComparisonOp END
+        JUMP_IF_GREATEQ_LONG .ENDWHILE_0016
         PUSH_REG %ebx
         PUSH_REG %eax
         # IndexOp BEGIN
@@ -207,7 +221,7 @@ memory_copy:
             MOVE_REG_REG %eax, %ebx
             LEA_OFFSET_REG_REG -8, %ebp, %eax
             MOVEBYTE_OFFSET_REG_REG 0, %eax, %eax
-            MOVEBYTE_REG_OFFSET_REG %eax, 8, %ebp
+            MOVEBYTE_REG_OFFSET_REG %eax, 0, %ebx
         # Expr_AssignValue END
         # Expr_IncDecOp BEGIN
             LEA_OFFSET_REG_REG -4, %ebp, %eax
@@ -272,13 +286,20 @@ memory_clear:
     # FuncCall END - print
     # While BEGIN
         .WHILE_001C:
-        LEA_OFFSET_REG_REG -4, %ebp, %eax
-        MOVE_OFFSET_REG_REG 0, %eax, %eax
-        MOVE_REG_REG %eax, %ebx
-        LEA_OFFSET_REG_REG 12, %ebp, %eax
-        MOVE_OFFSET_REG_REG 0, %eax, %eax
-        CMP_REG_REG %eax, %ebx
-        JUMP_IF_LESS_LONG .ENDWHILE_001E
+        # Expr_ComparisonOp BEGIN
+            LEA_OFFSET_REG_REG 12, %ebp, %eax
+            MOVE_OFFSET_REG_REG 0, %eax, %eax
+            PUSH_REG %eax
+            MOVE_REG_REG %eax, %ebx
+            LEA_OFFSET_REG_REG -4, %ebp, %eax
+            MOVE_OFFSET_REG_REG 0, %eax, %eax
+            MOVE_REG_REG %eax, %ebx
+            POP_REG %eax
+            #: i < len
+            #: EAX - EBX semantics
+            CMP_REG_REG %eax, %ebx
+        # Expr_ComparisonOp END
+        JUMP_IF_GREATEQ_LONG .ENDWHILE_001E
         PUSH_REG %ebx
         PUSH_REG %eax
         # Expr_AssignValue BEGIN
@@ -293,7 +314,7 @@ memory_clear:
             # IndexOp END
             MOVE_REG_REG %eax, %ebx
             MOVE_LONG_REG $0, %eax
-            MOVEBYTE_REG_OFFSET_REG %eax, 8, %ebp
+            MOVEBYTE_REG_OFFSET_REG %eax, 0, %ebx
         # Expr_AssignValue END
         # Expr_IncDecOp BEGIN
             LEA_OFFSET_REG_REG -4, %ebp, %eax
@@ -313,19 +334,35 @@ input_add:
     PUSH_REG %ebp
     MOVE_REG_REG %esp, %ebp
     # If BEGIN
-        LEA_OFFSET_REG_REG 8, %ebp, %eax
-        MOVEBYTE_OFFSET_REG_REG 0, %eax, %eax
-        MOVE_REG_REG %eax, %ebx
-        MOVES_LONG_REG $8, %eax
-        CMP_REG_REG %eax, %ebx
-        JUMP_IF_NOT_ZERO_LONG .ENDIF_0021
-        # If BEGIN
-            MOVE_LONG_REG input_count, %ebx
-            MOVE_OFFSET_REG_REG 0, %ebx, %eax
+        #: c == '\b'
+        # Expr_ComparisonOp BEGIN
+            MOVES_LONG_REG $8, %eax
+            PUSH_REG %eax
             MOVE_REG_REG %eax, %ebx
-            MOVE_LONG_REG $0, %eax
+            LEA_OFFSET_REG_REG 8, %ebp, %eax
+            MOVEBYTE_OFFSET_REG_REG 0, %eax, %eax
+            MOVE_REG_REG %eax, %ebx
+            POP_REG %eax
+            #: c == '\b'
+            #: EAX - EBX semantics
             CMP_REG_REG %eax, %ebx
-            JUMP_IF_LESSEQ_LONG .ENDIF_0023
+        # Expr_ComparisonOp END
+        JUMP_IF_ZERO_LONG .ENDIF_0021
+        # If BEGIN
+            #: input_count > 0
+            # Expr_ComparisonOp BEGIN
+                MOVE_LONG_REG $0, %eax
+                PUSH_REG %eax
+                MOVE_REG_REG %eax, %ebx
+                MOVE_LONG_REG input_count, %ebx
+                MOVE_OFFSET_REG_REG 0, %ebx, %eax
+                MOVE_REG_REG %eax, %ebx
+                POP_REG %eax
+                #: input_count > 0
+                #: EAX - EBX semantics
+                CMP_REG_REG %eax, %ebx
+            # Expr_ComparisonOp END
+            JUMP_IF_GREAT_LONG .ENDIF_0023
             # Expr_IncDecOp BEGIN
                 MOVE_LONG_REG input_count, %ebx
                 MOVE_OFFSET_REG_REG 0, %ebx, %eax
@@ -355,20 +392,28 @@ input_add:
         .ENDIF_0021:
     # If END
     # If BEGIN
-        MOVE_LONG_REG input_count, %ebx
-        MOVE_OFFSET_REG_REG 0, %ebx, %eax
-        MOVE_REG_REG %eax, %ebx
-        # MathOp BEGIN (-)
-            PUSH_REG %ebx
-            MOVE_LONG_REG input_length, %ebx
+        #: input_count < (input_length - 1)
+        # Expr_ComparisonOp BEGIN
+            # MathOp BEGIN (-)
+                PUSH_REG %ebx
+                MOVE_LONG_REG $1, %eax
+                MOVE_REG_REG %eax, %ebx
+                MOVE_LONG_REG input_length, %ebx
+                MOVE_OFFSET_REG_REG 0, %ebx, %eax
+                SUB_REG_REG %ebx, %eax
+                POP_REG %ebx
+            # MathOp END (-)
+            PUSH_REG %eax
+            MOVE_REG_REG %eax, %ebx
+            MOVE_LONG_REG input_count, %ebx
             MOVE_OFFSET_REG_REG 0, %ebx, %eax
             MOVE_REG_REG %eax, %ebx
-            MOVE_LONG_REG $1, %eax
-            SUB_REG_REG %ebx, %eax
-            POP_REG %ebx
-        # MathOp END (-)
-        CMP_REG_REG %eax, %ebx
-        JUMP_IF_GREATEQ_LONG .ENDIF_0025
+            POP_REG %eax
+            #: input_count < (input_length - 1)
+            #: EAX - EBX semantics
+            CMP_REG_REG %eax, %ebx
+        # Expr_ComparisonOp END
+        JUMP_IF_LESS_LONG .ENDIF_0025
         # Expr_AssignValue BEGIN
             # IndexOp BEGIN
                 #: EAX = input_count
@@ -438,7 +483,7 @@ input_readline:
         # IndexOp END
         MOVE_REG_REG %eax, %ebx
         MOVE_LONG_REG $0, %eax
-        MOVEBYTE_REG_OFFSET_REG %eax, 8, %ebp
+        MOVEBYTE_REG_OFFSET_REG %eax, 0, %ebx
     # Expr_AssignValue END
     # While BEGIN
         .WHILE_0028:
@@ -446,22 +491,30 @@ input_readline:
         PUSH_REG %ebx
         PUSH_REG %eax
         # If BEGIN
-            MOVE_LONG_REG input_count, %ebx
-            MOVE_OFFSET_REG_REG 0, %ebx, %eax
-            MOVE_REG_REG %eax, %ebx
-            MOVE_LONG_REG $0, %eax
-            CMP_REG_REG %eax, %ebx
-            JUMP_IF_NOT_ZERO_LONG .ENDIF_002C
+            #: input_count == 0
+            # Expr_ComparisonOp BEGIN
+                MOVE_LONG_REG $0, %eax
+                PUSH_REG %eax
+                MOVE_REG_REG %eax, %ebx
+                MOVE_LONG_REG input_count, %ebx
+                MOVE_OFFSET_REG_REG 0, %ebx, %eax
+                MOVE_REG_REG %eax, %ebx
+                POP_REG %eax
+                #: input_count == 0
+                #: EAX - EBX semantics
+                CMP_REG_REG %eax, %ebx
+            # Expr_ComparisonOp END
+            JUMP_IF_ZERO_LONG .ENDIF_002C
             # Continue
             JUMP_LONG .WHILE_0028
             .ENDIF_002C:
         # If END
         # MathOp BEGIN (-)
             PUSH_REG %ebx
+            MOVE_LONG_REG $1, %eax
+            MOVE_REG_REG %eax, %ebx
             MOVE_LONG_REG input_count, %ebx
             MOVE_OFFSET_REG_REG 0, %ebx, %eax
-            MOVE_REG_REG %eax, %ebx
-            MOVE_LONG_REG $1, %eax
             SUB_REG_REG %ebx, %eax
             POP_REG %ebx
         # MathOp END (-)
@@ -509,12 +562,20 @@ input_readline:
             ADD_LONG_REG $4, %esp
         # FuncCall END - printchar
         # If BEGIN
-            LEA_OFFSET_REG_REG -12, %ebp, %eax
-            MOVEBYTE_OFFSET_REG_REG 0, %eax, %eax
-            MOVE_REG_REG %eax, %ebx
-            MOVES_LONG_REG $10, %eax
-            CMP_REG_REG %eax, %ebx
-            JUMP_IF_NOT_ZERO_LONG .ENDIF_002F
+            #: chr == '\n'
+            # Expr_ComparisonOp BEGIN
+                MOVES_LONG_REG $10, %eax
+                PUSH_REG %eax
+                MOVE_REG_REG %eax, %ebx
+                LEA_OFFSET_REG_REG -12, %ebp, %eax
+                MOVEBYTE_OFFSET_REG_REG 0, %eax, %eax
+                MOVE_REG_REG %eax, %ebx
+                POP_REG %eax
+                #: chr == '\n'
+                #: EAX - EBX semantics
+                CMP_REG_REG %eax, %ebx
+            # Expr_ComparisonOp END
+            JUMP_IF_ZERO_LONG .ENDIF_002F
             # FuncCall BEGIN - memory_copy
                 LEA_OFFSET_REG_REG 8, %ebp, %eax
                 MOVEBYTE_OFFSET_REG_REG 0, %eax, %eax
@@ -531,10 +592,10 @@ input_readline:
             # FuncCall END - memory_copy
             # MathOp BEGIN (-)
                 PUSH_REG %ebx
+                MOVE_LONG_REG $1, %eax
+                MOVE_REG_REG %eax, %ebx
                 MOVE_LONG_REG input_count, %ebx
                 MOVE_OFFSET_REG_REG 0, %ebx, %eax
-                MOVE_REG_REG %eax, %ebx
-                MOVE_LONG_REG $1, %eax
                 SUB_REG_REG %ebx, %eax
                 POP_REG %ebx
             # MathOp END (-)
@@ -553,7 +614,7 @@ input_readline:
                 # IndexOp END
                 MOVE_REG_REG %eax, %ebx
                 MOVE_LONG_REG $0, %eax
-                MOVEBYTE_REG_OFFSET_REG %eax, 8, %ebp
+                MOVEBYTE_REG_OFFSET_REG %eax, 0, %ebx
             # Expr_AssignValue END
             MOVE_LONG_REG $0, %eax
             # Expr_AssignValue BEGIN
@@ -697,132 +758,8 @@ handler_int2_keyboardchar:
 kmain:
     PUSH_REG %ebp
     MOVE_REG_REG %esp, %ebp
-    # Expr_AssignValue BEGIN
-        # IndexOp BEGIN
-            #: EAX = 0
-            MOVE_LONG_REG $0, %eax
-            MOVE_REG_REG %eax, %ebx
-            #: EBX = EBX * 4
-            MOVE_LONG_REG $4, %eax
-            MUL_REG %ebx
-            MOVE_REG_REG %eax, %ebx
-            #: int_table[EBX]
-            ADD_LONG_REG int_table, %eax
-        # IndexOp END
-        MOVE_REG_REG %eax, %ebx
-        # Expr_AddressOfOp BEGIN
-            MOVE_LONG_REG handler_int0, %eax
-        # Expr_AddressOfOp END
-        MOVE_REG_OFFSET_REG %eax, 0, %ebx
-    # Expr_AssignValue END
-    # Expr_AssignValue BEGIN
-        # IndexOp BEGIN
-            #: EAX = 1
-            MOVE_LONG_REG $1, %eax
-            MOVE_REG_REG %eax, %ebx
-            #: EBX = EBX * 4
-            MOVE_LONG_REG $4, %eax
-            MUL_REG %ebx
-            MOVE_REG_REG %eax, %ebx
-            #: int_table[EBX]
-            ADD_LONG_REG int_table, %eax
-        # IndexOp END
-        MOVE_REG_REG %eax, %ebx
-        # Expr_AddressOfOp BEGIN
-            MOVE_LONG_REG handler_int1_keyboardkey, %eax
-        # Expr_AddressOfOp END
-        MOVE_REG_OFFSET_REG %eax, 0, %ebx
-    # Expr_AssignValue END
-    # Expr_AssignValue BEGIN
-        # IndexOp BEGIN
-            #: EAX = 2
-            MOVE_LONG_REG $2, %eax
-            MOVE_REG_REG %eax, %ebx
-            #: EBX = EBX * 4
-            MOVE_LONG_REG $4, %eax
-            MUL_REG %ebx
-            MOVE_REG_REG %eax, %ebx
-            #: int_table[EBX]
-            ADD_LONG_REG int_table, %eax
-        # IndexOp END
-        MOVE_REG_REG %eax, %ebx
-        # Expr_AddressOfOp BEGIN
-            MOVE_LONG_REG handler_int2_keyboardchar, %eax
-        # Expr_AddressOfOp END
-        MOVE_REG_OFFSET_REG %eax, 0, %ebx
-    # Expr_AssignValue END
     # FuncCall BEGIN - input_add
         MOVES_LONG_REG $72, %eax
-        PUSH_REG %eax
-        MOVE_LONG_REG input_add, %eax
-        CALL_REG %eax
-        ADD_LONG_REG $4, %esp
-    # FuncCall END - input_add
-    # FuncCall BEGIN - input_add
-        MOVES_LONG_REG $101, %eax
-        PUSH_REG %eax
-        MOVE_LONG_REG input_add, %eax
-        CALL_REG %eax
-        ADD_LONG_REG $4, %esp
-    # FuncCall END - input_add
-    # FuncCall BEGIN - input_add
-        MOVES_LONG_REG $108, %eax
-        PUSH_REG %eax
-        MOVE_LONG_REG input_add, %eax
-        CALL_REG %eax
-        ADD_LONG_REG $4, %esp
-    # FuncCall END - input_add
-    # FuncCall BEGIN - input_add
-        MOVES_LONG_REG $108, %eax
-        PUSH_REG %eax
-        MOVE_LONG_REG input_add, %eax
-        CALL_REG %eax
-        ADD_LONG_REG $4, %esp
-    # FuncCall END - input_add
-    # FuncCall BEGIN - input_add
-        MOVES_LONG_REG $111, %eax
-        PUSH_REG %eax
-        MOVE_LONG_REG input_add, %eax
-        CALL_REG %eax
-        ADD_LONG_REG $4, %esp
-    # FuncCall END - input_add
-    # FuncCall BEGIN - input_add
-        MOVES_LONG_REG $32, %eax
-        PUSH_REG %eax
-        MOVE_LONG_REG input_add, %eax
-        CALL_REG %eax
-        ADD_LONG_REG $4, %esp
-    # FuncCall END - input_add
-    # FuncCall BEGIN - input_add
-        MOVES_LONG_REG $87, %eax
-        PUSH_REG %eax
-        MOVE_LONG_REG input_add, %eax
-        CALL_REG %eax
-        ADD_LONG_REG $4, %esp
-    # FuncCall END - input_add
-    # FuncCall BEGIN - input_add
-        MOVES_LONG_REG $111, %eax
-        PUSH_REG %eax
-        MOVE_LONG_REG input_add, %eax
-        CALL_REG %eax
-        ADD_LONG_REG $4, %esp
-    # FuncCall END - input_add
-    # FuncCall BEGIN - input_add
-        MOVES_LONG_REG $114, %eax
-        PUSH_REG %eax
-        MOVE_LONG_REG input_add, %eax
-        CALL_REG %eax
-        ADD_LONG_REG $4, %esp
-    # FuncCall END - input_add
-    # FuncCall BEGIN - input_add
-        MOVES_LONG_REG $108, %eax
-        PUSH_REG %eax
-        MOVE_LONG_REG input_add, %eax
-        CALL_REG %eax
-        ADD_LONG_REG $4, %esp
-    # FuncCall END - input_add
-    # FuncCall BEGIN - input_add
-        MOVES_LONG_REG $100, %eax
         PUSH_REG %eax
         MOVE_LONG_REG input_add, %eax
         CALL_REG %eax
@@ -835,54 +772,6 @@ kmain:
         CALL_REG %eax
         ADD_LONG_REG $4, %esp
     # FuncCall END - input_add
-    # While BEGIN
-        .WHILE_0039:
-        NOP 
-        PUSH_REG %ebx
-        PUSH_REG %eax
-        # FuncCall BEGIN - print
-            MOVE_LONG_REG .L_003D, %eax
-            PUSH_REG %eax
-            MOVE_LONG_REG print, %eax
-            CALL_REG %eax
-            ADD_LONG_REG $4, %esp
-        # FuncCall END - print
-        # FuncCall BEGIN - input_readline
-            MOVE_LONG_REG temp_buffer2, %ebx
-            MOVEBYTE_OFFSET_REG_REG 0, %ebx, %eax
-            PUSH_REG %eax
-            MOVE_LONG_REG input_readline, %eax
-            CALL_REG %eax
-            ADD_LONG_REG $4, %esp
-        # FuncCall END - input_readline
-        # FuncCall BEGIN - print
-            MOVE_LONG_REG .L_003E, %eax
-            PUSH_REG %eax
-            MOVE_LONG_REG print, %eax
-            CALL_REG %eax
-            ADD_LONG_REG $4, %esp
-        # FuncCall END - print
-        # FuncCall BEGIN - print
-            MOVE_LONG_REG temp_buffer2, %ebx
-            MOVEBYTE_OFFSET_REG_REG 0, %ebx, %eax
-            PUSH_REG %eax
-            MOVE_LONG_REG print, %eax
-            CALL_REG %eax
-            ADD_LONG_REG $4, %esp
-        # FuncCall END - print
-        # FuncCall BEGIN - print
-            MOVE_LONG_REG .L_003F, %eax
-            PUSH_REG %eax
-            MOVE_LONG_REG print, %eax
-            CALL_REG %eax
-            ADD_LONG_REG $4, %esp
-        # FuncCall END - print
-        WAIT
-        POP_REG %eax
-        POP_REG %ebx
-        JUMP_LONG .WHILE_0039
-        .ENDWHILE_003B:
-    # While END
     SYSCALL $0
     LEAVE 
     RET 
@@ -896,9 +785,3 @@ kmain:
     .String "- "
 .L_0032:
     .String "INT0\n"
-.L_003D:
-    .String "In: "
-.L_003E:
-    .String "You typed: "
-.L_003F:
-    .String "\n"

@@ -34,6 +34,11 @@ namespace CodeGeneration
 		ST0,
 	}
 
+	public static class FishUtils
+	{
+		public static String RegToString(Reg reg) => CGenState.RegToString(reg);
+	}
+
 	public class CGenState
 	{
 		private enum Status
