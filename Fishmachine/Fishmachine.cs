@@ -284,6 +284,7 @@ namespace Fishmachine
 			Console.WriteLine("loaded @ 0x{0:X}", 0x1000);
 
 			VM.Regs.Write(CodeGeneration.Reg.ESP, 0x20000);
+			VM.Regs.Write(CodeGeneration.Reg.EBP, 0x20000);
 			//VM.Regs.Write(CodeGeneration.Reg.EBP, 0x20000);
 
 			Console.WriteLine("Jumping to kmain @ 0x{0:X}", KMainAddr);
