@@ -10,9 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="..\bin\Debug\net8.0\out_asm.txt" Link="out_asm.txt" />
     <Content Include="..\bin\Debug\net8.0\vm_out.txt" Link="vm_out.txt" />
-    <Content Include="..\bin\Debug\net8.0\vm_sys.txt" Link="vm_sys.txt" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,9 +22,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="ct.asm">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="data\FishAsm.c">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -37,6 +32,10 @@
 
   <ItemGroup>
     <Folder Include="CTilde\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\bin\Debug\net8.0\ct.asm" Link="ct.asm" />
   </ItemGroup>
 
 </Project>

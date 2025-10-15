@@ -281,6 +281,7 @@ namespace Fishmachine
 			//Compile("test.c");
 
 			CTildeCompile();
+			//return;
 
 			AssemblerState AsmState = new AssemblerState();
 			AsmState.DefineToken("int_table", 0x100, true);
