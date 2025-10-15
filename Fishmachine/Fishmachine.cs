@@ -89,7 +89,22 @@ namespace Fishmachine
 		public static void PrintReg(string Str)
 		{
 			ForegroundColor = ConsoleColor.DarkYellow;
-			Write(Str);
+			const char SplitChar = '=';
+
+			if (Str.Contains(SplitChar))
+			{
+				string[] SplStr = Str.Split(SplitChar);
+				Write(SplStr[0]);
+				ForegroundColor = ConsoleColor.White;
+
+				for (int i = 1; i < SplStr.Length; i++)
+				{
+					Write(SplitChar + "");
+					Write(SplStr[i]);
+				}
+			}
+			else
+				Write(Str);
 			ResetColor();
 		}
 

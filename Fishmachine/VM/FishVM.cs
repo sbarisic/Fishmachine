@@ -1029,7 +1029,6 @@ namespace Fishmachine.VM
 						break;
 					}
 
-				case FishInst.MOVEBYTE_OFFSET_REG_REG:
 				case FishInst.MOVEBYTE_REG_OFFSET_REG:
 				case FishInst.MOVE_REG_OFFSET_REG:
 					{
@@ -1064,23 +1063,6 @@ namespace Fishmachine.VM
 								Console.ResetColor();
 							}
 						}
-						else if (Inst == FishInst.MOVEBYTE_OFFSET_REG_REG)
-						{
-							uint ReadAddr = (uint)(R1Val + Offset);
-
-							byte B = ReadByte(ReadAddr, out E);
-							if (E != FishException.None)
-								return true;
-
-							Regs.Write(R2, B);
-
-							if (FishSettings.DebugPrint)
-							{
-								Console.ForegroundColor = ConsoleColor.Yellow;
-								Console.WriteLine("Read byte 0x{0:X} from 0x{1:X4}", B, ReadAddr);
-								Console.ResetColor();
-							}
-						}
 						else if (Inst == FishInst.MOVEBYTE_REG_OFFSET_REG)
 						{
 							byte WriteB = (byte)(R1Val & 0xFF);
@@ -1101,6 +1083,7 @@ namespace Fishmachine.VM
 						break;
 					}
 
+				case FishInst.MOVEBYTE_OFFSET_REG_REG:
 				case FishInst.MOVEZ_OFFSET_REG_REG:
 					{
 						int Offset = ReadInt32FromIP(out E);
@@ -1117,23 +1100,44 @@ namespace Fishmachine.VM
 
 						Console.PrintInst(Inst, Offset, R1, R2);
 
-						uint Addr = (uint)(Regs.Read(R1) + Offset);
-						// Zero extend word from memory
-						byte[] wordBytes = ReadBytes(Addr, 2, out E);
-						if (E != FishException.None)
-							return true;
-
-						ushort wordVal = BitConverter.ToUInt16(wordBytes, 0);
-						uint R1Val = wordVal;
-
-						if (FishSettings.DebugPrint)
+						if (Inst == FishInst.MOVEZ_OFFSET_REG_REG)
 						{
-							Console.ForegroundColor = ConsoleColor.Yellow;
-							Console.WriteLine("Read zero-extended word {0:X4} from {1:X4} -> {2:X8}", wordVal, Addr, R1Val);
-							Console.ResetColor();
-						}
+							uint Addr = (uint)(Regs.Read(R1) + Offset);
+							// Zero extend word from memory
+							byte[] wordBytes = ReadBytes(Addr, 2, out E);
+							if (E != FishException.None)
+								return true;
 
-						Regs.Write(R2, R1Val);
+							ushort wordVal = BitConverter.ToUInt16(wordBytes, 0);
+							uint R1Val = wordVal;
+
+							if (FishSettings.DebugPrint)
+							{
+								Console.ForegroundColor = ConsoleColor.Yellow;
+								Console.WriteLine("Read zero-extended word {0:X4} from {1:X4} -> {2:X8}", wordVal, Addr, R1Val);
+								Console.ResetColor();
+							}
+
+							Regs.Write(R2, R1Val);
+						}
+						else if (Inst == FishInst.MOVEBYTE_OFFSET_REG_REG)
+						{
+							uint R1Val = Regs.Read(R1);
+							uint ReadAddr = (uint)(R1Val + Offset);
+
+							byte B = ReadByte(ReadAddr, out E);
+							if (E != FishException.None)
+								return true;
+
+							Regs.Write(R2, B);
+
+							if (FishSettings.DebugPrint)
+							{
+								Console.ForegroundColor = ConsoleColor.Yellow;
+								Console.WriteLine("Read byte 0x{0:X} from 0x{1:X4}", B, ReadAddr);
+								Console.ResetColor();
+							}
+						}
 						break;
 					}
 
@@ -1702,7 +1706,7 @@ namespace Fishmachine.VM
 			Halted = false;
 			E = FishException.None;
 
-			const int YieldInstr = 24;
+			const int YieldInstr = 1;
 			int YieldCounter = 0;
 
 			while (Step(out E))
