@@ -354,6 +354,21 @@ namespace Fishmachine
 								break;
 							}
 
+						case ".Raw":
+							{
+								int Count = int.Parse(Tokens[1]);
+								int Val = int.Parse(Tokens[2]);
+
+								AsmInstr RawStr = new AsmInstr(FishInst.NOP);
+								RawStr.Raw = new byte[Count];
+
+								for (int j = 0; j < Count; j++)
+									RawStr.Raw[j] = (byte)Val;
+
+								AddAsmInstr(RawStr);
+								break;
+							}
+
 						case ".String":
 							{
 								AsmInstr RawStr = new AsmInstr(FishInst.NOP);
@@ -528,6 +543,10 @@ namespace Fishmachine
 						case "JUMP_LONG":
 						case "FLOAT_LOAD_LONG":
 						case "DOUBLE_LOAD_LONG":
+						case "JUMP_IF_LESS_LONG":
+						case "JUMP_IF_GREAT_LONG":
+						case "JUMP_IF_LESSEQ_LONG":
+						case "JUMP_IF_GREATEQ_LONG":
 							{
 
 								if (Tokens.Length != 2)

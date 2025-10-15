@@ -289,7 +289,6 @@ namespace Fishmachine
 			Console.WriteLine("Jumping to kmain @ 0x{0:X}", KMainAddr);
 			VM.Jump(KMainAddr);
 
-
 			FishException Ex = FishException.None;
 			while (VM.Run(out Ex))
 			{
@@ -300,7 +299,8 @@ namespace Fishmachine
 					if (Gfx.MousePressed())
 					{
 						Console.WriteLine("Mouse!");
-						VM.Interrupt(FishInterrupt.Int0);
+						//VM.Interrupt(FishInterrupt.Int0);
+						VM.Interrupt(FishInterrupt.Int2_KeyboardChar, Encoding.ASCII.GetBytes(new[] { 'M' })[0]);
 						Interrupted = true;
 					}
 					else if (Gfx.CharPressed(out uint Char))

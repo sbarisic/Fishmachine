@@ -305,13 +305,17 @@ namespace Fishmachine.VM
 			}
 			Console.WriteLine();
 
-			c = 1;
-			for (int i = 0; i < ST.Length; i++)
+			if (FishSettings.DebugPrintFloats)
 			{
-				Console.PrintReg(string.Format("ST[{0}] {1}; ", i, ST[i]));
-				if (c++ % 4 == 0)
-					Console.WriteLine();
+				c = 1;
+				for (int i = 0; i < ST.Length; i++)
+				{
+					Console.PrintReg(string.Format("ST[{0}] {1}; ", i, ST[i]));
+					if (c++ % 4 == 0)
+						Console.WriteLine();
+				}
 			}
+
 			Console.WriteLine();
 		}
 	}

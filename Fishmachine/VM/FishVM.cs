@@ -66,6 +66,10 @@ namespace Fishmachine.VM
 				case FishInst.CALL_LONG:
 				case FishInst.JUMP_IF_ZERO_LONG:
 				case FishInst.JUMP_IF_NOT_ZERO_LONG:
+				case FishInst.JUMP_IF_LESS_LONG:
+				case FishInst.JUMP_IF_LESSEQ_LONG:
+				case FishInst.JUMP_IF_GREAT_LONG:
+				case FishInst.JUMP_IF_GREATEQ_LONG:
 					return 5;
 
 				// One 32-bit operand, one 8-bit operand, 6 byte total
@@ -253,6 +257,11 @@ namespace Fishmachine.VM
 			byte[] MemBank = MemoryBankForRealAddress(VirtAddress, out E);
 			if (E != FishException.None)
 				return;
+
+			if (FishSettings.DebugPrintMemory)
+			{
+				Console.WriteLine("Write {0} bytes to 0x{1:X}", Value.Length, VirtAddress);
+			}
 
 			Array.Copy(Value, 0, MemBank, VirtAddress, Value.Length);
 		}
@@ -494,6 +503,8 @@ namespace Fishmachine.VM
 			return false;
 		}
 
+		Reg[] saveRegs = new[] { Reg.EAX, Reg.EBX, Reg.ECX, Reg.EDX, Reg.ESI, Reg.EDI, Reg.XSC, Reg.XR1, Reg.EBP };
+
 		bool Step(out FishException E)
 		{
 			E = FishException.None;
@@ -515,6 +526,10 @@ namespace Fishmachine.VM
 					IRETStack.Push((Regs.IP, IntNum));
 					if (PushReg(Reg.RFLAGS, out E))
 						return true;
+
+					/*foreach (var r in saveRegs)
+						if (PushReg(r, out E))
+							return true;*/
 
 					// IntEnabled is restored by popping RFLAGS below, as it is just a bit field in RFLAGS
 					Regs.IntEnabled = false;
@@ -567,6 +582,10 @@ namespace Fishmachine.VM
 					default:
 						throw new NotImplementedException();
 				}
+
+				/*for (int i = saveRegs.Length - 1; i >= 0; i--)
+					if (PopReg(saveRegs[i], out E))
+						return true;*/
 
 				if (PopReg(Reg.RFLAGS, out E))
 					return true;
@@ -1439,6 +1458,10 @@ namespace Fishmachine.VM
 
 				case FishInst.JUMP_IF_NOT_ZERO_LONG:
 				case FishInst.JUMP_IF_ZERO_LONG:
+				case FishInst.JUMP_IF_LESS_LONG:
+				case FishInst.JUMP_IF_GREAT_LONG:
+				case FishInst.JUMP_IF_LESSEQ_LONG:
+				case FishInst.JUMP_IF_GREATEQ_LONG:
 				case FishInst.JUMP_LONG:
 				case FishInst.FLOAT_LOAD_LONG:
 					{
@@ -1473,6 +1496,35 @@ namespace Fishmachine.VM
 								return true;
 
 							Regs.FpuPush(Val);
+						}
+						else if (Inst == FishInst.JUMP_IF_LESS_LONG)
+						{
+							if (Regs.LessThan)
+							{
+								Jump(Addr);
+							}
+						}
+						else if (Inst == FishInst.JUMP_IF_GREAT_LONG)
+						{
+							if (Regs.GreaterThan)
+							{
+								Jump(Addr);
+							}
+						}
+						else if (Inst == FishInst.JUMP_IF_LESSEQ_LONG)
+						{
+							if (Regs.LessThan || Regs.Equal)
+							{
+								Jump(Addr);
+							}
+						}
+						else if (Inst == FishInst.JUMP_IF_GREATEQ_LONG)
+						{
+							if (Regs.GreaterThan || Regs.Equal)
+							{
+								Jump(Addr);
+							}
+							break;
 						}
 						else
 							throw new NotImplementedException();
