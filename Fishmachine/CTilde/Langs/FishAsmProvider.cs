@@ -197,87 +197,75 @@ namespace CTilde.Langs
 
 		void FetchIdentifier(string name, int size, bool ispointer, Reg DestReg, bool isunsigned, bool sumEBX)
 		{
-			if (State.IsVarGlobal(name))
+			var vType = State.GetVarType(name);
+			bool isGlobal = State.IsVarGlobal(name);
+			// Some “static string[N]” come through as Type == "string" but not flagged IsArray; treat them as array-like if global.
+			bool isArrayLike = vType.IsArray || (isGlobal && vType.Type == "string");
+
+			if (isGlobal)
 			{
-				// Address of global symbol into a base register
+				// Address of global symbol
 				Reg baseReg = Reg.EDX;
 				EmitInstruction(FishInst.MOVE_LONG_REG, name, baseReg);
 
-				// Optional index into the object
 				if (sumEBX)
 					EmitInstruction(FishInst.ADD_REG_REG, Reg.EBX, baseReg);
 
-				if (size != 0)
+				// For arrays and global “string”, return address; otherwise load value if requested
+				if (size != 0 && !isArrayLike)
 				{
-					// Load value from [baseReg]
 					EmitLoadFromAddress(size, 0, baseReg, DestReg, isunsigned);
 				}
 				else
 				{
-					// Return the address itself
 					if (DestReg != baseReg)
 						EmitInstruction(FishInst.MOVE_REG_REG, baseReg, DestReg);
+				}
+				return;
+			}
+
+			int VarOffset = State.GetVarOffset(name);
+
+			if (ispointer && !isArrayLike)
+			{
+				// Local/param pointer: load the pointer value
+				EmitInstruction(FishInst.MOVE_OFFSET_REG_REG, VarOffset, Reg.EBP, Reg.EDX);
+
+				if (sumEBX)
+				{
+					EmitInstruction(FishInst.ADD_REG_REG, Reg.EBX, Reg.EDX);
+
+					if (size != 0)
+						EmitLoadFromAddress(size, 0, Reg.EDX, DestReg, isunsigned);
+					else if (DestReg != Reg.EDX)
+						EmitInstruction(FishInst.MOVE_REG_REG, Reg.EDX, DestReg);
+				}
+				else
+				{
+					if (DestReg != Reg.EDX)
+						EmitInstruction(FishInst.MOVE_REG_REG, Reg.EDX, DestReg);
 				}
 			}
 			else
 			{
-				int VarOffset = State.GetVarOffset(name);
-
-				if (ispointer)
+				// Non-pointer local (scalar or stack array) or array-like
+				if (size == 0 || isArrayLike)
 				{
-					// Local/param holding a pointer:
-					// EDX = *(EBP + VarOffset)
-					EmitInstruction(FishInst.MOVE_OFFSET_REG_REG, VarOffset, Reg.EBP, Reg.EDX);
-
+					EmitInstruction(FishInst.LEA_OFFSET_REG_REG, VarOffset, Reg.EBP, DestReg);
 					if (sumEBX)
-					{
-						// EDX += EBX (scaled index already in EBX)
-						EmitInstruction(FishInst.ADD_REG_REG, Reg.EBX, Reg.EDX);
-
-						if (size != 0)
-						{
-							// Load element from [EDX]
-							EmitLoadFromAddress(size, 0, Reg.EDX, DestReg, isunsigned);
-						}
-						else
-						{
-							// Return computed address (pointer + index)
-							if (DestReg != Reg.EDX)
-								EmitInstruction(FishInst.MOVE_REG_REG, Reg.EDX, DestReg);
-						}
-					}
-					else
-					{
-						// Return the pointer value itself
-						if (DestReg != Reg.EDX)
-							EmitInstruction(FishInst.MOVE_REG_REG, Reg.EDX, DestReg);
-					}
+						EmitInstruction(FishInst.ADD_REG_REG, Reg.EBX, DestReg);
 				}
 				else
 				{
-					// Non-pointer (scalar or stack array)
-					if (size == 0)
+					if (sumEBX)
 					{
-						// Address-of local/stack object
-						EmitInstruction(FishInst.LEA_OFFSET_REG_REG, VarOffset, Reg.EBP, DestReg);
-
-						if (sumEBX)
-							EmitInstruction(FishInst.ADD_REG_REG, Reg.EBX, DestReg);
+						EmitInstruction(FishInst.LEA_OFFSET_REG_REG, VarOffset, Reg.EBP, Reg.EDX);
+						EmitInstruction(FishInst.ADD_REG_REG, Reg.EBX, Reg.EDX);
+						EmitLoadFromAddress(size, 0, Reg.EDX, DestReg, isunsigned);
 					}
 					else
 					{
-						if (sumEBX)
-						{
-							// Address = EBP + offset + EBX; then load from [address]
-							EmitInstruction(FishInst.LEA_OFFSET_REG_REG, VarOffset, Reg.EBP, Reg.EDX);
-							EmitInstruction(FishInst.ADD_REG_REG, Reg.EBX, Reg.EDX);
-							EmitLoadFromAddress(size, 0, Reg.EDX, DestReg, isunsigned);
-						}
-						else
-						{
-							// Direct load from [EBP + offset]
-							EmitLoadFromAddress(size, VarOffset, Reg.EBP, DestReg, isunsigned);
-						}
+						EmitLoadFromAddress(size, VarOffset, Reg.EBP, DestReg, isunsigned);
 					}
 				}
 			}
@@ -316,9 +304,6 @@ namespace CTilde.Langs
 
 		public override void Compile(Expression Ex)
 		{
-			if (Ex == null)
-				throw new ArgumentNullException(nameof(Ex));
-
 			switch (Ex)
 			{
 				case Expr_Block Block:
@@ -625,25 +610,22 @@ namespace CTilde.Langs
 						break;
 					}
 
-				case Expr_Identifier IdentifierEx:
+				case Expr_Identifier id:
 					{
-						Expr_TypeDef IdType = State.GetVarType(IdentifierEx.Identifier);
+						var t = State.GetVarType(id.Identifier);
+						bool isPtr = t.IsPointer;
+						bool isGlobal = State.IsVarGlobal(id.Identifier);
+						bool isArrayLike = t.IsArray || (isGlobal && t.Type == "string");
 
 						int sz;
-						bool isPtr = IdType.IsPointer;
-						bool isArr = IdType.IsArray;
-
-						// Scalars: load their size
-						// Pointers: load the pointer value (4 bytes)
-						// Arrays: decay to pointer -> return address (size = 0)
-						if (isPtr)
-							sz = 4;
-						else if (isArr)
-							sz = 0;
+						if (isPtr && !isArrayLike)
+							sz = 4;           // load pointer value
+						else if (isArrayLike)
+							sz = 0;           // decay to address
 						else
-						 sz = State.GetTypeSize(IdType);
+							sz = State.GetTypeSize(t);
 
-						FetchIdentifier(IdentifierEx.Identifier, sz, isPtr, Reg.EAX, true, false);
+						FetchIdentifier(id.Identifier, sz, isPtr, Reg.EAX, true, false);
 						break;
 					}
 
@@ -941,7 +923,7 @@ namespace CTilde.Langs
 							Expr_TypeDef idType = State.GetVarType(id.Identifier);
 							int elemSize = State.GetPointerTypeSize(idType);
 
-							EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.EBX); // EBX = index
+							EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.EBX); // EBX = index (scaled below)
 
 							if (elemSize > 1)
 							{
@@ -951,17 +933,18 @@ namespace CTilde.Langs
 								EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.EBX); // EBX = scaled index
 							}
 
-							bool isUnsigned = CTType.IsUnsigned(idType.Type);
+							// Treat 'string' params as pointers for indexing, even if type metadata isn't flagged
+							bool treatAsPointer = idType.IsPointer || (!idType.IsArray && idType.Type == "string");
 
 							EmitRaw("#: {0}[EBX]", id.Identifier);
 
 							if (State.IndexEmitOnlyAddress)
 							{
-								FetchIdentifier(id.Identifier, 0, idType.IsPointer, Reg.EAX, true, true);
+								FetchIdentifier(id.Identifier, 0, treatAsPointer, Reg.EAX, true, true);
 							}
 							else
 							{
-								FetchIdentifier(id.Identifier, elemSize, idType.IsPointer, Reg.EAX, true, true);
+								FetchIdentifier(id.Identifier, elemSize, treatAsPointer, Reg.EAX, true, true);
 							}
 						}
 						else
@@ -1071,8 +1054,8 @@ namespace CTilde.Langs
 
 							for (int i = 0; i < FuncCallExp.Arguments.Count; i++)
 							{
-								Compile(FuncCallExp.Arguments[i]);
-								EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
+								var arg = FuncCallExp.Arguments[i];
+								EmitCallArg(arg);
 							}
 
 							EmitInstruction(FishInst.MOVE_LONG_REG, FuncCallExp.Function.Identifier, Reg.EAX);
@@ -1092,6 +1075,67 @@ namespace CTilde.Langs
 						throw new NotImplementedException("Could not compile expression of type " + Ex.GetType());
 					}
 			}
+		}
+
+		// Emits a single function call argument onto the stack in right-to-left order context.
+		// - Identifiers of array-like storage (globals declared as static string[N] or actual arrays) decay to address.
+		// - Pointer variables (locals/params) push their pointer value.
+		// - Indexing into array-like lvalues passes the element address when appropriate.
+		// - All others evaluate to value in EAX and are pushed.
+		void EmitCallArg(Expression arg)
+		{
+			// Identifier fast-path
+			if (arg is Expr_Identifier id)
+			{
+				var t = State.GetVarType(id.Identifier);
+				bool isGlobal = State.IsVarGlobal(id.Identifier);
+				bool isArrayLike = t.IsArray || (isGlobal && t.Type == "string");
+
+				if (isArrayLike)
+				{
+					// Array-to-pointer decay: push address
+					FetchIdentifier(id.Identifier, 0, /*ispointer*/ false, Reg.EAX, /*isunsigned*/ true, /*sumEBX*/ false);
+					EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
+					return;
+				}
+
+				if (t.IsPointer)
+				{
+					// Push pointer value
+					FetchIdentifier(id.Identifier, 4, /*ispointer*/ true, Reg.EAX, /*isunsigned*/ true, /*sumEBX*/ false);
+					EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
+					return;
+				}
+
+				// Scalar: evaluate and push value
+				Compile(arg);
+				EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
+				return;
+			}
+
+			// Indexing: if indexing into array-like, pass the element address; otherwise value
+			if (arg is Expr_IndexOp idx && idx.LExpr is Expr_Identifier baseId)
+			{
+				var t = State.GetVarType(baseId.Identifier);
+				bool isGlobal = State.IsVarGlobal(baseId.Identifier);
+				bool isArrayLike = t.IsArray || (isGlobal && t.Type == "string");
+
+				if (isArrayLike)
+				{
+					// Compute address only
+					bool prev = State.IndexEmitOnlyAddress;
+					State.IndexEmitOnlyAddress = true;
+					Compile(arg);                // EAX = &base[index]
+					State.IndexEmitOnlyAddress = prev;
+
+					EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
+					return;
+				}
+			}
+
+			// Literals and all other expressions: evaluate and push value
+			Compile(arg);                      // EAX holds value or address for const string
+			EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
 		}
 	}
 }

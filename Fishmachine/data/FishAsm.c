@@ -122,17 +122,8 @@ void kmain() {
 	//int_table[1] = &handler_int1_keyboardkey;
 	//int_table[2] = &handler_int2_keyboardchar;
 
-	print("Hello, Universe!\n");
+	print("Hello!\n");
 	input_add('H');
-	input_add('e');
-	input_add('l');
-	input_add('l');
-	input_add('o');
-	input_add(' ');
-	input_add('W');
-	input_add('o');
-	input_add('r');
-	input_add('l');
 	input_add('d');
 	input_add('\n');
 
