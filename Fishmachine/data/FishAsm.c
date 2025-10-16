@@ -29,6 +29,7 @@ void memory_copy(string dest, string source, int len) {
 	uint i = 0;
 	char tmp = 0;
 
+
 	while (i < len) {
 		tmp = source[i];
 		dest[i] = tmp;
@@ -85,12 +86,12 @@ int input_readline(string dst) {
 
 		idx = input_count - 1;
 		chr = temp_buffer[idx];
-		printchar('\n');
+		/*printchar('\n');
 		print("-chr = '");
 		printchar(chr);
-		print("'\n");
-
-		if (chr == '\n') {
+		print("'\n");*/
+		
+		if (chr == '\n') {			
 			memory_copy(dst, temp_buffer, idx);
 			ret = input_count - 1;
 			dst[ret] = 0;
@@ -98,11 +99,8 @@ int input_readline(string dst) {
 			input_count = 0;
 			temp_buffer[0] = 0;
 
-			__asm("DBG_BREAK");
 			return ret;
 		}
-
-		__asm("DBG_BREAK");
 	}
 
 	return ret;
@@ -120,17 +118,14 @@ void handler_int2_keyboardchar(uint key2) {
 }
 
 void kmain() {
-	//int_table[0] = &handler_int0;
-	//int_table[1] = &handler_int1_keyboardkey;
-	//int_table[2] = &handler_int2_keyboardchar;
+	int_table[0] = &handler_int0;
+	int_table[1] = &handler_int1_keyboardkey;
+	int_table[2] = &handler_int2_keyboardchar;
 
-	//print("Hello!\n");
-	input_add('H');
-	input_add('d');
-	input_add('\n');
+	print("Hello, Universe!\n");
 
 	while (true) {
-		//print("In: ");
+		print("In: ");
 		input_readline(temp_buffer2);
 		print("You typed: ");
 		print(temp_buffer2);

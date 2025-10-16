@@ -379,11 +379,11 @@ namespace Fishmachine.VM
 
 				case FishInst.CMP_REG_REG:
 					{
-						Reg R2 = (Reg)ReadByteFromIP(out E);
+						Reg R1 = (Reg)ReadByteFromIP(out E);
 						if (E != FishException.None)
 							return true;
 
-						Reg R1 = (Reg)ReadByteFromIP(out E);
+						Reg R2 = (Reg)ReadByteFromIP(out E);
 						if (E != FishException.None)
 							return true;
 

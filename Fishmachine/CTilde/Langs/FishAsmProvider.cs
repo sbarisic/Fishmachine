@@ -383,8 +383,11 @@ namespace CTilde.Langs
 							foreach (var r in saveRegs)
 								EmitInstruction(FishInst.PUSH_REG, r);
 
+							//int argCount = FuncDef.FuncParams != null ? FuncDef.FuncParams.Definitions.Count : 0;
 							int argCount = FuncDef.FuncParams != null ? FuncDef.FuncParams.Definitions.Count : 0;
-							for (int i = 0; i < argCount; i++)
+
+							// was: for (int i = 0; i < argCount; i++)
+							for (int i = argCount - 1; i >= 0; i--)
 							{
 								EmitInstruction(FishInst.MOVE_OFFSET_REG_REG, (8 + i * 4), Reg.EBP, Reg.EAX);
 								EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
@@ -720,7 +723,8 @@ namespace CTilde.Langs
 						EmitRaw("#: {0}", CompExpr.ToSourceStr());
 						EmitRaw("#: EAX - ECX semantics");
 						// IMPORTANT: pass (ECX, EAX) so assembler prints "CMP %EAX, %ECX"
-						EmitInstruction(FishInst.CMP_REG_REG, Reg.ECX, Reg.EAX);
+						//EmitInstruction(FishInst.CMP_REG_REG, Reg.ECX, Reg.EAX);
+						EmitInstruction(FishInst.CMP_REG_REG, Reg.EAX, Reg.ECX);
 
 						Unindent();
 						EmitRaw("# Expr_ComparisonOp END");
@@ -1050,7 +1054,8 @@ namespace CTilde.Langs
 							EmitRaw("# FuncCall BEGIN - {0}", FuncCallExp.Function.Identifier);
 							Indent();
 
-							for (int i = 0; i < FuncCallExp.Arguments.Count; i++)
+							// was: for (int i = 0; i < FuncCallExp.Arguments.Count; i++)
+							for (int i = FuncCallExp.Arguments.Count - 1; i >= 0; i--)
 							{
 								var arg = FuncCallExp.Arguments[i];
 								EmitCallArg(arg);
@@ -1064,7 +1069,6 @@ namespace CTilde.Langs
 							Unindent();
 							EmitRaw("# FuncCall END - {0}", FuncCallExp.Function.Identifier);
 						}
-
 						break;
 					}
 
