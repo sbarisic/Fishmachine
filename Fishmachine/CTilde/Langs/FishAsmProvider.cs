@@ -199,19 +199,17 @@ namespace CTilde.Langs
 		{
 			if (State.IsVarGlobal(name))
 			{
-				// Use EDX as a temporary base to avoid clobbering EBX (often holds index)
+				// Address of global symbol into a base register
 				Reg baseReg = Reg.EDX;
-
-				// Load the symbol address into baseReg
 				EmitInstruction(FishInst.MOVE_LONG_REG, name, baseReg);
 
-				// If requested, add EBX index to the base address
+				// Optional index into the object
 				if (sumEBX)
 					EmitInstruction(FishInst.ADD_REG_REG, Reg.EBX, baseReg);
 
 				if (size != 0)
 				{
-					// Load the value from [base + (optional EBX index)]
+					// Load value from [baseReg]
 					EmitLoadFromAddress(size, 0, baseReg, DestReg, isunsigned);
 				}
 				else
@@ -224,15 +222,63 @@ namespace CTilde.Langs
 			else
 			{
 				int VarOffset = State.GetVarOffset(name);
-				// DestReg = &EBP[offset]
-				EmitInstruction(FishInst.LEA_OFFSET_REG_REG, VarOffset, Reg.EBP, DestReg);
 
-				if (sumEBX)
-					EmitInstruction(FishInst.ADD_REG_REG, Reg.EBX, DestReg);
-
-				if (size != 0)
+				if (ispointer)
 				{
-					EmitLoadFromAddress(size, 0, DestReg, DestReg, isunsigned);
+					// Local/param holding a pointer:
+					// EDX = *(EBP + VarOffset)
+					EmitInstruction(FishInst.MOVE_OFFSET_REG_REG, VarOffset, Reg.EBP, Reg.EDX);
+
+					if (sumEBX)
+					{
+						// EDX += EBX (scaled index already in EBX)
+						EmitInstruction(FishInst.ADD_REG_REG, Reg.EBX, Reg.EDX);
+
+						if (size != 0)
+						{
+							// Load element from [EDX]
+							EmitLoadFromAddress(size, 0, Reg.EDX, DestReg, isunsigned);
+						}
+						else
+						{
+							// Return computed address (pointer + index)
+							if (DestReg != Reg.EDX)
+								EmitInstruction(FishInst.MOVE_REG_REG, Reg.EDX, DestReg);
+						}
+					}
+					else
+					{
+						// Return the pointer value itself
+						if (DestReg != Reg.EDX)
+							EmitInstruction(FishInst.MOVE_REG_REG, Reg.EDX, DestReg);
+					}
+				}
+				else
+				{
+					// Non-pointer (scalar or stack array)
+					if (size == 0)
+					{
+						// Address-of local/stack object
+						EmitInstruction(FishInst.LEA_OFFSET_REG_REG, VarOffset, Reg.EBP, DestReg);
+
+						if (sumEBX)
+							EmitInstruction(FishInst.ADD_REG_REG, Reg.EBX, DestReg);
+					}
+					else
+					{
+						if (sumEBX)
+						{
+							// Address = EBP + offset + EBX; then load from [address]
+							EmitInstruction(FishInst.LEA_OFFSET_REG_REG, VarOffset, Reg.EBP, Reg.EDX);
+							EmitInstruction(FishInst.ADD_REG_REG, Reg.EBX, Reg.EDX);
+							EmitLoadFromAddress(size, 0, Reg.EDX, DestReg, isunsigned);
+						}
+						else
+						{
+							// Direct load from [EBP + offset]
+							EmitLoadFromAddress(size, VarOffset, Reg.EBP, DestReg, isunsigned);
+						}
+					}
 				}
 			}
 		}
@@ -582,15 +628,22 @@ namespace CTilde.Langs
 				case Expr_Identifier IdentifierEx:
 					{
 						Expr_TypeDef IdType = State.GetVarType(IdentifierEx.Identifier);
-						int sz = 0;
-						bool ispointer = IdType.IsPointer || IdType.IsArray;
 
-						if (ispointer)
-							sz = State.GetPointerTypeSize(IdType);
+						int sz;
+						bool isPtr = IdType.IsPointer;
+						bool isArr = IdType.IsArray;
+
+						// Scalars: load their size
+						// Pointers: load the pointer value (4 bytes)
+						// Arrays: decay to pointer -> return address (size = 0)
+						if (isPtr)
+							sz = 4;
+						else if (isArr)
+							sz = 0;
 						else
-							sz = State.GetTypeSize(IdType);
+						 sz = State.GetTypeSize(IdType);
 
-						FetchIdentifier(IdentifierEx.Identifier, sz, IdType.IsPointer, Reg.EAX, true, false);
+						FetchIdentifier(IdentifierEx.Identifier, sz, isPtr, Reg.EAX, true, false);
 						break;
 					}
 
