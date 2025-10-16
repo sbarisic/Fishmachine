@@ -123,7 +123,10 @@ namespace Fishmachine
 
 		public static void Write(string Fmt, params object[] Args)
 		{
-			Write(string.Format(Fmt, Args));
+			if (Args.Length == 0)
+				Write(Fmt);
+			else
+				Write(string.Format(Fmt, Args));
 		}
 
 		public static void WriteLine(string Fmt, params object[] Args)
@@ -272,11 +275,19 @@ namespace Fishmachine
 			LangProvider Lng = new FishAsmProvider(State);
 			Lng.Compile(Parser.Parse());
 
-			File.WriteAllText("ct.asm", Lng.CompileToSource());
+			string CtAsmSrc = Lng.CompileToSource();
+			Console.WriteLine("ct.asm:\n" + CtAsmSrc);
+			Console.WriteLine();
+			File.WriteAllText("ct.asm", CtAsmSrc);
 		}
 
 		static void Main(string[] args)
 		{
+			HookOutput();
+			Console.WriteLine("FishAsm.c:\n");
+			Console.WriteLine(File.ReadAllText("data/FishAsm.c"));
+			Console.WriteLine();
+
 			//Compile("stdfish.c");
 			//Compile("test.c");
 
@@ -289,7 +300,6 @@ namespace Fishmachine
 			byte[] Bytecode = Assemble(AsmState, new[] {/* "stdfish.asm", "test.asm"*/ "ct.asm" }, out uint KMainAddr);
 
 			// Setup VM, load program and run
-			HookOutput();
 
 			Graphics Gfx = new Graphics();
 			Gfx.Setup(640, 400, 3);
@@ -312,7 +322,7 @@ namespace Fishmachine
 			VM.SetMemMgrPointer(0x30000 - 1);
 
 			//VM.LoadToMemory(Bytecode, 0x1000);
-			Console.Write("{0} bytes ", Bytecode.Length);
+			Console.Write("{0} (0x{0:X}) bytes ", Bytecode.Length);
 			VM.LoadToMemory(Bytecode, 0x1000);
 			Console.WriteLine("loaded @ 0x{0:X}", 0x1000);
 
