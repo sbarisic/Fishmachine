@@ -211,8 +211,8 @@ namespace CTilde.Langs
 				if (sumEBX)
 					EmitInstruction(FishInst.ADD_REG_REG, Reg.EBX, baseReg);
 
-				// For arrays and global “string”, return address; otherwise load value if requested
-				if (size != 0 && !isArrayLike)
+				// Load value when a value is requested; return address only when size == 0
+				if (size != 0)
 				{
 					EmitLoadFromAddress(size, 0, baseReg, DestReg, isunsigned);
 				}
