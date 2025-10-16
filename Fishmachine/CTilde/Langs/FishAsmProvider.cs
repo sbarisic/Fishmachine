@@ -340,6 +340,7 @@ namespace CTilde.Langs
 
 							EmitRaw(".globl {0}", implName);
 							State.DefineLabel(implName, true);
+							EmitInstruction(FishInst.SOFTINT_DISABLE);
 
 							if (FuncDef.FuncBody != null)
 							{
@@ -402,6 +403,7 @@ namespace CTilde.Langs
 							for (int i = saveRegs.Length - 1; i >= 0; i--)
 								EmitInstruction(FishInst.POP_REG, saveRegs[i]);
 
+							EmitInstruction(FishInst.SOFTINT_ENABLE);
 							EmitInstruction(FishInst.LEAVE);
 							EmitInstruction(FishInst.RET);
 
