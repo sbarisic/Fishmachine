@@ -81,6 +81,7 @@ int input_readline(string dst) {
 
 	while (true) {
 		if (input_count == 0) {
+			__asm("WAIT");
 			continue;
 		}
 
@@ -101,19 +102,21 @@ int input_readline(string dst) {
 
 			return ret;
 		}
+
+		__asm("WAIT");
 	}
 
 	return ret;
 }
 
-void handler_int0() {
+interrupt void handler_int0() {
 	print("INT0\n");
 }
 
-void handler_int1_keyboardkey(uint key) {
+interrupt void handler_int1_keyboardkey(uint key) {
 }
 
-void handler_int2_keyboardchar(uint key2) {
+interrupt void handler_int2_keyboardchar(uint key2) {
 	input_add(key2);
 }
 

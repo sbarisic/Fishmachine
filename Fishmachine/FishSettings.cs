@@ -13,9 +13,15 @@ namespace Fishmachine
 		public static bool DebugPrintMemory = false;
 		public static bool FormatPrint = false;
 
-		public static bool DebugPrintFloats = false;
+		/*public static bool DebugPrintFloats = false;
 		public static bool DebugPrintSyscall = true;
 		public static bool DebugPrintRegisters = true;
+		public static bool DebugRegisterWrite = true;
+		public static bool DebugPrintIP = true;*/
+
+		public static bool DebugPrintFloats = false;
+		public static bool DebugPrintSyscall = true;
+		public static bool DebugPrintRegisters = false;
 		public static bool DebugRegisterWrite = true;
 		public static bool DebugPrintIP = true;
 	}

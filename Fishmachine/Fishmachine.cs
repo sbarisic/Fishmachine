@@ -331,7 +331,7 @@ namespace Fishmachine
 			{
 				bool Interrupted = false;
 
-				//while (!Interrupted)
+				while (!Interrupted)
 				{
 					if (Gfx.MousePressed())
 					{
@@ -347,8 +347,8 @@ namespace Fishmachine
 						Interrupted = true;
 					}
 
-					/*if (Ex != FishException.RequestWait)
-						break;*/
+					if (Ex != FishException.RequestWait)
+						break;
 				}
 
 				/*else if (Gfx.KeyPressed(out uint Key))

@@ -334,9 +334,9 @@ namespace CTilde.Langs
 				case Expr_FuncDef FuncDef:
 					{
 						// Interrupt handler wrappers (preserve regs, forward args)
-						if (FuncDef.FuncName != null && FuncDef.FuncName.StartsWith("handler_"))
+						if (FuncDef.FuncName != null && FuncDef.Interrupt)
 						{
-							string implName = FuncDef.FuncName + "__impl";
+							string implName = FuncDef.FuncName + "_imp";
 
 							EmitRaw(".globl {0}", implName);
 							State.DefineLabel(implName, true);

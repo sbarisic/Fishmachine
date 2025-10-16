@@ -44,9 +44,22 @@ namespace CTilde.Expr
 			{
 				Tok.NextToken().Assert(Keyword.naked);
 
-				Expr_FuncDef FDef = (Expr_FuncDef)new Expr_FuncDef().Parse(Tok);
-				FDef.Naked = true;
+				Expression FDef = ParseStatement(Tok);
+				if (FDef is not Expr_FuncDef)
+					throw new Exception("Function definition expected after 'naked'");
 
+				((Expr_FuncDef)FDef).Naked = true;
+				return FDef;
+			}
+			else if (Tok.Peek().Is(Keyword.interrupt))
+			{
+				Tok.NextToken().Assert(Keyword.interrupt);
+
+				Expression FDef = ParseStatement(Tok);
+				if (FDef is not Expr_FuncDef)
+					throw new Exception("Function definition expected after 'interrupt'");
+
+				((Expr_FuncDef)FDef).Interrupt = true;
 				return FDef;
 			}
 			else if (Tok.Peek().Is(Keyword.@break))

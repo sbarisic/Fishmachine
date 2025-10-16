@@ -16,6 +16,7 @@ namespace CTilde.Expr {
 		public bool IsCtor, IsDtor;
 
 		public bool Naked;
+		public bool Interrupt;
 
 		public Expr_FuncDef() {
 		}
