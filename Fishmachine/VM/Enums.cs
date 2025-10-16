@@ -25,8 +25,6 @@ namespace Fishmachine.VM
 		PrintChar,
 		PrintNum,
 		SoftwareInterrupt,
-		SoftwareInterruptEnable,
-		SoftwareInterruptDisable,
 		Alloc,
 	}
 

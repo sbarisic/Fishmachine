@@ -212,12 +212,12 @@ namespace Fishmachine
 				}
 			}
 
+			File.WriteAllText("out.asm", AllSrc);
 			Bytecode = Asm.Link();
 			KMainAddr = AsmState.GetSymbolOffset("kmain");
 
 			if (Bytecode != null)
 			{
-				File.WriteAllText("out.asm", AllSrc);
 				File.WriteAllBytes("bytecode.bin", Bytecode);
 			}
 

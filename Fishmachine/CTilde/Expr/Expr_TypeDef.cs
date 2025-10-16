@@ -42,7 +42,7 @@ namespace CTilde.Expr
 				IsArray = true;
 			}
 
-			if (Type == "string")
+			if (IsPointerType(Type))
 				IsPointer = true;
 
 			return this;
@@ -61,6 +61,51 @@ namespace CTilde.Expr
 			Expr_TypeDef Void = new Expr_TypeDef();
 			Void.Type = "void";
 			return Void;
+		}
+
+
+		public static int GetRawTypeSize(Expr_TypeDef Type)
+		{
+			if (Type.Type == "int" || Type.Type == "uint" || Type.Type == "float" || Type.Type == "string" || Type.Type == "voidptr")
+				return 4;
+			else if (Type.Type == "byte" || Type.Type == "char" || Type.Type == "bool")
+				return 1;
+
+			throw new NotImplementedException();
+		}
+
+		public static int GetTypeSize(Expr_TypeDef Type)
+		{
+			if (Type.IsPointer || Type.IsArray)
+				return 4;
+
+			return GetRawTypeSize(Type);
+		}
+
+		public static bool IsUnsigned(string TypeName)
+		{
+			if (TypeName == "byte" || TypeName == "uint" || TypeName == "bool")
+				return true;
+			return false;
+		}
+
+		public static bool IsPointerType(string TypeName)
+		{
+			if (TypeName == "string" || TypeName == "voidptr")
+				return true;
+
+			return false;
+		}
+
+		public static int GetPointerTypeSize(Expr_TypeDef Type)
+		{
+			if (Type.Type == "string")
+				return 1; // string is array of bytes
+
+			if (!(Type.IsPointer || Type.IsArray))
+				throw new Exception("Not pointer or array type");
+
+			return GetRawTypeSize(Type);
 		}
 	}
 }

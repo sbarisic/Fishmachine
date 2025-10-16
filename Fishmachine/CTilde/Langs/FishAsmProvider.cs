@@ -199,7 +199,7 @@ namespace CTilde.Langs
 		{
 			var vType = State.GetVarType(name);
 			bool isGlobal = State.IsVarGlobal(name);
-			bool isArrayLike = vType.IsArray || (isGlobal && vType.Type == "string");
+			bool isArrayLike = vType.IsArray || (isGlobal && Expr_TypeDef.IsPointerType(vType.Type));
 
 			if (isGlobal)
 			{
@@ -465,7 +465,7 @@ namespace CTilde.Langs
 						for (int i = 0; i < ParamsDef.Definitions.Count; i++)
 						{
 							ParamDefData ParamDef = ParamsDef.Definitions[i];
-							int Size = State.GetTypeSize(ParamDef.ParamType);
+							int Size = Expr_TypeDef.GetTypeSize(ParamDef.ParamType);
 							State.DefineVar(ParamDef.Name, Size, true, ParamDef.ParamType, false, true);
 						}
 
@@ -508,12 +508,12 @@ namespace CTilde.Langs
 							State.DefineLabel(VariableDef.Ident.Identifier, true);
 							EmitRaw(".globl {0}", VariableDef.Ident.Identifier);
 
-							int Size = State.GetTypeSize(VariableDef.Type);
+							int Size = Expr_TypeDef.GetTypeSize(VariableDef.Type);
 							State.DefineVar(VariableDef.Ident.Identifier, Size, false, VariableDef.Type, true, false);
 						}
 						else
 						{
-							int Size = State.GetTypeSize(VariableDef.Type);
+							int Size = Expr_TypeDef.GetTypeSize(VariableDef.Type);
 							State.DefineVar(VariableDef.Ident.Identifier, Size, false, VariableDef.Type, false, false);
 
 							EmitInstruction(FishInst.SUB_LONG_REG, (uint)Size, Reg.ESP);
@@ -529,7 +529,7 @@ namespace CTilde.Langs
 						EmitRaw("# VariableDef BEGIN - {0}", AssVariableDef.VariableDef.Ident.Identifier);
 						Indent();
 
-						int Size = State.GetTypeSize(AssVariableDef.VariableDef.Type);
+						int Size = Expr_TypeDef.GetTypeSize(AssVariableDef.VariableDef.Type);
 						bool Global = State.IsInsideFunctionBody ? false : true;
 
 						State.DefineVar(AssVariableDef.VariableDef.Ident.Identifier, Size, false, AssVariableDef.VariableDef.Type, Global, false);
@@ -585,9 +585,9 @@ namespace CTilde.Langs
 							if (IndexOp.LExpr is Expr_Identifier Id)
 							{
 								Expr_TypeDef VarType = State.GetVarType(Id.Identifier);
-								CopyBytes = State.GetPointerTypeSize(VarType);
+								CopyBytes = Expr_TypeDef.GetPointerTypeSize(VarType);
 
-								StoreIdentifier(Id.Identifier, CopyBytes, VarType.IsPointer, Reg.EAX, Reg.EBX, State.IsUnsigned(VarType.Type), true);
+								StoreIdentifier(Id.Identifier, CopyBytes, VarType.IsPointer, Reg.EAX, Reg.EBX, Expr_TypeDef.IsUnsigned(VarType.Type), true);
 							}
 							else
 								throw new NotImplementedException();
@@ -606,11 +606,12 @@ namespace CTilde.Langs
 						Compile(AssVariable.AssignmentValue);
 
 						Expr_TypeDef td = State.GetVarType(AssVariable.Variable.Identifier);
-						int sz = State.GetTypeSize(td);
+						int sz = Expr_TypeDef.GetTypeSize(td);
 
 						EmitRaw("# Expr_AssignValue BEGIN");
+						EmitRaw("# Assign to '{0}'", AssVariable.Variable.Identifier);
 						Indent();
-						StoreIdentifier(AssVariable.Variable.Identifier, sz, td.IsPointer, Reg.EAX, State.IsUnsigned(td.Type));
+						StoreIdentifier(AssVariable.Variable.Identifier, sz, td.IsPointer, Reg.EAX, Expr_TypeDef.IsUnsigned(td.Type));
 						Unindent();
 						EmitRaw("# Expr_AssignValue END");
 
@@ -630,7 +631,7 @@ namespace CTilde.Langs
 						else if (isArrayLike)
 							sz = 0;           // decay to address
 						else
-							sz = State.GetTypeSize(t);
+							sz = Expr_TypeDef.GetTypeSize(t);
 
 						FetchIdentifier(id.Identifier, sz, isPtr, Reg.EAX, true, false);
 						break;
@@ -914,7 +915,14 @@ namespace CTilde.Langs
 
 						if (AddrOfExpr.ValExpr is Expr_Identifier Ident)
 						{
-							EmitInstruction(FishInst.MOVE_LONG_REG, Ident.Identifier, Reg.EAX);
+							if (State.IsVarGlobal(Ident.Identifier))
+							{
+								EmitInstruction(FishInst.MOVE_LONG_REG, Ident.Identifier, Reg.EAX);
+							}
+							else
+							{
+								FetchIdentifier(Ident.Identifier, 0, false, Reg.EAX, true, false);
+							}
 						}
 						else
 							throw new NotImplementedException();
@@ -935,7 +943,7 @@ namespace CTilde.Langs
 						if (IndexExpr.LExpr is Expr_Identifier id)
 						{
 							Expr_TypeDef idType = State.GetVarType(id.Identifier);
-							int elemSize = State.GetPointerTypeSize(idType);
+							int elemSize = Expr_TypeDef.GetPointerTypeSize(idType);
 
 							EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.EBX); // EBX = index (scaled below)
 
@@ -948,7 +956,7 @@ namespace CTilde.Langs
 							}
 
 							// Treat 'string' params as pointers for indexing, even if type metadata isn't flagged
-							bool treatAsPointer = idType.IsPointer || (!idType.IsArray && idType.Type == "string");
+							bool treatAsPointer = idType.IsPointer || (!idType.IsArray && Expr_TypeDef.IsPointerType(idType.Type));
 
 							EmitRaw("#: {0}[EBX]", id.Identifier);
 
@@ -986,9 +994,9 @@ namespace CTilde.Langs
 							bool ispointer = nameType.IsPointer || nameType.IsArray;
 
 							if (ispointer)
-								sz = State.GetPointerTypeSize(nameType);
+								sz = Expr_TypeDef.GetPointerTypeSize(nameType);
 							else
-								sz = State.GetTypeSize(nameType);
+								sz = Expr_TypeDef.GetTypeSize(nameType);
 
 							FetchIdentifier(name, sz, ispointer, Reg.EAX, false, false);
 
@@ -1109,7 +1117,7 @@ namespace CTilde.Langs
 			{
 				var t = State.GetVarType(id.Identifier);
 				bool isGlobal = State.IsVarGlobal(id.Identifier);
-				bool isArrayLike = t.IsArray || (isGlobal && t.Type == "string");
+				bool isArrayLike = t.IsArray || (isGlobal && Expr_TypeDef.IsPointerType(t.Type));
 
 				if (isArrayLike)
 				{
@@ -1138,7 +1146,7 @@ namespace CTilde.Langs
 			{
 				var t = State.GetVarType(baseId.Identifier);
 				bool isGlobal = State.IsVarGlobal(baseId.Identifier);
-				bool isArrayLike = t.IsArray || (isGlobal && t.Type == "string");
+				bool isArrayLike = t.IsArray || (isGlobal && Expr_TypeDef.IsPointerType(t.Type));
 
 				if (isArrayLike)
 				{

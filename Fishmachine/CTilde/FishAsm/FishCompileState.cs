@@ -126,42 +126,6 @@ namespace CTilde.FishAsm
 			return Label;
 		}
 
-		int GetRawTypeSize(Expr_TypeDef Type)
-		{
-			if (Type.Type == "int" || Type.Type == "uint" || Type.Type == "float" || Type.Type == "string")
-				return 4;
-			else if (Type.Type == "byte" || Type.Type == "char" || Type.Type == "bool")
-				return 1;
-
-			throw new NotImplementedException();
-		}
-
-		public int GetTypeSize(Expr_TypeDef Type)
-		{
-			if (Type.IsPointer || Type.IsArray)
-				return 4;
-
-			return GetRawTypeSize(Type);
-		}
-
-		public bool IsUnsigned(string TypeName)
-		{
-			if (TypeName == "byte" || TypeName == "uint" || TypeName == "bool")
-				return true;
-			return false;
-		}
-
-		public int GetPointerTypeSize(Expr_TypeDef Type)
-		{
-			if (Type.Type == "string")
-				return 1; // string is array of bytes
-
-			if (!(Type.IsPointer || Type.IsArray))
-				throw new Exception("Not pointer or array type");
-
-			return GetRawTypeSize(Type);
-		}
-
 		public void ClearVarOffsets()
 		{
 			List<FishVarDef> RemoveList = new List<FishVarDef>();

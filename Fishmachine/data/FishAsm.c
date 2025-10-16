@@ -8,9 +8,13 @@ define SYS_StopMachine = 0;
 define SYS_PrintChar = 1;
 define SYS_PrintNum = 2;
 define SYS_SoftwareInterrupt = 3;
-define SYS_SoftwareInterruptEnable = 4;
-define SYS_SoftwareInterruptDisable = 5;
-define SYS_Alloc = 6;
+define SYS_Alloc = 4;
+
+voidptr alloc(uint bytes) {
+	voidptr ptr = bytes;
+	syscall_2(SYS_Alloc, &ptr);
+	return ptr;
+}
 
 void print(string str) {
 	uint i = 0;
@@ -134,6 +138,16 @@ interrupt void handler_int2_keyboardchar(uint key2) {
 }
 
 naked void kmain() {
+	/*voidptr mem = 0;
+
+	printnum(mem);
+
+	mem = alloc(100);
+
+	printnum(mem);
+	__asm("DBG_BREAK");*/
+
+
 	int_table[0] = &handler_int0;
 	int_table[1] = &handler_int1_keyboardkey;
 	int_table[2] = &handler_int2_keyboardchar;
