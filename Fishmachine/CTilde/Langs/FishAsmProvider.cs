@@ -199,19 +199,32 @@ namespace CTilde.Langs
 		{
 			if (State.IsVarGlobal(name))
 			{
+				// Use EDX as a temporary base to avoid clobbering EBX (often holds index)
+				Reg baseReg = Reg.EDX;
+
+				// Load the symbol address into baseReg
+				EmitInstruction(FishInst.MOVE_LONG_REG, name, baseReg);
+
+				// If requested, add EBX index to the base address
+				if (sumEBX)
+					EmitInstruction(FishInst.ADD_REG_REG, Reg.EBX, baseReg);
+
 				if (size != 0)
 				{
-					EmitInstruction(FishInst.MOVE_LONG_REG, name, Reg.EBX);
-					EmitLoadFromAddress(size, 0, Reg.EBX, DestReg, isunsigned);
+					// Load the value from [base + (optional EBX index)]
+					EmitLoadFromAddress(size, 0, baseReg, DestReg, isunsigned);
 				}
 				else
 				{
-					EmitInstruction(FishInst.ADD_LONG_REG, name, DestReg); // NOP to prevent skipping
+					// Return the address itself
+					if (DestReg != baseReg)
+						EmitInstruction(FishInst.MOVE_REG_REG, baseReg, DestReg);
 				}
 			}
 			else
 			{
 				int VarOffset = State.GetVarOffset(name);
+				// DestReg = &EBP[offset]
 				EmitInstruction(FishInst.LEA_OFFSET_REG_REG, VarOffset, Reg.EBP, DestReg);
 
 				if (sumEBX)
@@ -520,9 +533,11 @@ namespace CTilde.Langs
 							EmitRaw("# Expr_AssignValue BEGIN");
 							Indent();
 
+							// Ensure we only get address for the LExpr, then restore flag
+							bool prevAddrOnly = State.IndexEmitOnlyAddress;
 							State.IndexEmitOnlyAddress = true;
 							Compile(AssValue.LExpr);
-							State.IndexEmitOnlyAddress = true;
+							State.IndexEmitOnlyAddress = prevAddrOnly;
 
 							EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.EBX);
 

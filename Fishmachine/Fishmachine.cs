@@ -2,7 +2,6 @@
 using CTilde;
 using CTilde.FishAsm;
 using CTilde.Langs;
-using Driver;
 using Fishmachine.VM;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -172,7 +171,7 @@ namespace Fishmachine
 				File.Delete("vm_out.txt");
 		}
 
-		static void Compile(string CFile)
+		/*static void Compile(string CFile)
 		{
 			// Compile
 			string Src = "";
@@ -183,7 +182,6 @@ namespace Fishmachine
 			}
 
 			Compiler compiler = Compiler.FromSource(Src);
-			//Console.WriteLine(compiler.Assembly);
 
 			string OutAsmName = Path.GetFileNameWithoutExtension(CFile) + ".asm";
 
@@ -191,12 +189,7 @@ namespace Fishmachine
 				File.Delete(OutAsmName);
 
 			File.WriteAllText(OutAsmName, compiler.Assembly);
-
-			/*if (File.Exists("out_asm.txt"))
-				File.Delete("out_asm.txt");
-
-			File.Copy("out.asm", "out_asm.txt");*/
-		}
+		}*/
 
 		static byte[] Assemble(AssemblerState AsmState, string[] AsmFiles, out uint KMainAddr)
 		{
