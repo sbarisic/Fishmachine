@@ -86,9 +86,9 @@ int input_readline(string dst) {
 		idx = input_count - 1;
 		chr = temp_buffer[idx];
 		printchar('\n');
-		print("- ");
+		print("-chr = '");
 		printchar(chr);
-		printchar('\n');
+		print("'\n");
 
 		if (chr == '\n') {
 			memory_copy(dst, temp_buffer, idx);
@@ -101,6 +101,8 @@ int input_readline(string dst) {
 			__asm("DBG_BREAK");
 			return ret;
 		}
+
+		__asm("DBG_BREAK");
 	}
 
 	return ret;
@@ -122,19 +124,18 @@ void kmain() {
 	//int_table[1] = &handler_int1_keyboardkey;
 	//int_table[2] = &handler_int2_keyboardchar;
 
-	print("Hello!\n");
+	//print("Hello!\n");
 	input_add('H');
 	input_add('d');
 	input_add('\n');
 
 	while (true) {
-		print("In: ");
+		//print("In: ");
 		input_readline(temp_buffer2);
 		print("You typed: ");
 		print(temp_buffer2);
 		print("\n");
 
-		__asm("WAIT");
 	}
 
 	__asm("SYSCALL $0");

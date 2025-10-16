@@ -199,12 +199,10 @@ namespace CTilde.Langs
 		{
 			var vType = State.GetVarType(name);
 			bool isGlobal = State.IsVarGlobal(name);
-			// Some “static string[N]” come through as Type == "string" but not flagged IsArray; treat them as array-like if global.
 			bool isArrayLike = vType.IsArray || (isGlobal && vType.Type == "string");
 
 			if (isGlobal)
 			{
-				// Address of global symbol
 				Reg baseReg = Reg.EDX;
 				EmitInstruction(FishInst.MOVE_LONG_REG, name, baseReg);
 
