@@ -587,6 +587,8 @@ namespace Fishmachine
 						case "FLOAT_SUB":
 						case "FLOAT_MUL":
 						case "FLOAT_DIV":
+						case "SOFTINT_ENABLE":
+						case "SOFTINT_DISABLE":
 							if (Tokens.Length != 1)
 								Throw(i, $"{Tokens[0]} requires 0 operands");
 

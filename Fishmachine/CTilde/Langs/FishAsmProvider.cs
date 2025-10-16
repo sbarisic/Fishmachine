@@ -422,6 +422,8 @@ namespace CTilde.Langs
 							Indent();
 							State.IsInsideFunctionDef = true;
 
+							//EmitInstruction(FishInst.SOFTINT_DISABLE);
+
 							if (!FuncDef.Naked)
 							{
 								EmitInstruction(FishInst.PUSH_REG, Reg.EBP);
@@ -434,6 +436,8 @@ namespace CTilde.Langs
 							State.IsInsideFunctionBody = true;
 
 							Compile(FuncDef.FuncBody);
+
+							//EmitInstruction(FishInst.SOFTINT_ENABLE);
 
 							if (!FuncDef.Naked)
 							{
@@ -1075,6 +1079,12 @@ namespace CTilde.Langs
 							Unindent();
 							EmitRaw("# FuncCall END - {0}", FuncCallExp.Function.Identifier);
 						}
+						break;
+					}
+
+				case Expr_DefineExpr DefineExpr:
+					{
+						// Skip, compile time use only
 						break;
 					}
 

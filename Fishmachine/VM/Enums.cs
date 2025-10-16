@@ -25,6 +25,8 @@ namespace Fishmachine.VM
 		PrintChar,
 		PrintNum,
 		SoftwareInterrupt,
+		SoftwareInterruptEnable,
+		SoftwareInterruptDisable,
 		Alloc,
 	}
 
@@ -49,6 +51,8 @@ namespace Fishmachine.VM
 		DBG_BREAK,
 		SYSCALL,
 		SYSCALL_2,
+		SOFTINT_ENABLE,
+		SOFTINT_DISABLE,
 
 		JUMP_REG,
 		JUMP_LONG,

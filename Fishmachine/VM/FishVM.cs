@@ -28,6 +28,8 @@ namespace Fishmachine.VM
 				case FishInst.FLOAT_SUB:
 				case FishInst.FLOAT_MUL:
 				case FishInst.FLOAT_DIV:
+				case FishInst.SOFTINT_ENABLE:
+				case FishInst.SOFTINT_DISABLE:
 					return 1;
 
 				// One register, 2 byte total
@@ -288,6 +290,9 @@ namespace Fishmachine.VM
 			if (!Regs.IntEnabled)
 				return;
 
+			if (!Regs.SoftIntEnabled)
+				return;
+
 			if (IRETStack.Count > 0)
 				return;
 
@@ -365,6 +370,15 @@ namespace Fishmachine.VM
 			{
 				Console.WriteLine("Interrupt {0}!", Arg1);
 				Interrupt((FishInterrupt)Arg1);
+			}
+			else if (FInt == FishSyscall.SoftwareInterruptEnable)
+			{
+				Console.WriteLine("Soft Int Enable {0}", Arg1);
+
+				if (Arg1 == 0)
+					Regs.SoftIntEnabled = false;
+				else
+					Regs.SoftIntEnabled = true;
 			}
 			else if (FInt == FishSyscall.Alloc)
 			{

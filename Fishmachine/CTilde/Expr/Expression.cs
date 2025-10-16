@@ -35,6 +35,21 @@ namespace CTilde.Expr
 			return DebugTokens;
 		}
 
+		static Dictionary<string, Expression> Defines = new Dictionary<string, Expression>();
+
+		static void DefineSet(string Name, Expression Value)
+		{
+			Defines[Name] = Value;
+		}
+
+		static Expression DefineGet(string Name)
+		{
+			if (Defines.ContainsKey(Name))
+				return Defines[Name];
+
+			return null;
+		}
+
 		public static Expression ParseStatement(Tokenizer Tok)
 		{
 			Token[] DebugTokens = GetDebugTokens(Tok);
@@ -65,6 +80,12 @@ namespace CTilde.Expr
 			else if (Tok.Peek().Is(Keyword.@break))
 			{
 				Expr_BreakExpr BDef = (Expr_BreakExpr)new Expr_BreakExpr().Parse(Tok);
+				return BDef;
+			}
+			else if (Tok.Peek().Is(Keyword.define))
+			{
+				Expr_DefineExpr BDef = (Expr_DefineExpr)new Expr_DefineExpr().Parse(Tok);
+				DefineSet(BDef.Ident, BDef.ValueExpr);
 				return BDef;
 			}
 			else if (Tok.Peek().Is(Keyword.wait))
@@ -235,6 +256,10 @@ namespace CTilde.Expr
 				else if (Tok.Peek().Is(TokenType.Identifier))
 				{
 					LeftExpr = new Expr_Identifier().Parse<Expr_Identifier>(Tok);
+
+					Expression DefVal = DefineGet(((Expr_Identifier)LeftExpr).Identifier);
+					if (DefVal != null)
+						LeftExpr = DefVal;
 				}
 				else if (Tok.Peek().Is(TokenType.QuotedString))
 				{

@@ -4,17 +4,25 @@ string temp_buffer2 = static string[50];
 int input_length = 50;
 int input_count = 0;
 
+define SYS_StopMachine = 0;
+define SYS_PrintChar = 1;
+define SYS_PrintNum = 2;
+define SYS_SoftwareInterrupt = 3;
+define SYS_SoftwareInterruptEnable = 4;
+define SYS_SoftwareInterruptDisable = 5;
+define SYS_Alloc = 6;
+
 void print(string str) {
 	uint i = 0;
 
 	while (str[i] != 0) {
-		syscall_2(1, str[i]);
+		syscall_2(SYS_PrintChar, str[i]);
 		i++;
 	}
 }
 
 void printnum(uint num) {
-	syscall_2(2, num);
+	syscall_2(SYS_PrintNum, num);
 }
 
 string tmp_chr = static string[2];
@@ -66,6 +74,8 @@ void input_add(char c) {
 			printchar('\b');
 			return;
 		}
+
+		return;
 	}
 
 	// Only add if there is space for at least one more character (for newline)

@@ -131,6 +131,34 @@ namespace Fishmachine.VM
 						return false;
 					}
 
+				case FishInst.SOFTINT_ENABLE:
+					{
+						Console.PrintInst(Inst);
+
+						if (FishSettings.DebugPrintSyscall)
+						{
+							Console.ForegroundColor = ConsoleColor.Red;
+							Console.WriteLine("Software interrupts enabled");
+							Console.ResetColor();
+						}
+						Regs.SoftIntEnabled = true;
+						break;
+					}
+
+				case FishInst.SOFTINT_DISABLE:
+					{
+						Console.PrintInst(Inst);
+
+						if (FishSettings.DebugPrintSyscall)
+						{
+							Console.ForegroundColor = ConsoleColor.Red;
+							Console.WriteLine("Software interrupts disabled");
+							Console.ResetColor();
+						}
+						Regs.SoftIntEnabled = false;
+						break;
+					}
+
 				case FishInst.PUSH_REG:
 					{
 						Reg R = (Reg)ReadByteFromIP(out E);

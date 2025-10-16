@@ -24,6 +24,7 @@ namespace CTilde
 		@continue,
 		interrupt,
 		wait,
+		define
 	}
 
 	public enum Symbol : int
