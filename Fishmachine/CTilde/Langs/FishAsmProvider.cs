@@ -886,6 +886,12 @@ namespace CTilde.Langs
 						break;
 					}
 
+				case Expr_WaitExpr WaitExpr:
+					{
+						EmitInstruction(FishInst.WAIT);
+						break;
+					}
+
 				case Expr_ContinueExpr ContinueExpr:
 					{
 						EmitRaw("# Continue");

@@ -31,10 +31,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="CTilde\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Include="..\bin\Debug\net8.0\ct.asm" Link="ct.asm" />
   </ItemGroup>
 

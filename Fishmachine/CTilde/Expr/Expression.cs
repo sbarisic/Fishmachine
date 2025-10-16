@@ -67,6 +67,11 @@ namespace CTilde.Expr
 				Expr_BreakExpr BDef = (Expr_BreakExpr)new Expr_BreakExpr().Parse(Tok);
 				return BDef;
 			}
+			else if (Tok.Peek().Is(Keyword.wait))
+			{
+				Expr_WaitExpr BDef = (Expr_WaitExpr)new Expr_WaitExpr().Parse(Tok);
+				return BDef;
+			}
 			else if (Tok.Peek().Is(Keyword.@continue))
 			{
 				Expr_ContinueExpr BDef = (Expr_ContinueExpr)new Expr_ContinueExpr().Parse(Tok);

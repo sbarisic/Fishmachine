@@ -23,6 +23,7 @@ namespace CTilde
 		@return,
 		@continue,
 		interrupt,
+		wait,
 	}
 
 	public enum Symbol : int

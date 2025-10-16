@@ -105,11 +105,11 @@ namespace Fishmachine
 			int ScreenX = FontW + FontW * CurX;
 			int ScreenY = FontH + FontH * CurY;
 
-			if (arg1 == ' ')
+			/**if (arg1 == ' ')
 			{
 				CurX++;
 			}
-			else if (arg1 == '\n')
+			else */if (arg1 == '\n')
 			{
 				CurX = 0;
 				CurY++;
@@ -227,6 +227,11 @@ namespace Fishmachine
 					{
 						KeyPressedCode = 0;
 						CharPressedCode = (uint)'\n';
+					}
+					else if (KeyPressedCode == 0x103)
+					{
+						KeyPressedCode = 0;
+						CharPressedCode = (uint)'\b';
 					}
 				}
 

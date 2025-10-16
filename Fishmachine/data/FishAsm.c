@@ -61,6 +61,9 @@ void input_add(char c) {
 		if (input_count > 0) {
 			input_count--;
 			temp_buffer[input_count] = 0;
+			printchar('\b');
+			printchar(' ');
+			printchar('\b');
 			return;
 		}
 	}
@@ -81,7 +84,7 @@ int input_readline(string dst) {
 
 	while (true) {
 		if (input_count == 0) {
-			__asm("WAIT");
+			wait;
 			continue;
 		}
 
@@ -103,7 +106,7 @@ int input_readline(string dst) {
 			return ret;
 		}
 
-		__asm("WAIT");
+		wait;
 	}
 
 	return ret;
@@ -120,7 +123,7 @@ interrupt void handler_int2_keyboardchar(uint key2) {
 	input_add(key2);
 }
 
-void kmain() {
+naked void kmain() {
 	int_table[0] = &handler_int0;
 	int_table[1] = &handler_int1_keyboardkey;
 	int_table[2] = &handler_int2_keyboardchar;
@@ -133,7 +136,6 @@ void kmain() {
 		print("You typed: ");
 		print(temp_buffer2);
 		print("\n");
-
 	}
 
 	__asm("SYSCALL $0");
