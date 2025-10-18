@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -152,10 +153,11 @@ namespace CTilde.Expr
 			}
 			else if (Tok.Peek().Is(TokenType.Identifier) && Tok.Peek(2).Is(Symbol.LParen))
 			{
-
 				// Function call
-				Expression Var = new Expr_FuncCall().Parse(Tok);
-				Tok.NextToken().Assert(Symbol.Semicolon);
+				//Expression Var = new Expr_FuncCall().Parse(Tok);
+				//Tok.NextToken().Assert(Symbol.Semicolon);
+
+				Expression Var = ParseExpression(Tok, Symbol.Semicolon);
 
 				return Var;
 			}
@@ -172,9 +174,14 @@ namespace CTilde.Expr
 				return Var;
 			}
 
+			PT = Tok.Peek();
 			Expression EE = ParseExpression(Tok, Symbol.Semicolon);
 			if (EE is Expr_AssignValue ExprAssignVal)
 				return ExprAssignVal;
+			else if (EE is Expr_ConstNumber ConstNumVal)
+				return ConstNumVal;
+			else
+				throw new NotImplementedException();
 
 			// Empty statement
 			/*if (Tok.Peek().Is(Symbol.Semicolon))
@@ -233,7 +240,11 @@ namespace CTilde.Expr
 				{
 					Tok.NextToken().Assert(Symbol.LParen);
 					LeftExpr = Expression.ParseExpression(Tok, Symbol.RParen);
-					Tok.NextToken().Assert(Symbol.RParen);
+
+					Console.WriteLine(">> {0} {1} {2} {3}", Tok.Peek(), Tok.Peek(2), Tok.Peek(3), Tok.Peek(4));
+
+					if (Tok.Peek().Is(Symbol.RParen))
+						Tok.NextToken().Assert(Symbol.RParen);
 				}
 				else if (Tok.Peek().Is(Keyword.@true))
 				{
@@ -252,6 +263,10 @@ namespace CTilde.Expr
 				else if (Tok.Peek().Is(TokenType.Number) || Tok.Peek().Is(TokenType.Decimal))
 				{
 					LeftExpr = new Expr_ConstNumber(Tok.NextToken().Text);
+				}
+				else if (Tok.Peek().Is(TokenType.Identifier) && Tok.Peek(2).Is(Symbol.LParen))
+				{
+					LeftExpr = new Expr_FuncCall().Parse<Expr_FuncCall>(Tok);
 				}
 				else if (Tok.Peek().Is(TokenType.Identifier))
 				{

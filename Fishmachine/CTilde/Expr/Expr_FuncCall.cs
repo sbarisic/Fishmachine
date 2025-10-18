@@ -5,26 +5,36 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
-namespace CTilde.Expr {
-	public class Expr_FuncCall : Expression {
+namespace CTilde.Expr
+{
+	public class Expr_FuncCall : Expression
+	{
 		public Expr_Identifier Function;
 		public List<Expression> Arguments = new List<Expression>();
 
-		public override Expression Parse(Tokenizer Tok) {
+		public override Expression Parse(Tokenizer Tok)
+		{
 			Function = new Expr_Identifier().Parse<Expr_Identifier>(Tok);
 			Tok.NextToken().Assert(Symbol.LParen);
 
-			while (!Tok.Peek().Is(Symbol.RParen)) {
+			while (!Tok.Peek().Is(Symbol.RParen))
+			{
 				Expression E = Expression.ParseExpression(Tok, Symbol.Comma);
 				Arguments.Add(E);
 
-				if (!Tok.Peek().Is(Symbol.RParen)) {
+				if (!Tok.Peek().Is(Symbol.RParen))
+				{
 					//Tok.NextToken().Assert(Symbol.Comma);
 				}
 			}
 
 			Tok.NextToken().Assert(Symbol.RParen);
 			return this;
+		}
+
+		public override string ToSourceStr()
+		{
+			return string.Format("{0}({1})", Function.ToSourceStr(), string.Join(", ", Arguments.Select(a => a.ToSourceStr())));
 		}
 	}
 }

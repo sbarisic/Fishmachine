@@ -37,20 +37,27 @@ namespace CTilde.FishAsm
 	{
 		public string Name;
 		public string Value;
+		public Expr_TypeDef FuncReturnType;
 		public bool Generated = false;
 		public bool Global = false;
 
-		public FishLabel(string Name, bool Global)
+		public FishLabel(string Name, Expr_TypeDef FuncReturnType, bool Global)
 		{
 			this.Name = Name;
-			Value = "";
 			this.Global = Global;
+			this.FuncReturnType = FuncReturnType;
+			Value = "";
 		}
 
 		public FishLabel(string Name, string Value)
 		{
 			this.Name = Name;
 			this.Value = Value;
+		}
+
+		public override string ToString()
+		{
+			return string.Format("FishLabel '{0}'; Value '{1}'; Global {2}", Name, Value, Global ? 1 : 0);
 		}
 	}
 
@@ -70,22 +77,22 @@ namespace CTilde.FishAsm
 
 		List<FishLabel> Labels = new List<FishLabel>();
 
-		public string DefineFreeLabel(string LabelName, bool Global)
+		public string DefineFreeLabel(string LabelName, Expr_TypeDef FuncReturnType, bool Global)
 		{
 			if (!string.IsNullOrEmpty(LabelName))
 				LabelName = "." + LabelName + "_" + (FreeLabel++).ToString("X4");
 
-			DefineLabel(LabelName, Global);
+			DefineLabel(LabelName, FuncReturnType, Global);
 			return LabelName;
 		}
 
-		public void DefineLabel(string LabelName, bool Global)
+		public void DefineLabel(string LabelName, Expr_TypeDef FuncReturnType, bool Global)
 		{
 			if (Labels.Any(l => l.Name == LabelName))
 				throw new Exception(string.Format("Label '{0}' is already defined", LabelName));
 
 			FreeLabel++;
-			Labels.Add(new FishLabel(LabelName, Global));
+			Labels.Add(new FishLabel(LabelName, FuncReturnType, Global));
 		}
 
 		public FishLabel[] GetNewLabels()
@@ -250,7 +257,12 @@ namespace CTilde.FishAsm
 			if (ContainsKey(VarName))
 				return GetKeyValue(VarName).TypeStr;
 
-			return null;
+			FishLabel Lbl = GetLabel(VarName);
+
+			if (Lbl.FuncReturnType == null)
+				throw new NotImplementedException();
+
+			return Lbl.FuncReturnType;
 		}
 
 		public bool IsVarGlobal(string VarName)
@@ -260,6 +272,16 @@ namespace CTilde.FishAsm
 
 			return false;
 		}
+
+		/*public FishLabel GetLabel(string LabelName)
+		{
+			FishLabel Label = Labels.FirstOrDefault(l => l.Name == LabelName);
+
+			if (Label == null)
+				throw new Exception(string.Format("Could not find label '{0}'", LabelName));
+
+			return Label;
+		}*/
 
 		Stack<string> BreakLabels = new Stack<string>();
 		Stack<string> LoopLabels = new Stack<string>();

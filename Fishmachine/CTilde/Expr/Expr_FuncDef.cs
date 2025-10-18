@@ -19,6 +19,7 @@ namespace CTilde.Expr
 
 		public bool Naked;
 		public bool Interrupt;
+		public bool IsFunctionCall = false;
 
 		public Expr_FuncDef()
 		{
@@ -56,14 +57,17 @@ namespace CTilde.Expr
 			FuncParams = new Expr_ParamsDef().Parse<Expr_ParamsDef>(Tok);
 			Tok.NextToken().Assert(Symbol.RParen);
 
-			if (Tok.Peek().Is(Symbol.Semicolon))
+			Token P = Tok.Peek();
+			if (Tok.Peek().Is(Symbol.LBrace))
 			{
-				Tok.NextToken().Assert(Symbol.Semicolon);
-				FuncBody = null;
-				return this;
+				Console.WriteLine(">> {0}", P);
+				FuncBody = new Expr_Block().Parse<Expr_Block>(Tok);
+				IsFunctionCall = false;
 			}
-
-			FuncBody = new Expr_Block().Parse<Expr_Block>(Tok);
+			else
+			{
+				IsFunctionCall = true;
+			}
 
 			return this;
 		}

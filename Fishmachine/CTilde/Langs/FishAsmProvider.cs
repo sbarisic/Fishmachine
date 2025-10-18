@@ -339,7 +339,7 @@ namespace CTilde.Langs
 							string implName = FuncDef.FuncName + "_imp";
 
 							EmitRaw(".globl {0}", implName);
-							State.DefineLabel(implName, true);
+							State.DefineLabel(implName, FuncDef.FuncReturnTypeDef, true);
 							EmitInstruction(FishInst.SOFTINT_DISABLE);
 
 							if (FuncDef.FuncBody != null)
@@ -373,7 +373,7 @@ namespace CTilde.Langs
 							}
 
 							EmitRaw(".globl {0}", FuncDef.FuncName);
-							State.DefineLabel(FuncDef.FuncName, true);
+							State.DefineLabel(FuncDef.FuncName, FuncDef.FuncReturnTypeDef, true);
 							EmitRaw("{0}:", FuncDef.FuncName);
 							Indent();
 
@@ -413,7 +413,7 @@ namespace CTilde.Langs
 
 						// Normal function
 						EmitRaw(".globl {0}", FuncDef.FuncName);
-						State.DefineLabel(FuncDef.FuncName, true);
+						State.DefineLabel(FuncDef.FuncName, FuncDef.FuncReturnTypeDef, true);
 
 						if (FuncDef.FuncBody != null)
 						{
@@ -487,7 +487,7 @@ namespace CTilde.Langs
 
 				case Expr_StaticValue StaticValueExpr:
 					{
-						string StatVar = State.DefineFreeLabel("STATVAR", false);
+						string StatVar = State.DefineFreeLabel("STATVAR", StaticValueExpr.TypeDefExpr, false);
 						EmitRaw("{0}:", StatVar);
 
 						if (StaticValueExpr.TypeDefExpr.Type == "string" && StaticValueExpr.TypeDefExpr.IsArray)
@@ -505,7 +505,7 @@ namespace CTilde.Langs
 
 						if (!State.IsInsideFunctionBody)
 						{
-							State.DefineLabel(VariableDef.Ident.Identifier, true);
+							State.DefineLabel(VariableDef.Ident.Identifier, VariableDef.Type, true);
 							EmitRaw(".globl {0}", VariableDef.Ident.Identifier);
 
 							int Size = Expr_TypeDef.GetTypeSize(VariableDef.Type);
@@ -540,7 +540,7 @@ namespace CTilde.Langs
 						}
 						else
 						{
-							State.DefineLabel(AssVariableDef.VariableDef.Ident.Identifier, true);
+							State.DefineLabel(AssVariableDef.VariableDef.Ident.Identifier, AssVariableDef.VariableDef.Type, true);
 							EmitRaw(".globl {0}", AssVariableDef.VariableDef.Ident.Identifier);
 							EmitRaw("{0}:", AssVariableDef.VariableDef.Ident.Identifier);
 						}
@@ -548,7 +548,7 @@ namespace CTilde.Langs
 						Unindent();
 						EmitRaw("# VariableDef END - {0}", AssVariableDef.VariableDef.Ident.Identifier);
 
-						EmitRaw("# VariableAssign BEGIN");
+						EmitRaw("# VariableAssign '{0}' BEGIN", AssVariableDef.VariableDef.Ident.Identifier);
 						Indent();
 
 						Compile(AssVariableDef.AssignmentValue);
@@ -560,7 +560,7 @@ namespace CTilde.Langs
 						}
 
 						Unindent();
-						EmitRaw("# VariableAssign END");
+						EmitRaw("# VariableAssign '{0}' END", AssVariableDef.VariableDef.Ident.Identifier);
 						break;
 					}
 
@@ -568,7 +568,7 @@ namespace CTilde.Langs
 					{
 						if (AssValue.LExpr is Expr_IndexOp IndexOp)
 						{
-							EmitRaw("# Expr_AssignValue BEGIN");
+							EmitRaw("# Expr_AssignValue '{0}' BEGIN", IndexOp.ToSourceStr());
 							Indent();
 
 							// Ensure we only get address for the LExpr, then restore flag
@@ -593,7 +593,7 @@ namespace CTilde.Langs
 								throw new NotImplementedException();
 
 							Unindent();
-							EmitRaw("# Expr_AssignValue END");
+							EmitRaw("# Expr_AssignValue '{0}' END", IndexOp.ToSourceStr());
 						}
 						else
 							throw new NotImplementedException();
@@ -608,22 +608,29 @@ namespace CTilde.Langs
 						Expr_TypeDef td = State.GetVarType(AssVariable.Variable.Identifier);
 						int sz = Expr_TypeDef.GetTypeSize(td);
 
-						EmitRaw("# Expr_AssignValue BEGIN");
+						EmitRaw("# Expr_AssignVariable '{0}' BEGIN", AssVariable.ToSourceStr());
 						EmitRaw("# Assign to '{0}'", AssVariable.Variable.Identifier);
 						Indent();
 						StoreIdentifier(AssVariable.Variable.Identifier, sz, td.IsPointer, Reg.EAX, Expr_TypeDef.IsUnsigned(td.Type));
 						Unindent();
-						EmitRaw("# Expr_AssignValue END");
+						EmitRaw("# Expr_AssignVariable '{0}' END", AssVariable.ToSourceStr());
 
 						break;
 					}
 
 				case Expr_Identifier id:
 					{
+						EmitRaw("# Expr_Identifier '{0}' BEGIN", id.Identifier);
+						Indent();
+
 						var t = State.GetVarType(id.Identifier);
+
+						if (t == null)
+							throw new NotImplementedException();
+
 						bool isPtr = t.IsPointer;
 						bool isGlobal = State.IsVarGlobal(id.Identifier);
-						bool isArrayLike = t.IsArray || (isGlobal && t.Type == "string");
+						bool isArrayLike = t.IsArray || (isGlobal && Expr_TypeDef.IsPointerType(t.Type));
 
 						int sz;
 						if (isPtr && !isArrayLike)
@@ -634,11 +641,17 @@ namespace CTilde.Langs
 							sz = Expr_TypeDef.GetTypeSize(t);
 
 						FetchIdentifier(id.Identifier, sz, isPtr, Reg.EAX, true, false);
+
+						Unindent();
+						EmitRaw("# Expr_Identifier '{0}' END", id.Identifier);
 						break;
 					}
 
 				case Expr_ConstNumber NumberEx:
 					{
+						EmitRaw("# Expr_ConstNumber BEGIN");
+						Indent();
+
 						uint Num = uint.Parse(NumberEx.NumberLiteral);
 
 						if (State.IsInsideFunctionBody)
@@ -648,20 +661,33 @@ namespace CTilde.Langs
 						else
 							EmitRaw(".long {0}", Num);
 
+						Unindent();
+						EmitRaw("# Expr_ConstNumber END");
 						break;
 					}
 
 				case Expr_ConstString StringEx:
 					{
-						string LblName = State.DefineLabel(null, StringEx.StringLiteral);
+						EmitRaw("# Expr_ConstString BEGIN");
+						Indent();
 
+						string LblName = State.DefineLabel(null, StringEx.StringLiteral);
 						EmitInstruction(FishInst.MOVE_LONG_REG, LblName, Reg.EAX);
+
+						Unindent();
+						EmitRaw("# Expr_ConstString END");
 						break;
 					}
 
 				case Expr_ConstChar CharEx:
 					{
+						EmitRaw("# Expr_ConstChar BEGIN");
+						Indent();
+
 						EmitInstruction(FishInst.MOVES_LONG_REG, (uint)CharEx.CharLiteral, Reg.EAX);
+
+						Unindent();
+						EmitRaw("# Expr_ConstChar END");
 						break;
 					}
 
@@ -743,11 +769,11 @@ namespace CTilde.Langs
 						EmitRaw("# If BEGIN");
 						Indent();
 
-						string EndLblName = State.DefineFreeLabel("ENDIF", false);
+						string EndLblName = State.DefineFreeLabel("ENDIF", null, false);
 						string ElseLblName = EndLblName;
 
 						if (IfExpr.ElseBody != null)
-							ElseLblName = State.DefineFreeLabel("ELSE", false);
+							ElseLblName = State.DefineFreeLabel("ELSE", null, false);
 
 						EmitRaw("#: {0}", IfExpr.ConditionValue.ToSourceStr());
 						Compile(IfExpr.ConditionValue); // sets flags for EAX vs ECX
@@ -817,8 +843,8 @@ namespace CTilde.Langs
 						EmitRaw("# While BEGIN");
 						Indent();
 
-						string LblName = State.DefineFreeLabel("WHILE", false);
-						string EndLblName = State.DefineFreeLabel("ENDWHILE", false);
+						string LblName = State.DefineFreeLabel("WHILE", null, false);
+						string EndLblName = State.DefineFreeLabel("ENDWHILE", null, false);
 						EmitRaw("{0}:", LblName);
 						State.PushLoopLabel(LblName);
 
@@ -1034,6 +1060,9 @@ namespace CTilde.Langs
 
 				case Expr_FuncCall FuncCallExp:
 					{
+						EmitRaw("# Expr_FuncCall BEGIN");
+						Indent();
+
 						if (FuncCallExp.Function.Identifier == "__asm")
 						{
 							foreach (var Arg in FuncCallExp.Arguments)
@@ -1089,6 +1118,9 @@ namespace CTilde.Langs
 							Unindent();
 							EmitRaw("# FuncCall END - {0}", FuncCallExp.Function.Identifier);
 						}
+
+						Unindent();
+						EmitRaw("# Expr_FuncCall END");
 						break;
 					}
 
