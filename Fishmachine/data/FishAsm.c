@@ -1,6 +1,6 @@
 uint* int_table;
-string temp_buffer = static string[50];
-string temp_buffer2 = static string[50];
+string temp_buffer = null;
+string temp_buffer2 = null;
 int input_length = 50;
 int input_count = 0;
 
@@ -10,16 +10,10 @@ define SYS_PrintNum = 2;
 define SYS_SoftwareInterrupt = 3;
 define SYS_Alloc = 4;
 
-uint alloc(uint bytes) {
-	printnum(bytes);
-	print("\n");
-
-	syscall_2(SYS_Alloc, &bytes);
-
-	printnum(bytes);
-	print("\n");
-
-	return bytes;
+voidptr alloc(uint bytes) {
+	voidptr alloc_mem = bytes;
+	syscall_2(SYS_Alloc, &alloc_mem);
+	return alloc_mem;
 }
 
 void print(string str) {
@@ -144,12 +138,8 @@ interrupt void handler_int2_keyboardchar(uint key2) {
 }
 
 naked void kmain() {
-	uint mem = 0;
-	mem = alloc(100);
-
-	print("mem = ");
-	printnum(mem);
-	print("\n");
+	temp_buffer = alloc(100);
+	temp_buffer2 = alloc(100);
 
 	int_table[0] = &handler_int0;
 	int_table[1] = &handler_int1_keyboardkey;

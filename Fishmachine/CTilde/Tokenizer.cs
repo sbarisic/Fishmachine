@@ -12,6 +12,7 @@ namespace CTilde
 		@class,
 		__ctor,
 		__dtor,
+		@null,
 		@if,
 		@else,
 		@while,

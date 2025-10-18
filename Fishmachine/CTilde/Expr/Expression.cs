@@ -224,7 +224,12 @@ namespace CTilde.Expr
 
 				Token PT = Tok.Peek();
 
-				if (Tok.Peek().Is(Keyword.@static))
+				if (Tok.Peek().Is(Keyword.@null))
+				{
+					Tok.NextToken().Assert(Keyword.@null);
+					LeftExpr = new Expr_ConstNull();
+				}
+				else if (Tok.Peek().Is(Keyword.@static))
 				{
 					LeftExpr = new Expr_StaticValue().Parse<Expr_StaticValue>(Tok);
 				}

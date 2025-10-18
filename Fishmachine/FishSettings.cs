@@ -10,7 +10,7 @@ namespace Fishmachine
 	{
 		public static bool DebugPrint = false;
 		public static bool DebugPrintInstruction = false;
-		public static bool DebugPrintMemory = false;
+		public static bool DebugPrintMemory = true;
 		public static bool FormatPrint = false;
 
 		/*public static bool DebugPrintFloats = false;

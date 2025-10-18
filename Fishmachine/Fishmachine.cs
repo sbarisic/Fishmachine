@@ -319,19 +319,20 @@ namespace Fishmachine
 			VM.LoadToMemory(Bytecode, 0x1000);
 			Console.WriteLine("loaded @ 0x{0:X}", 0x1000);
 
-			VM.Regs.Write(CodeGeneration.Reg.ESP, 0x20000);
-			VM.Regs.Write(CodeGeneration.Reg.EBP, 0x20000);
+			uint ESPLoc = 0x20000;
+			VM.Regs.Write(CodeGeneration.Reg.ESP, ESPLoc);
+			VM.Regs.Write(CodeGeneration.Reg.EBP, ESPLoc);
 			//VM.Regs.Write(CodeGeneration.Reg.EBP, 0x20000);
 
 			Console.WriteLine("Jumping to kmain @ 0x{0:X}", KMainAddr);
 			VM.Jump(KMainAddr);
 
 			FishException Ex = FishException.None;
-			while (VM.Run(out Ex))
+			while (VM.Run(out Ex) && Gfx.IsWindowOpen())
 			{
 				bool Interrupted = false;
 
-				while (!Interrupted)
+				while (!Interrupted && Gfx.IsWindowOpen())
 				{
 					if (Gfx.MousePressed())
 					{
@@ -360,6 +361,8 @@ namespace Fishmachine
 					FormatPrint(VM);
 			}
 
+
+			VM.PrintMem(ESPLoc, out Ex);
 
 			if (Ex != FishException.None)
 				throw new Exception($"VM stopped with exception {Ex}");

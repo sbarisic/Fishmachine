@@ -109,7 +109,8 @@ namespace Fishmachine
 			{
 				CurX++;
 			}
-			else */if (arg1 == '\n')
+			else */
+			if (arg1 == '\n')
 			{
 				CurX = 0;
 				CurY++;
@@ -180,6 +181,7 @@ namespace Fishmachine
 
 			Raylib.InitWindow(W * Scale, H * Scale, "Fishmachine");
 			Raylib.SetTargetFPS(60);
+			WindowOpen = true;
 
 
 			GfxImage = Raylib.GenImageColor(W, H, Color.Black);
@@ -252,11 +254,19 @@ namespace Fishmachine
 			}
 
 			Raylib.CloseWindow();
+			WindowOpen = false;
 		}
 
 		bool MousePressedLeft = false;
 		uint KeyPressedCode = 0;
 		uint CharPressedCode = 0;
+		bool WindowOpen = false;
+
+		public bool IsWindowOpen()
+		{
+			WaitForRunning();
+			return WindowOpen;
+		}
 
 		public bool MousePressed()
 		{

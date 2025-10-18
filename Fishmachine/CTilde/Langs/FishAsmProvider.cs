@@ -647,6 +647,23 @@ namespace CTilde.Langs
 						break;
 					}
 
+				case Expr_ConstNull NullEx:
+					{
+						EmitRaw("# Expr_ConstNull BEGIN");
+						Indent();
+
+						if (State.IsInsideFunctionBody)
+						{
+							EmitInstruction(FishInst.MOVE_LONG_REG, (uint)0, Reg.EAX);
+						}
+						else
+							EmitRaw(".long {0}", 0);
+
+						Unindent();
+						EmitRaw("# Expr_ConstNull END");
+						break;
+					}
+
 				case Expr_ConstNumber NumberEx:
 					{
 						EmitRaw("# Expr_ConstNumber BEGIN");
@@ -1100,7 +1117,7 @@ namespace CTilde.Langs
 						}
 						else
 						{
-							EmitRaw("# FuncCall BEGIN - {0}", FuncCallExp.Function.Identifier);
+							EmitRaw("# FuncCall BEGIN - '{0}'", FuncCallExp.Function.ToSourceStr());
 							Indent();
 
 							// was: for (int i = 0; i < FuncCallExp.Arguments.Count; i++)
@@ -1116,7 +1133,7 @@ namespace CTilde.Langs
 							EmitInstruction(FishInst.ADD_LONG_REG, (uint)(FuncCallExp.Arguments.Count * 4), Reg.ESP);
 
 							Unindent();
-							EmitRaw("# FuncCall END - {0}", FuncCallExp.Function.Identifier);
+							EmitRaw("# FuncCall END - '{0}'", FuncCallExp.Function.ToSourceStr());
 						}
 
 						Unindent();
