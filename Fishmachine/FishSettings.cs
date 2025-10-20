@@ -10,7 +10,7 @@ namespace Fishmachine
 	{
 		public static bool DebugPrint = false;
 		public static bool DebugPrintInstruction = false;
-		public static bool DebugPrintMemory = true;
+		public static bool DebugPrintMemory = false;
 		public static bool FormatPrint = false;
 
 		/*public static bool DebugPrintFloats = false;
@@ -19,12 +19,21 @@ namespace Fishmachine
 		public static bool DebugRegisterWrite = true;
 		public static bool DebugPrintIP = true;*/
 
-		public static bool DebugPrintFloats = false;
+		/*public static bool DebugPrintFloats = false;
 		public static bool DebugPrintSyscall = true;
 		public static bool DebugPrintRegisters = false;
 		public static bool DebugRegisterWrite = true;
 		public static bool DebugPrintIP = true;
-		public static bool DebugExceptions = true;
+		public static bool DebugExceptions = true;*/
+
+		public static bool DebugPrintFloats = false;
+		public static bool DebugPrintSyscall = false;
+		public static bool DebugPrintRegisters = false;
+		public static bool DebugRegisterWrite = false;
+		public static bool DebugPrintIP = false;
+		public static bool DebugExceptions = false
+			;
+		public static bool TokenizerSilent = true;
 	}
 
 }

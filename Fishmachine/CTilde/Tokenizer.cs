@@ -44,6 +44,7 @@ namespace CTilde
 		Assignment,
 		Addition,
 		Subtraction,
+		Division,
 		GreaterThan,
 		GreaterThanOrEqual,
 		LessThan,
@@ -98,6 +99,7 @@ namespace CTilde
 				{ "+", (int)Symbol.Addition },
 				{ "-", (int)Symbol.Subtraction },
 				{ "*", (int)Symbol.Star },
+				{ "/", (int)Symbol.Division },
 			};
 
 			L = new Lexer(Reader, Settings);

@@ -12,6 +12,7 @@ namespace Fishmachine
 	static class Console
 	{
 		static FileStream FS;
+		public static bool Silent = false;
 
 		static void OpenWrite()
 		{
@@ -26,7 +27,8 @@ namespace Fishmachine
 
 		public static void Write(string Str)
 		{
-			System.Console.Write(Str);
+			if (!Silent)
+				System.Console.Write(Str);
 
 			OpenWrite();
 			FS.Write(Encoding.UTF8.GetBytes(Str));
@@ -203,13 +205,10 @@ namespace Fishmachine
 			File.WriteAllText(OutAsmName, compiler.Assembly);
 		}*/
 
-		static byte[] Assemble(AssemblerState AsmState, string[] AsmFiles, out uint KMainAddr)
+		static byte[] Assemble(AssemblerState AsmState, string[] AsmFiles)
 		{
 			// Assemble
 			byte[] Bytecode = null;
-			KMainAddr = 0;
-
-
 			Assembler Asm = new Assembler(0x1000);
 
 			string AllSrc = "";
@@ -226,7 +225,6 @@ namespace Fishmachine
 
 			File.WriteAllText("out.asm", AllSrc);
 			Bytecode = Asm.Link();
-			KMainAddr = AsmState.GetSymbolOffset("kmain");
 
 			if (Bytecode != null)
 			{
@@ -271,9 +269,9 @@ namespace Fishmachine
 			Console.WriteLine(FmtStr);
 		}
 
-		static void CTildeCompile()
+		static void CTildeCompile(string SrcFile, string OutFile, bool Silent)
 		{
-			Tokenizer Tokenizer = new Tokenizer("data/FishAsm.c");
+			Tokenizer Tokenizer = new Tokenizer(SrcFile);
 			Parser Parser = new Parser(Tokenizer);
 
 			FishCompileState State = new FishCompileState();
@@ -281,33 +279,31 @@ namespace Fishmachine
 			Lng.Compile(Parser.Parse());
 
 			string CtAsmSrc = Lng.CompileToSource();
-			Console.WriteLine("ct.asm:\n" + CtAsmSrc);
-			Console.WriteLine();
-			File.WriteAllText("ct.asm", CtAsmSrc);
 
-			string CommentsRemoved = string.Join('\n', CtAsmSrc.Split('\n').Where(L => !L.Trim().StartsWith("#")).ToArray());
-			File.WriteAllText("ct_nocomments.asm", CommentsRemoved);
+			if (!Silent)
+			{
+				Console.WriteLine(OutFile + ":\n" + CtAsmSrc);
+				Console.WriteLine();
+			}
+			File.WriteAllText(OutFile, CtAsmSrc);
+
+			//string CommentsRemoved = string.Join('\n', CtAsmSrc.Split('\n').Where(L => !L.Trim().StartsWith("#")).ToArray());
+			//File.WriteAllText("ct_nocomments.asm", CommentsRemoved);
 		}
 
-		static void Main(string[] args)
+		static string CompileAndRun(string Src, string OutFile, bool Silent)
 		{
-			HookOutput();
-			Console.WriteLine("FishAsm.c:\n");
-			Console.WriteLine(File.ReadAllText("data/FishAsm.c"));
-			Console.WriteLine();
-
-			//Compile("stdfish.c");
-			//Compile("test.c");
-
-			CTildeCompile();
-			//return;
+			CTildeCompile(Src, OutFile, Silent);
 
 			AssemblerState AsmState = new AssemblerState();
 			//AsmState.DefineToken("int_table", 0x100, true);
 
-			byte[] Bytecode = Assemble(AsmState, new[] {/* "stdfish.asm", "test.asm"*/ "ct.asm" }, out uint KMainAddr);
+			byte[] Bytecode = Assemble(AsmState, new[] { OutFile });
 
 			AsmToken IntTableTok = AsmState.FindToken("int_table");
+			AsmToken KMainTok = AsmState.FindToken("kmain");
+			uint KMainAddr = KMainTok.Address;
+
 			AsmToken[] Globals = AsmState.GetGlobalVariables();
 
 			// Setup VM, load program and run
@@ -338,16 +334,21 @@ namespace Fishmachine
 			VM.SetMemMgrPointer(0x30000 - 1);
 
 			//VM.LoadToMemory(Bytecode, 0x1000);
-			Console.Write("{0} (0x{0:X}) bytes ", Bytecode.Length);
+			if (!Silent)
+				Console.Write("{0} (0x{0:X}) bytes ", Bytecode.Length);
+
 			VM.LoadToMemory(Bytecode, 0x1000);
-			Console.WriteLine("loaded @ 0x{0:X}", 0x1000);
+
+			if (!Silent)
+				Console.WriteLine("loaded @ 0x{0:X}", 0x1000);
 
 			uint ESPLoc = 0x20000;
 			VM.Regs.Write(CodeGeneration.Reg.ESP, ESPLoc);
 			VM.Regs.Write(CodeGeneration.Reg.EBP, ESPLoc);
 			//VM.Regs.Write(CodeGeneration.Reg.EBP, 0x20000);
 
-			Console.WriteLine("Jumping to kmain @ 0x{0:X}", KMainAddr);
+			if (!Silent)
+				Console.WriteLine("Jumping to kmain @ 0x{0:X}", KMainAddr);
 			VM.Jump(KMainAddr);
 
 			FishException Ex = FishException.None;
@@ -359,9 +360,11 @@ namespace Fishmachine
 				{
 					if (Gfx.MousePressed())
 					{
-						Console.WriteLine("Mouse!");
-						//VM.Interrupt(FishInterrupt.Int0);
-						VM.Interrupt(FishInterrupt.Int2_KeyboardChar, Encoding.ASCII.GetBytes(new[] { 'M' })[0]);
+						if (!Silent)
+							Console.WriteLine("Mouse!");
+
+						VM.Interrupt(FishInterrupt.Int0);
+						//VM.Interrupt(FishInterrupt.Int2_KeyboardChar, Encoding.ASCII.GetBytes(new[] { 'M' })[0]);
 						Interrupted = true;
 					}
 					else if (Gfx.CharPressed(out uint Char))
@@ -380,14 +383,73 @@ namespace Fishmachine
 					VM.Interrupt(FishInterrupt.Int1_KeyboardKey, Key);
 				}*/
 
-				if (FishSettings.FormatPrint)
-					FormatPrint(VM);
+				if (!Silent)
+					if (FishSettings.FormatPrint)
+						FormatPrint(VM);
 			}
 
-			VM.PrintMem(ESPLoc, out Ex);
+			if (!Silent)
+				VM.PrintMem(ESPLoc, out Ex);
 
 			if (Ex != FishException.None)
 				throw new Exception($"VM stopped with exception {Ex}");
+
+			Gfx.Stop();
+			return VM.Out.ToString();
+		}
+
+		static void UnitTest(string SrcFile)
+		{
+			string OutFile = Path.GetFileNameWithoutExtension(SrcFile) + ".asm";
+			string ExpOutFile = "data/tests/" + Path.GetFileNameWithoutExtension(SrcFile) + ".txt";
+			string ExpectedOutput = File.ReadAllText(ExpOutFile).Replace("\r\n", "\n");
+
+			Console.Write("Running test: ");
+			Console.ForegroundColor = ConsoleColor.DarkYellow;
+			Console.Write(SrcFile);
+			Console.ResetColor();
+			Console.Write(" ... ");
+			Console.Silent = true;
+			string Out = CompileAndRun(SrcFile, OutFile, true);
+			Console.Silent = false;
+
+			bool Pass = Out == ExpectedOutput;
+
+			if (Pass)
+			{
+				Console.ForegroundColor = ConsoleColor.Green;
+				Console.WriteLine("PASS");
+			}
+			else
+			{
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("FAIL");
+			}
+
+			Console.ResetColor();
+			Thread.Sleep(500);
+		}
+
+		static void Main(string[] args)
+		{
+			HookOutput();
+			//Console.WriteLine("FishAsm.c:\n");
+			//Console.WriteLine(File.ReadAllText("data/FishAsm.c"));
+			//Console.WriteLine();
+
+			//string OutStr = CompileAndRun("data/FishAsm.c", "FishAsm.asm");
+			//OutStr = CompileAndRun("data/FishAsm.c", "FishAsm.asm");
+
+			UnitTest("data/tests/Test1.c");
+			UnitTest("data/tests/Test2.c");
+
+			//Compile("stdfish.c");
+			//Compile("test.c");
+
+
+			//return;
+
+
 
 			Console.WriteLine("Done!");
 			Console.ReadLine();

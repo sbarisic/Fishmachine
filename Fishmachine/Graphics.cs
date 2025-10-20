@@ -175,6 +175,11 @@ namespace Fishmachine
 			}
 		}
 
+		public void Stop()
+		{
+			WindowOpen = false;
+		}
+
 		void RunThread()
 		{
 			Raylib.SetTraceLogLevel(TraceLogLevel.None);
@@ -196,7 +201,7 @@ namespace Fishmachine
 
 			Running = true;
 
-			while (!Raylib.WindowShouldClose())
+			while (!Raylib.WindowShouldClose() && WindowOpen)
 			{
 				if (Raylib.IsMouseButtonPressed(MouseButton.Left))
 				{
@@ -247,7 +252,7 @@ namespace Fishmachine
 				}
 
 				Raylib.BeginDrawing();
-				//				Raylib.DrawTexture(GfxTex, 0, 0, Color.White);
+				// Raylib.DrawTexture(GfxTex, 0, 0, Color.White);
 				Raylib.DrawTexturePro(GfxTex, new Rectangle(0, 0, GfxTex.Width, GfxTex.Height), new Rectangle(0, 0, W * Scale, H * Scale), System.Numerics.Vector2.Zero, 0, Color.White);
 				Raylib.EndDrawing();
 
@@ -255,6 +260,10 @@ namespace Fishmachine
 
 			Raylib.CloseWindow();
 			WindowOpen = false;
+
+			Raylib.UnloadTexture(GfxTex);
+			Raylib.UnloadImage(FontImage);
+			Raylib.UnloadImage(GfxImage);
 		}
 
 		bool MousePressedLeft = false;

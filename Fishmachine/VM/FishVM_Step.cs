@@ -390,7 +390,7 @@ namespace Fishmachine.VM
 						uint R1Val = Regs.Read(R1);
 						uint R2Val = Regs.Read(R2);
 
-						int Result = (int)R1Val - (int)R2Val;
+						int Result = (int)R1Val & (int)R2Val;
 
 						Regs.LessThan = R1Val < R2Val;
 						Regs.Equal = R1Val == R2Val;
@@ -429,21 +429,21 @@ namespace Fishmachine.VM
 						switch (Inst)
 						{
 							case FishInst.BINOR_REG_REG:
-								Regs.Write(R2, R1Val | R2Val);
+								Regs.Write(R2, ((R1Val != 0) || (R2Val != 0)) ? 1u : 0u);
 								break;
 
 							case FishInst.BINXOR_REG_REG:
-								Regs.Write(R2, R1Val ^ R2Val);
+								Regs.Write(R2, ((R1Val != 0) ^ (R2Val != 0)) ? 1u : 0u);
 								break;
 
 							case FishInst.BINAND_REG_REG:
-								Regs.Write(R2, R1Val & R2Val);
+								Regs.Write(R2, ((R1Val != 0) && (R2Val != 0)) ? 1u : 0u);
 								break;
 
 							default:
 								throw new NotImplementedException();
 						}
-						
+
 
 						if (FishSettings.DebugPrint)
 						{
@@ -477,6 +477,8 @@ namespace Fishmachine.VM
 						Regs.IsZero = Result == 0;
 						Regs.GreaterThan = R1Val > R2Val;
 						Regs.Sign = Result < 0;
+
+						Regs.Write(R2, Regs.Equal ? 1u : 0u);
 
 						if (FishSettings.DebugPrint)
 						{
@@ -778,6 +780,58 @@ namespace Fishmachine.VM
 
 						uint Result = L1 + Regs.Read(R2);
 						Regs.Write(R2, Result);
+						break;
+					}
+
+				case FishInst.MUL_REG_REG:
+					{
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R2 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Console.PrintInst(Inst, R1, R2);
+
+						uint R1Val = Regs.Read(R1);
+						uint R2Val = Regs.Read(R2);
+
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.Magenta;
+							Console.WriteLine("Sub ({0}) {1}, ({2}) {3} = {4}", R1, R1Val, R2, R2Val, R2Val * R1Val);
+							Console.ResetColor();
+						}
+
+						Regs.Write(R2, R2Val * R1Val);
+						break;
+					}
+
+				case FishInst.DIV_REG_REG:
+					{
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R2 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Console.PrintInst(Inst, R1, R2);
+
+						uint R1Val = Regs.Read(R1);
+						uint R2Val = Regs.Read(R2);
+
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.Magenta;
+							Console.WriteLine("Sub ({0}) {1}, ({2}) {3} = {4}", R1, R1Val, R2, R2Val, R2Val / R1Val);
+							Console.ResetColor();
+						}
+
+						Regs.Write(R2, R2Val / R1Val);
 						break;
 					}
 
@@ -1126,6 +1180,13 @@ namespace Fishmachine.VM
 						Console.PrintInst(Inst);
 						uint StLoc = 0x20000;
 						PrintMem(StLoc, out E);
+						break;
+					}
+
+				case FishInst.DBG_REGS:
+					{
+						Console.PrintInst(Inst);
+						Regs.PrintAll(true);
 						break;
 					}
 

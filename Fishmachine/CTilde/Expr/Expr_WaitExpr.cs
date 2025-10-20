@@ -19,5 +19,10 @@ namespace CTilde.Expr
 			Tok.NextToken().Assert(Symbol.Semicolon);
 			return this;
 		}
+
+		public override string ToSourceStr()
+		{
+			return "wait;";
+		}
 	}
 }

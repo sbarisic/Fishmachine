@@ -46,6 +46,7 @@ namespace Fishmachine.VM
 		WAIT,
 		LEAVE,
 		RET,
+		DBG_REGS,
 		DBG_MEM,
 		DBG_BREAK,
 		SYSCALL,
@@ -117,6 +118,8 @@ namespace Fishmachine.VM
 
 		SUB_LONG_REG,
 		SUB_REG_REG,
+		MUL_REG_REG,
+		DIV_REG_REG,
 
 		ADD_LONG_REG,
 		ADD_REG_REG,

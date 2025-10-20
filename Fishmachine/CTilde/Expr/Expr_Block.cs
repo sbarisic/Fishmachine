@@ -4,15 +4,19 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace CTilde.Expr {
-	public class Expr_Block : Expression {
+namespace CTilde.Expr
+{
+	public class Expr_Block : Expression
+	{
 		public List<Expression> Expressions;
 
-		public Expr_Block() {
+		public Expr_Block()
+		{
 			Expressions = new List<Expression>();
 		}
 
-		public override Expression Parse(Tokenizer Tok) {
+		public override Expression Parse(Tokenizer Tok)
+		{
 			Tok.NextToken().Assert(Symbol.LBrace);
 
 			while (!Tok.Peek().Is(Symbol.RBrace))
@@ -20,6 +24,11 @@ namespace CTilde.Expr {
 
 			Tok.NextToken().Assert(Symbol.RBrace);
 			return this;
+		}
+
+		public override string ToSourceStr()
+		{
+			return string.Format("{{ {0} }}", string.Join("", Expressions.Select(E => E.ToSourceStr() + "; ")));
 		}
 	}
 }

@@ -328,6 +328,133 @@ namespace CTilde.Langs
 			}
 		}
 
+		void EmitBranch(ComparisonOp Op, bool Inverted, string JumpLabel)
+		{
+			switch (Op)
+			{
+				case ComparisonOp.Equals:
+					if (Inverted)
+					{
+						EmitInstruction(FishInst.JUMP_IF_NOT_ZERO_LONG, JumpLabel);
+					}
+					else
+					{
+						EmitInstruction(FishInst.JUMP_IF_ZERO_LONG, JumpLabel);
+					}
+					break;
+
+				case ComparisonOp.NotEquals:
+					if (Inverted)
+					{
+						EmitInstruction(FishInst.JUMP_IF_ZERO_LONG, JumpLabel);
+					}
+					else
+					{
+						EmitInstruction(FishInst.JUMP_IF_NOT_ZERO_LONG, JumpLabel);
+					}
+					break;
+
+				case ComparisonOp.LessThan:
+					if (Inverted)
+					{
+						EmitInstruction(FishInst.JUMP_IF_GREATEQ_LONG, JumpLabel);
+					}
+					else
+					{
+						EmitInstruction(FishInst.JUMP_IF_LESS_LONG, JumpLabel);
+
+					}
+					break;
+
+				case ComparisonOp.LessThanOrEqual:
+					if (Inverted)
+					{
+						EmitInstruction(FishInst.JUMP_IF_GREAT_LONG, JumpLabel);
+					}
+					else
+					{
+						EmitInstruction(FishInst.JUMP_IF_LESSEQ_LONG, JumpLabel);
+					}
+					break;
+
+				case ComparisonOp.GreaterThan:
+					if (Inverted)
+					{
+						EmitInstruction(FishInst.JUMP_IF_LESSEQ_LONG, JumpLabel);
+					}
+					else
+					{
+						EmitInstruction(FishInst.JUMP_IF_GREAT_LONG, JumpLabel);
+					}
+					break;
+
+				case ComparisonOp.GreaterThanOrEqual:
+					if (Inverted)
+					{
+						EmitInstruction(FishInst.JUMP_IF_LESS_LONG, JumpLabel);
+					}
+					else
+					{
+						EmitInstruction(FishInst.JUMP_IF_GREATEQ_LONG, JumpLabel);
+					}
+					break;
+
+				default:
+					throw new NotImplementedException();
+			}
+		}
+
+		void EmitTestBranch(Expression Cond, bool Inverted, string JumpLabel)
+		{
+			EmitRaw("# BEGIN EmitTestBranch for condition: {0}, Inverted {1}, JumpLabel '{2}'", Cond.ToSourceStr(), Inverted ? 1u : 0u, JumpLabel);
+			Indent();
+
+			if (Cond is Expr_ComparisonOp Cmp)
+			{
+				Compile(Cond); // sets flags for EAX vs ECX
+				EmitBranch(Cmp.Op, true, JumpLabel);
+			}
+			else if (Cond is Expr_ConstNumber CNum)
+			{
+				if (CNum.NumberLiteral == "1")
+				{
+					EmitInstruction(FishInst.NOP);
+				}
+				else if (CNum.NumberLiteral == "0")
+				{
+					EmitInstruction(FishInst.JUMP_LONG, JumpLabel);
+				}
+				else
+					throw new NotImplementedException();
+			}
+			else if (Cond is Expr_BinaryOp BinOp)
+			{
+				//Compile(BinOp.LExpr);
+				//Compile(BinOp.RExpr);
+				EmitInstruction(FishInst.TEST_REG_REG, Reg.EAX, Reg.EAX);
+				EmitInstruction(FishInst.JUMP_IF_ZERO_LONG, JumpLabel);
+
+				//throw new NotImplementedException();
+			}
+			else if (Cond is Expr_FuncCall FuncCallExpr)
+			{
+				Compile(Cond);
+				EmitInstruction(FishInst.DBG_REGS);
+				EmitInstruction(FishInst.TEST_REG_REG, Reg.EAX, Reg.EAX);
+				EmitBranch(ComparisonOp.Equals, false, JumpLabel);
+				//throw new NotImplementedException();
+			}
+			else if (Cond is Expr_Identifier IdExpr)
+			{
+				Compile(IdExpr);
+			}
+			else
+				throw new NotImplementedException();
+
+			Unindent();
+			EmitRaw("# END EmitTestBranch for condition: {0}, Inverted {1}, JumpLabel '{2}'", Cond.ToSourceStr(), Inverted ? 1u : 0u, JumpLabel);
+		}
+
 		public override void Compile(Expression Ex)
 		{
 			switch (Ex)
@@ -536,7 +663,8 @@ namespace CTilde.Langs
 
 						if (Expr_TypeDef.IsPointerType(StaticValueExpr.TypeDefExpr))
 						{
-							EmitRaw(".Raw {0}, {1}", StaticValueExpr.TypeDefExpr.ArraySize, 0);
+							int ElementSize = Expr_TypeDef.GetDerefTypeSize(StaticValueExpr.TypeDefExpr);
+							EmitRaw(".Raw {0}, {1}", StaticValueExpr.TypeDefExpr.ArraySize * ElementSize, 0);
 						}
 
 
@@ -853,6 +981,14 @@ namespace CTilde.Langs
 									EmitInstruction(FishInst.SUB_REG_REG, Reg.ECX, Reg.EAX);   // EAX = L - R
 									break;
 
+								case MathOperation.Mul:
+									EmitInstruction(FishInst.MUL_REG_REG, Reg.ECX, Reg.EAX);   // EAX = L * R
+									break;
+
+								case MathOperation.Div:
+									EmitInstruction(FishInst.DIV_REG_REG, Reg.ECX, Reg.EAX);   // EAX = L / R
+									break;
+
 								default:
 									throw new NotImplementedException();
 							}
@@ -882,9 +1018,22 @@ namespace CTilde.Langs
 
 						EmitRaw("#: {0}", CompExpr.ToSourceStr());
 						EmitRaw("#: EAX - ECX semantics");
+
 						// IMPORTANT: pass (ECX, EAX) so assembler prints "CMP %EAX, %ECX"
 						//EmitInstruction(FishInst.CMP_REG_REG, Reg.ECX, Reg.EAX);
+
 						EmitInstruction(FishInst.CMP_REG_REG, Reg.EAX, Reg.ECX);
+
+						string CmpTrueLabel = State.DefineFreeLabel("COMPARE_TRUE", null, false, false);
+						string CmpEndLabel = State.DefineFreeLabel("COMPARE_END", null, false, false);
+						EmitBranch(CompExpr.Op, false, CmpTrueLabel);
+						EmitInstruction(FishInst.MOVE_LONG_REG, (uint)0, Reg.ECX); // false
+						EmitInstruction(FishInst.JUMP_LONG, CmpEndLabel);
+						EmitRaw("{0}:", CmpTrueLabel);
+						EmitInstruction(FishInst.MOVE_LONG_REG, (uint)1, Reg.ECX); // false
+						EmitRaw("{0}:", CmpEndLabel);
+
+						EmitInstruction(FishInst.MOVE_REG_REG, Reg.ECX, Reg.EAX);
 
 						Unindent();
 						EmitRaw("# Expr_ComparisonOp END");
@@ -903,43 +1052,25 @@ namespace CTilde.Langs
 							ElseLblName = State.DefineFreeLabel("ELSE", null, false, false);
 
 						EmitRaw("#: {0}", IfExpr.ConditionValue.ToSourceStr());
-						Compile(IfExpr.ConditionValue); // sets flags for EAX vs ECX
 
+						/*Compile(IfExpr.ConditionValue); // sets flags for EAX vs ECX
 						if (IfExpr.ConditionValue is Expr_ComparisonOp Cmp)
 						{
-							// Jump to ELSE when condition is FALSE
-							switch (Cmp.Op)
-							{
-								case ComparisonOp.Equals:              // !(a == b) -> a != b
-									EmitInstruction(FishInst.JUMP_IF_NOT_ZERO_LONG, ElseLblName);
-									break;
-								case ComparisonOp.NotEquals:           // !(a != b) -> a == b
-									EmitInstruction(FishInst.JUMP_IF_ZERO_LONG, ElseLblName);
-									break;
-								case ComparisonOp.LessThan:            // !(a < b) -> a >= b
-									EmitInstruction(FishInst.JUMP_IF_GREATEQ_LONG, ElseLblName);
-									break;
-								case ComparisonOp.LessThanOrEqual:     // !(a <= b) -> a > b
-									EmitInstruction(FishInst.JUMP_IF_GREAT_LONG, ElseLblName);
-									break;
-								case ComparisonOp.GreaterThan:         // !(a > b) -> a <= b
-									EmitInstruction(FishInst.JUMP_IF_LESSEQ_LONG, ElseLblName);
-									break;
-								case ComparisonOp.GreaterThanOrEqual:  // !(a >= b) -> a < b
-									EmitInstruction(FishInst.JUMP_IF_LESS_LONG, ElseLblName);
-									break;
-								default:
-									throw new NotImplementedException();
-							}
+							EmitBranch(Cmp.Op, true, ElseLblName);
 						}
-						else
+						else if (IfExpr.ConditionValue is Expr_BinaryOp BinOp)
 						{
-							throw new NotImplementedException();
-						}
+							EmitInstruction(FishInst.CMP_REG_REG, Reg.EAX, Reg.EAX);
+							EmitInstruction(FishInst.JUMP_IF_ZERO_LONG, ElseLblName);
 
-						State.PushBreakLabel(EndLblName);
+							//throw new NotImplementedException();
+						}*/
+
+						EmitTestBranch(IfExpr.ConditionValue, true, ElseLblName);
+
+						//State.PushBreakLabel(EndLblName);
 						Compile(IfExpr.Body);
-						State.PopBreakLabel();
+						//State.PopBreakLabel();
 
 						if (IfExpr.ElseBody != null)
 						{
@@ -949,9 +1080,9 @@ namespace CTilde.Langs
 							Indent();
 							EmitRaw("{0}:", ElseLblName);
 
-							State.PushBreakLabel(EndLblName);
+							//State.PushBreakLabel(EndLblName);
 							Compile(IfExpr.ElseBody);
-							State.PopBreakLabel();
+							//State.PopBreakLabel();
 
 							Unindent();
 							EmitRaw("# Else END");
@@ -967,7 +1098,7 @@ namespace CTilde.Langs
 
 				case Expr_WhileStatement WhileExpr:
 					{
-						EmitRaw("# While BEGIN");
+						EmitRaw("# While BEGIN '{0}'", WhileExpr.ToSourceStr());
 						Indent();
 
 						string LblName = State.DefineFreeLabel("WHILE", null, false, false);
@@ -975,46 +1106,7 @@ namespace CTilde.Langs
 						EmitRaw("{0}:", LblName);
 						State.PushLoopLabel(LblName);
 
-						if (WhileExpr.ConditionValue is Expr_ComparisonOp Cmp)
-						{
-							Compile(WhileExpr.ConditionValue); // sets flags for EAX vs ECX
-
-							// Exit loop when condition is FALSE
-							switch (Cmp.Op)
-							{
-								case ComparisonOp.Equals:              // a != b -> break
-									EmitInstruction(FishInst.JUMP_IF_NOT_ZERO_LONG, EndLblName);
-									break;
-								case ComparisonOp.NotEquals:           // a == b -> break
-									EmitInstruction(FishInst.JUMP_IF_ZERO_LONG, EndLblName);
-									break;
-								case ComparisonOp.LessThan:            // a >= b -> break
-									EmitInstruction(FishInst.JUMP_IF_GREATEQ_LONG, EndLblName);
-									break;
-								case ComparisonOp.LessThanOrEqual:     // a > b -> break
-									EmitInstruction(FishInst.JUMP_IF_GREAT_LONG, EndLblName);
-									break;
-								case ComparisonOp.GreaterThan:         // a <= b -> break
-									EmitInstruction(FishInst.JUMP_IF_LESSEQ_LONG, EndLblName);
-									break;
-								case ComparisonOp.GreaterThanOrEqual:  // a < b -> break
-									EmitInstruction(FishInst.JUMP_IF_LESS_LONG, EndLblName);
-									break;
-								default:
-									throw new NotImplementedException();
-							}
-						}
-						else if (WhileExpr.ConditionValue is Expr_ConstNumber CNum)
-						{
-							if (CNum.NumberLiteral == "1")
-							{
-								EmitInstruction(FishInst.NOP);
-							}
-							else
-								throw new NotImplementedException();
-						}
-						else
-							throw new NotImplementedException();
+						EmitTestBranch(WhileExpr.ConditionValue, true, EndLblName);
 
 						State.PushBreakLabel(EndLblName);
 
@@ -1034,7 +1126,7 @@ namespace CTilde.Langs
 						EmitRaw("{0}:", EndLblName);
 
 						Unindent();
-						EmitRaw("# While END");
+						EmitRaw("# While END '{0}'", WhileExpr.ToSourceStr());
 						break;
 					}
 

@@ -291,10 +291,13 @@ namespace Fishmachine.VM
 		}
 
 
-		public void PrintAll()
+		public void PrintAll(bool ForcePrint = false)
 		{
-			if (!FishSettings.DebugPrintRegisters)
-				return;
+			if (!ForcePrint)
+			{
+				if (!FishSettings.DebugPrintRegisters)
+					return;
+			}
 
 			Reg[] RegsEnum = Enum.GetValues<Reg>().ToArray();
 			int c = 1;

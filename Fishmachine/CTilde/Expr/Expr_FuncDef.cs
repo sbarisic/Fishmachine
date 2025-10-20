@@ -1,8 +1,10 @@
-﻿using System;
+﻿using Fishmachine;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Console = Fishmachine.Console;
 
 namespace CTilde.Expr
 {
@@ -60,7 +62,9 @@ namespace CTilde.Expr
 			Token P = Tok.Peek();
 			if (Tok.Peek().Is(Symbol.LBrace))
 			{
-				Console.WriteLine(">> {0}", P);
+				if (!FishSettings.TokenizerSilent)
+					Console.WriteLine(">> {0}", P);
+
 				FuncBody = new Expr_Block().Parse<Expr_Block>(Tok);
 				IsFunctionCall = false;
 			}

@@ -24,6 +24,7 @@ namespace Fishmachine.VM
 				case FishInst.RET:
 				case FishInst.DBG_MEM:
 				case FishInst.DBG_BREAK:
+				case FishInst.DBG_REGS:
 				case FishInst.SYSCALL_2:
 				case FishInst.FLOAT_ADD:
 				case FishInst.FLOAT_SUB:
@@ -51,6 +52,8 @@ namespace Fishmachine.VM
 				// Two registers, 3 byte total
 				case FishInst.ADD_REG_REG:
 				case FishInst.SUB_REG_REG:
+				case FishInst.MUL_REG_REG:
+				case FishInst.DIV_REG_REG:
 				case FishInst.MOVE_REG_REG:
 				case FishInst.TEST_REG_REG:
 				case FishInst.MOVEZ_REG_REG:
@@ -119,6 +122,7 @@ namespace Fishmachine.VM
 
 		public Graphics Gfx;
 		public uint IntTableAddr;
+		public StringBuilder Out = new StringBuilder();
 
 		public FishRegisters Regs = new FishRegisters();
 		List<VMSymbol> VMSymbols = new List<VMSymbol>();
@@ -396,6 +400,7 @@ namespace Fishmachine.VM
 			else if (FInt == FishSyscall.PrintChar)
 			{
 				Console.WriteLine("PrintChar '{0}'", (char)Arg1);
+				Out.Append((char)Arg1);
 
 				if (FishSettings.DebugPrint)
 				{
@@ -408,6 +413,7 @@ namespace Fishmachine.VM
 			else if (FInt == FishSyscall.PrintNum)
 			{
 				Console.WriteLine("PrintNum '{0}'", Arg1);
+				Out.AppendFormat("{0}", Arg1);
 
 				if (FishSettings.DebugPrint)
 				{
