@@ -50,7 +50,9 @@ namespace CTilde
 		LessThanOrEqual,
 		AddressOf,
 		Increment,
-		Decrement
+		Decrement,
+		BinaryAnd,
+		BinaryOr
 	}
 
 	public class Tokenizer
@@ -79,7 +81,8 @@ namespace CTilde
 				{ "(", (int)Symbol.LParen }, { ")", (int)Symbol.RParen },
 				{ "{", (int)Symbol.LBrace }, { "}", (int)Symbol.RBrace },
 				{ "[", (int)Symbol.LBracket }, { "]", (int)Symbol.RBracket },
-				{ "*", (int)Symbol.Star },
+				{ "&&", (int)Symbol.BinaryAnd },
+				{ "||", (int)Symbol.BinaryOr },
 				{ "++", (int)Symbol.Increment },
 				{ "--", (int)Symbol.Decrement },
 				{ ">=", (int)Symbol.GreaterThanOrEqual },
@@ -94,6 +97,7 @@ namespace CTilde
 				{ "&", (int)Symbol.AddressOf },
 				{ "+", (int)Symbol.Addition },
 				{ "-", (int)Symbol.Subtraction },
+				{ "*", (int)Symbol.Star },
 			};
 
 			L = new Lexer(Reader, Settings);

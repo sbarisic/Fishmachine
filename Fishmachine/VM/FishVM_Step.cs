@@ -25,7 +25,7 @@ namespace Fishmachine.VM
 				Regs.Write(Reg.XSC, 0);
 				// Handle interrupt
 
-				uint IntTable = ReadUInt32(IntTableAddr, out E); 
+				uint IntTable = ReadUInt32(IntTableAddr, out E);
 				if (E != FishException.None)
 					return true;
 
@@ -377,11 +377,11 @@ namespace Fishmachine.VM
 
 				case FishInst.TEST_REG_REG:
 					{
-						Reg R2 = (Reg)ReadByteFromIP(out E);
+						Reg R1 = (Reg)ReadByteFromIP(out E);
 						if (E != FishException.None)
 							return true;
 
-						Reg R1 = (Reg)ReadByteFromIP(out E);
+						Reg R2 = (Reg)ReadByteFromIP(out E);
 						if (E != FishException.None)
 							return true;
 
@@ -406,6 +406,51 @@ namespace Fishmachine.VM
 							Console.ResetColor();
 						}
 
+						break;
+					}
+
+				case FishInst.BINOR_REG_REG:
+				case FishInst.BINXOR_REG_REG:
+				case FishInst.BINAND_REG_REG:
+					{
+						Reg R1 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Reg R2 = (Reg)ReadByteFromIP(out E);
+						if (E != FishException.None)
+							return true;
+
+						Console.PrintInst(Inst, R1, R2);
+
+						uint R1Val = Regs.Read(R1);
+						uint R2Val = Regs.Read(R2);
+
+						switch (Inst)
+						{
+							case FishInst.BINOR_REG_REG:
+								Regs.Write(R2, R1Val | R2Val);
+								break;
+
+							case FishInst.BINXOR_REG_REG:
+								Regs.Write(R2, R1Val ^ R2Val);
+								break;
+
+							case FishInst.BINAND_REG_REG:
+								Regs.Write(R2, R1Val & R2Val);
+								break;
+
+							default:
+								throw new NotImplementedException();
+						}
+						
+
+						if (FishSettings.DebugPrint)
+						{
+							Console.ForegroundColor = ConsoleColor.Cyan;
+							Console.WriteLine("{4} ({0}) {1}; 0x{1:X} and ({2}) {3}; 0x{3:X}", R1, R1Val, R2, R2Val, Inst);
+							Console.ResetColor();
+						}
 						break;
 					}
 
@@ -917,25 +962,7 @@ namespace Fishmachine.VM
 
 						Console.PrintInst(Inst, Addr);
 
-						if (Inst == FishInst.JUMP_IF_ZERO_LONG)
-						{
-							if (Regs.IsZero)
-							{
-								Jump(Addr);
-							}
-						}
-						else if (Inst == FishInst.JUMP_IF_NOT_ZERO_LONG)
-						{
-							if (!Regs.IsZero)
-							{
-								Jump(Addr);
-							}
-						}
-						else if (Inst == FishInst.JUMP_LONG)
-						{
-							Jump(Addr);
-						}
-						else if (Inst == FishInst.FLOAT_LOAD_LONG)
+						if (Inst == FishInst.FLOAT_LOAD_LONG)
 						{
 							float Val = BitConverter.ToSingle(ReadBytes(Addr, 4, out E));
 							if (E != FishException.None)
@@ -943,37 +970,10 @@ namespace Fishmachine.VM
 
 							Regs.FpuPush(Val);
 						}
-						else if (Inst == FishInst.JUMP_IF_LESS_LONG)
+						else if (ShouldJump(Inst))
 						{
-							if (Regs.LessThan)
-							{
-								Jump(Addr);
-							}
+							Jump(Addr);
 						}
-						else if (Inst == FishInst.JUMP_IF_GREAT_LONG)
-						{
-							if (Regs.GreaterThan)
-							{
-								Jump(Addr);
-							}
-						}
-						else if (Inst == FishInst.JUMP_IF_LESSEQ_LONG)
-						{
-							if (Regs.LessThan || Regs.Equal)
-							{
-								Jump(Addr);
-							}
-						}
-						else if (Inst == FishInst.JUMP_IF_GREATEQ_LONG)
-						{
-							if (Regs.GreaterThan || Regs.Equal)
-							{
-								Jump(Addr);
-							}
-							break;
-						}
-						else
-							throw new NotImplementedException();
 
 						break;
 					}

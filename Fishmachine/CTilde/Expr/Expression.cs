@@ -210,6 +210,11 @@ namespace CTilde.Expr
 						return new Expr_MathOp(LeftExpr).Parse<Expr_MathOp>(Tok);
 					}
 
+					if (Tok.Peek().Is(Symbol.BinaryAnd) || Tok.Peek().Is(Symbol.BinaryOr))
+					{
+						return new Expr_BinaryOp(LeftExpr).Parse<Expr_BinaryOp>(Tok);
+					}
+
 					if (Tok.Peek().Is(Symbol.Equals) || Tok.Peek().Is(Symbol.NotEquals) ||
 						Tok.Peek().Is(Symbol.GreaterThan) || Tok.Peek().Is(Symbol.LessThan) ||
 						Tok.Peek().Is(Symbol.GreaterThanOrEqual) || Tok.Peek().Is(Symbol.LessThanOrEqual))

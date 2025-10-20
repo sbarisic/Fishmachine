@@ -96,6 +96,25 @@ void input_add(char c) {
 	}
 }
 
+/*uint cmp(string stra, string strb) {
+	uint i = 0;
+
+	while ((stra[i] != 0) && (strb[i] != 0)) {
+		if (stra[i] != strb[i]) {
+			return 0;
+		}
+
+		i = i + 1;
+	}
+
+	// both must end at same position
+	if (stra[i] == 0 && strb[i] == 0) {
+		return 1;
+	}
+
+	return 0;
+}*/
+
 int input_readline(string dst) {
 	int ret = 0;
 	int idx = 0;
@@ -114,8 +133,8 @@ int input_readline(string dst) {
 		print("-chr = '");
 		printchar(chr);
 		print("'\n");*/
-		
-		if (chr == '\n') {			
+
+		if (chr == '\n') {
 			memory_copy(dst, temp_buffer, idx);
 			ret = input_count - 1;
 			dst[ret] = 0;
@@ -147,6 +166,13 @@ interrupt void handler_int2_keyboardchar(uint key2) {
 naked void kmain() {
 	//int_table = 32;
 	//__asm("DBG_BREAK");
+
+	/*if (((2 == 2) && (4 == 4)) == 1) {
+		print("TRUE!\n");
+	}
+
+	print("DONE!\n");
+	__asm("DBG_BREAK");*/
 
 	int_table[0] = &handler_int0;
 	int_table[1] = &handler_int1_keyboardkey;

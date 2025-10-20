@@ -780,6 +780,44 @@ namespace CTilde.Langs
 						break;
 					}
 
+				case Expr_BinaryOp BinaryExp:
+					{
+						EmitRaw("# Expr_BinaryOp BEGIN ({0})", BinaryExp.ToSourceStr());
+						Indent();
+
+						EmitInstruction(FishInst.PUSH_REG, Reg.ECX);
+
+						Compile(BinaryExp.LExpr);                 // EAX = LHS
+						EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
+
+						Compile(BinaryExp.RExpr);                 // EAX = RHS
+						EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.ECX); // ECX = RHS
+
+						EmitInstruction(FishInst.POP_REG, Reg.EAX);  // EAX = LHS
+
+						switch (BinaryExp.Op)
+						{
+							case BinaryOp.And:
+								EmitInstruction(FishInst.BINAND_REG_REG, Reg.ECX, Reg.EAX);   // EAX = L && R
+								break;
+
+							case BinaryOp.Or:
+								EmitInstruction(FishInst.BINOR_REG_REG, Reg.ECX, Reg.EAX);   // EAX = L || R
+								break;
+
+							default:
+								throw new NotImplementedException();
+						}
+
+						EmitInstruction(FishInst.POP_REG, Reg.ECX);
+
+
+						Unindent();
+						EmitRaw("# Expr_BinaryOp END ({0})", BinaryExp.ToSourceStr());
+
+						break;
+					}
+
 				case Expr_MathOp MathExp:
 					{
 						EmitRaw("# MathOp BEGIN ({0})", MathExp.OpString);

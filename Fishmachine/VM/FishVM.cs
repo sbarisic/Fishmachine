@@ -57,6 +57,9 @@ namespace Fishmachine.VM
 				case FishInst.MOVES_REG_REG:
 				case FishInst.MOVEBYTE_REG_REG:
 				case FishInst.CMP_REG_REG:
+				case FishInst.BINAND_REG_REG:
+				case FishInst.BINOR_REG_REG:
+				case FishInst.BINXOR_REG_REG:
 					return 3;
 
 				// One 32-bit operand, 5 byte total

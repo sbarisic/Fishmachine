@@ -481,6 +481,9 @@ namespace Fishmachine
 
 							break;
 
+						case "BINAND_REG_REG":
+						case "BINOR_REG_REG":
+						case "BINXOR_REG_REG":
 						case "SUB_REG_REG":
 						case "CMP_REG_REG":
 						case "MOVEZ_REG_REG":

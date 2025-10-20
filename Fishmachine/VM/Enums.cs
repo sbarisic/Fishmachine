@@ -86,6 +86,9 @@ namespace Fishmachine.VM
 
 		POP_REG,
 
+		BINAND_REG_REG,
+		BINOR_REG_REG,
+		BINXOR_REG_REG,
 		TEST_REG_REG,
 		MOVE_REG_REG,
 		MOVE_LONG_REG,
