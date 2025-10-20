@@ -445,119 +445,18 @@ namespace Fishmachine.VM
 					}
 
 				case FishInst.SETNOTEQUAL_REG:
-					{
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
-							return true;
-
-						Console.PrintInst(Inst, R1);
-
-						uint Val = !Regs.Equal ? 1u : 0u;
-						Regs.Write(R1, Val);
-
-						if (FishSettings.DebugPrint)
-						{
-							Console.ForegroundColor = ConsoleColor.Cyan;
-							Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
-							Console.ResetColor();
-						}
-
-						break;
-					}
-
 				case FishInst.SETEQUAL_REG:
-					{
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
-							return true;
-
-						Console.PrintInst(Inst, R1);
-
-						uint Val = Regs.Equal ? 1u : 0u;
-						Regs.Write(R1, Val);
-
-						if (FishSettings.DebugPrint)
-						{
-							Console.ForegroundColor = ConsoleColor.Cyan;
-							Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
-							Console.ResetColor();
-						}
-
-						break;
-					}
-
-				case FishInst.SETGREATEREQUAL_REG:
-					{
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
-							return true;
-
-						Console.PrintInst(Inst, R1);
-
-						uint Val = Regs.GreaterThan || Regs.Equal ? 1u : 0u;
-						Regs.Write(R1, Val);
-
-						if (FishSettings.DebugPrint)
-						{
-							Console.ForegroundColor = ConsoleColor.Cyan;
-							Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
-							Console.ResetColor();
-						}
-
-						break;
-					}
-
 				case FishInst.SETGREATER_REG:
-					{
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
-							return true;
-
-						Console.PrintInst(Inst, R1);
-
-						uint Val = Regs.GreaterThan ? 1u : 0u;
-						Regs.Write(R1, Val);
-
-						if (FishSettings.DebugPrint)
-						{
-							Console.ForegroundColor = ConsoleColor.Cyan;
-							Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
-							Console.ResetColor();
-						}
-
-						break;
-					}
-
+				case FishInst.SETGREATEREQUAL_REG:
 				case FishInst.SETLESS_REG:
-					{
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
-							return true;
-
-						Console.PrintInst(Inst, R1);
-
-						uint Val = Regs.LessThan ? 1u : 0u;
-						Regs.Write(R1, Val);
-
-						if (FishSettings.DebugPrint)
-						{
-							Console.ForegroundColor = ConsoleColor.Cyan;
-							Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
-							Console.ResetColor();
-						}
-
-						break;
-					}
-
 				case FishInst.SETLESSEQUAL_REG:
 					{
 						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
-							return true;
+						if (E != FishException.None) return true;
 
 						Console.PrintInst(Inst, R1);
 
-						uint Val = Regs.LessThan || Regs.Equal ? 1u : 0u;
+						uint Val = EvaluateSetCondition(Inst);
 						Regs.Write(R1, Val);
 
 						if (FishSettings.DebugPrint)
@@ -566,7 +465,6 @@ namespace Fishmachine.VM
 							Console.WriteLine("Write to {0} value {1}; 0x{1:X}", R1, Val);
 							Console.ResetColor();
 						}
-
 						break;
 					}
 

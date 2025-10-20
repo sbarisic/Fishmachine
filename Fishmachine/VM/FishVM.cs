@@ -537,6 +537,46 @@ namespace Fishmachine.VM
 			return false;
 		}
 
+		uint EvaluateSetCondition(FishInst inst)
+		{
+			return inst switch
+			{
+				FishInst.SETEQUAL_REG => Regs.Equal ? 1u : 0u,
+				FishInst.SETNOTEQUAL_REG => !Regs.Equal ? 1u : 0u,
+				FishInst.SETGREATER_REG => Regs.GreaterThan ? 1u : 0u,
+				FishInst.SETGREATEREQUAL_REG => (Regs.GreaterThan || Regs.Equal) ? 1u : 0u,
+				FishInst.SETLESS_REG => Regs.LessThan ? 1u : 0u,
+				FishInst.SETLESSEQUAL_REG => (Regs.LessThan || Regs.Equal) ? 1u : 0u,
+				_ => throw new InvalidOperationException()
+			};
+		}
+
+		uint ApplyMoveSemantics(FishInst inst, uint value)
+		{
+			return inst switch
+			{
+				FishInst.MOVE_REG_REG => value,
+				FishInst.MOVES_REG_REG => (uint)(sbyte)(value & 0xFF),  // Sign extend byte
+				FishInst.MOVEZ_REG_REG => value & 0xFF,                  // Zero extend byte
+				_ => throw new InvalidOperationException()
+			};
+		}
+
+		bool ShouldJump(FishInst inst)
+		{
+			return inst switch
+			{
+				FishInst.JUMP_LONG => true,
+				FishInst.JUMP_IF_ZERO_LONG => Regs.IsZero,
+				FishInst.JUMP_IF_NOT_ZERO_LONG => !Regs.IsZero,
+				FishInst.JUMP_IF_LESS_LONG => Regs.LessThan,
+				FishInst.JUMP_IF_GREAT_LONG => Regs.GreaterThan,
+				FishInst.JUMP_IF_LESSEQ_LONG => Regs.LessThan || Regs.Equal,
+				FishInst.JUMP_IF_GREATEQ_LONG => Regs.GreaterThan || Regs.Equal,
+				_ => false
+			};
+		}
+
 		bool Enter(uint N, out FishException E)
 		{
 			if (PushReg(Reg.EBP, out E))
