@@ -1272,7 +1272,7 @@ namespace CTilde.Langs
 			{
 				var t = State.GetVarType(id.Identifier);
 				bool isGlobal = State.IsVarGlobal(id.Identifier);
-				bool isArrayLike = t.IsArray || (isGlobal && Expr_TypeDef.IsPointerType(t));
+				bool isArrayLike = t.IsArray || (isGlobal && Expr_TypeDef.IsPointerType(t) && !t.IsPointer);
 
 				if (isArrayLike)
 				{
@@ -1284,9 +1284,20 @@ namespace CTilde.Langs
 
 				if (t.IsPointer)
 				{
-					// Push pointer value
-					FetchIdentifier(id.Identifier, 4, /*ispointer*/ true, Reg.EAX, /*isunsigned*/ true, /*sumEBX*/ false);
-					EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
+					if (isGlobal)
+					{
+						// Global pointer: need double dereference to get the actual pointer value
+						EmitInstruction(FishInst.MOVE_LONG_REG, id.Identifier, Reg.EDX);
+						EmitInstruction(FishInst.MOVE_OFFSET_REG_REG, 0, Reg.EDX, Reg.EDX);  // Get intermediate pointer storage
+						EmitInstruction(FishInst.MOVE_OFFSET_REG_REG, 0, Reg.EDX, Reg.EAX);  // Get actual heap address
+						EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
+					}
+					else
+					{
+						// Local pointer: just fetch the pointer value (single deref from stack)
+						FetchIdentifier(id.Identifier, 4, /*ispointer*/ true, Reg.EAX, /*isunsigned*/ true, /*sumEBX*/ false);
+						EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
+					}
 					return;
 				}
 

@@ -46,7 +46,8 @@ namespace CTilde.Expr
 				IsArray = true;
 			}
 
-			if (IsPointerType(this))
+			// FIXED: Only set IsPointer for built-in pointer types if not already marked as array
+			if (!IsArray && PtrTypes.Contains(Type))
 				IsPointer = true;
 
 			return this;
