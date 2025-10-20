@@ -27,6 +27,12 @@ namespace CTilde.Expr {
 					case MathOperation.Sub:
 						return "-";
 
+					case MathOperation.Mul:
+						return "*";
+
+					case MathOperation.Div:
+						return "/";
+
 					default:
 						throw new NotImplementedException();
 				}
@@ -44,6 +50,10 @@ namespace CTilde.Expr {
 				Op = MathOperation.Add;
 			else if (T.Is(Symbol.Subtraction))
 				Op = MathOperation.Sub;
+			else if (T.Is(Symbol.Star))
+				Op = MathOperation.Mul;
+			else if (T.Is(Symbol.Division))
+				Op = MathOperation.Div;
 			else
 				throw new NotImplementedException("Unexpected token " + T);
 

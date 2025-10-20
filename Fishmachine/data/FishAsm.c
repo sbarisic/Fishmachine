@@ -1,4 +1,4 @@
-uint* int_table = static uint[24];
+uint* int_table = static uint[3];
 string tmp_chr = static string[2];
 string temp_buffer = null;
 string temp_buffer2 = null;
@@ -11,11 +11,16 @@ define SYS_PrintChar = 1;
 define SYS_PrintNum = 2;
 define SYS_SoftwareInterrupt = 3;
 define SYS_Alloc = 4;
+define SYS_Cls = 5;
 
 voidptr alloc(uint bytes) {
 	voidptr alloc_mem = bytes;
 	syscall_2(SYS_Alloc, &alloc_mem);
 	return alloc_mem;
+}
+
+void clear_screen() {
+	syscall_2(SYS_Cls, 0);
 }
 
 void print(string str) {
@@ -96,10 +101,10 @@ void input_add(char c) {
 	}
 }
 
-/*uint cmp(string stra, string strb) {
+uint cmp(string stra, string strb) {
 	uint i = 0;
 
-	while ((stra[i] != 0) && (strb[i] != 0)) {
+	while (((stra[i] != 0) && (strb[i] != 0)) == true) {
 		if (stra[i] != strb[i]) {
 			return 0;
 		}
@@ -108,12 +113,12 @@ void input_add(char c) {
 	}
 
 	// both must end at same position
-	if (stra[i] == 0 && strb[i] == 0) {
+	if (((stra[i] == 0) && (strb[i] == 0)) == true) {
 		return 1;
 	}
 
 	return 0;
-}*/
+}
 
 int input_readline(string dst) {
 	int ret = 0;
@@ -167,16 +172,13 @@ naked void kmain() {
 	//int_table = 32;
 	//__asm("DBG_BREAK");
 
-	/*if (((2 == 2) && (4 == 4)) == 1) {
-		print("TRUE!\n");
-	}
-
-	print("DONE!\n");
-	__asm("DBG_BREAK");*/
-
 	int_table[0] = &handler_int0;
 	int_table[1] = &handler_int1_keyboardkey;
 	int_table[2] = &handler_int2_keyboardchar;
+	byte* bptr = 0;
+
+
+	//__asm("SYSCALL $0");
 
 	__asm("DBG_MEM");
 	temp_buffer = alloc(100);
@@ -188,9 +190,27 @@ naked void kmain() {
 	while (true) {
 		print("In: ");
 		input_readline(temp_buffer2);
-		print("You typed: ");
-		print(temp_buffer2);
-		print("\n");
+
+		if (cmp(temp_buffer2, "exit") == true) {
+			print("Exiting...\n");
+			break;
+		}
+		else if (cmp(temp_buffer2, "clear") == true) {
+			clear_screen();
+		}
+		else if (cmp(temp_buffer2, "null") == true) {
+			bptr = 0;
+			bptr[0] = 32;
+		}
+		else if (cmp(temp_buffer2, "barely") == true) {
+			bptr = 0x101;
+			bptr[0] = 32;
+		}
+		else {
+			print("You typed: ");
+			print(temp_buffer2);
+			print("\n");
+		}
 	}
 
 	__asm("SYSCALL $0");

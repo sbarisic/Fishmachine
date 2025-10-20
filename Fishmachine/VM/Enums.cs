@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Fishmachine.VM
 {
-	public enum FishException : byte
+	public enum FishExcept : byte
 	{
 		None = 0,
 		InvalidInstruction,
@@ -17,6 +17,32 @@ namespace Fishmachine.VM
 		FloatInfinity,
 		FloatNaN,
 		RequestWait,
+
+		PrivilegeViolation,
+		AccessViolationRead,
+		AccessViolationWrite,
+		AccessViolationExecute,
+		AccessViolationStack,
+		AccessViolationUnknown,
+	}
+
+	public enum FishMemPriv : byte
+	{
+		None = 0b00000000,
+		Read = 0b00000001,
+		Write = 0b00000010,
+		Execute = 0b00000100,
+		Stack = 0b00001000,
+		Supervisor = 0b00010000,
+
+		Unused1 = 0b00100000,
+		Unused2 = 0b01000000,
+
+		Debugger = 0b10000000,
+		ReadWrite = Read | Write,
+		ReadExecute = Read | Execute,
+		WriteExecute = Write | Execute,
+		ReadWriteExecute = Read | Write | Execute,
 	}
 
 	public enum FishSyscall : byte
@@ -26,6 +52,7 @@ namespace Fishmachine.VM
 		PrintNum,
 		SoftwareInterrupt,
 		Alloc,
+		Cls,
 	}
 
 	public enum FishInterrupt : byte
@@ -46,6 +73,7 @@ namespace Fishmachine.VM
 		WAIT,
 		LEAVE,
 		RET,
+		DBG_REGS,
 		DBG_MEM,
 		DBG_BREAK,
 		SYSCALL,
@@ -117,6 +145,8 @@ namespace Fishmachine.VM
 
 		SUB_LONG_REG,
 		SUB_REG_REG,
+		MUL_REG_REG,
+		DIV_REG_REG,
 
 		ADD_LONG_REG,
 		ADD_REG_REG,

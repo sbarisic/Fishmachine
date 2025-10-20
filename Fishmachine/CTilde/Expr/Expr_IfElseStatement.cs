@@ -20,7 +20,13 @@ namespace CTilde.Expr
 		{
 			Tok.NextToken().Assert(Symbol.LParen);
 			ConditionValue = Expression.ParseExpression(Tok, Symbol.RParen);
-			Tok.NextToken().Assert(Symbol.RParen);
+
+			Token PT = Tok.Peek();
+
+			if (!Tok.Peek().Is(Symbol.LBrace))
+			{
+				Tok.NextToken().Assert(Symbol.RParen);
+			}
 
 			Tok.Peek().Assert(Symbol.LBrace);
 			Body = new Expr_Block().Parse<Expr_Block>(Tok);
@@ -41,6 +47,14 @@ namespace CTilde.Expr
 			}
 
 			return this;
+		}
+
+		public override string ToSourceStr()
+		{
+			if (ElseBody != null)
+				return string.Format("if ({0}) {1} else {2}", ConditionValue.ToSourceStr(), Body.ToSourceStr(), ElseBody.ToSourceStr());
+			else
+				return string.Format("if ({0}) {1}", ConditionValue.ToSourceStr(), Body.ToSourceStr());
 		}
 	}
 }

@@ -5,24 +5,29 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
-namespace CTilde.Expr {
-	public class Expr_IncDecOp : Expression {
+namespace CTilde.Expr
+{
+	public class Expr_IncDecOp : Expression
+	{
 		public Expression LExpr;
 		public bool Inc;
 
 
-		public Expr_IncDecOp(bool Inc) {
+		public Expr_IncDecOp(bool Inc)
+		{
 			this.Inc = Inc;
 		}
 
-		public override Expression Parse(Tokenizer Tok) {
+		public override Expression Parse(Tokenizer Tok)
+		{
 			LExpr = Expression.ParseExpression(Tok, Symbol.Semicolon);
 
 			if (Tok.Peek().Is(Symbol.Increment))
 			{
 				Tok.NextToken().Assert(Symbol.Increment);
 				Inc = true;
-			} else if (Tok.Peek().Is(Symbol.Decrement))
+			}
+			else if (Tok.Peek().Is(Symbol.Decrement))
 			{
 				Tok.NextToken().Assert(Symbol.Decrement);
 				Inc = false;
@@ -33,6 +38,14 @@ namespace CTilde.Expr {
 			}
 
 			return this;
+		}
+
+		public override string ToSourceStr()
+		{
+			if (Inc)
+				return string.Format("{0}++", LExpr.ToSourceStr());
+
+			return string.Format("{0}--", LExpr.ToSourceStr());
 		}
 	}
 }

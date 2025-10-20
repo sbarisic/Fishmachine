@@ -19,6 +19,11 @@ namespace CodeGeneration
 		XSC, // special register for interrupt number
 		XR1,
 
+		DB0, // Debug registers
+		DB1,
+		DB2,
+		DB3,
+
 		MAX_VALUE, // Max allocated register array length, registers below this are mapped on top of this
 
 		AL,
@@ -69,6 +74,10 @@ namespace CodeGeneration
 			[Reg.ST0] = "%st0",
 			[Reg.XSC] = "%xsc",
 			[Reg.XR1] = "%xr1",
+			[Reg.DB0] = "%db0",
+			[Reg.DB1] = "%db1",
+			[Reg.DB2] = "%db2",
+			[Reg.DB3] = "%db3",
 		};
 
 		public static String RegToString(Reg reg) => reg_strs[reg];

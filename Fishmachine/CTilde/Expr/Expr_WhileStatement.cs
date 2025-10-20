@@ -28,5 +28,10 @@ namespace CTilde.Expr
 
 			return this;
 		}
+
+		public override string ToSourceStr()
+		{
+			return string.Format("while ({0}) {1}", ConditionValue.ToSourceStr(), Body.ToSourceStr());
+		}
 	}
 }

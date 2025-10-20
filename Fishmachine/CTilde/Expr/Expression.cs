@@ -1,9 +1,11 @@
+using Fishmachine;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Console = Fishmachine.Console;
 
 namespace CTilde.Expr
 {
@@ -30,7 +32,9 @@ namespace CTilde.Expr
 			for (int i = 0; i < 5; i++)
 			{
 				DebugTokens[i] = Tok.Peek(i + 1);
-				Console.WriteLine("{0} - {1}", i, DebugTokens[i]);
+
+				if (!FishSettings.TokenizerSilent)
+					Console.WriteLine("{0} - {1}", i, DebugTokens[i]);
 			}
 
 			return DebugTokens;
@@ -205,7 +209,7 @@ namespace CTilde.Expr
 						return new Expr_AssignValue(LeftExpr).Parse<Expr_AssignValue>(Tok);
 					}
 
-					if (Tok.Peek().Is(Symbol.Addition) || Tok.Peek().Is(Symbol.Subtraction))
+					if (Tok.Peek().Is(Symbol.Addition) || Tok.Peek().Is(Symbol.Subtraction) || Tok.Peek().Is(Symbol.Star) || Tok.Peek().Is(Symbol.Division))
 					{
 						return new Expr_MathOp(LeftExpr).Parse<Expr_MathOp>(Tok);
 					}
@@ -251,7 +255,8 @@ namespace CTilde.Expr
 					Tok.NextToken().Assert(Symbol.LParen);
 					LeftExpr = Expression.ParseExpression(Tok, Symbol.RParen);
 
-					Console.WriteLine(">> {0} {1} {2} {3}", Tok.Peek(), Tok.Peek(2), Tok.Peek(3), Tok.Peek(4));
+					if (!FishSettings.TokenizerSilent)
+						Console.WriteLine(">> {0} {1} {2} {3}", Tok.Peek(), Tok.Peek(2), Tok.Peek(3), Tok.Peek(4));
 
 					if (Tok.Peek().Is(Symbol.RParen))
 						Tok.NextToken().Assert(Symbol.RParen);
@@ -355,6 +360,7 @@ namespace CTilde.Expr
 
 		public virtual string ToSourceStr()
 		{
+			string NotImpType = GetType().Name;
 			throw new NotImplementedException();
 		}
 

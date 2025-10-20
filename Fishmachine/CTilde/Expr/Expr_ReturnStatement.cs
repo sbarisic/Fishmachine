@@ -28,5 +28,13 @@ namespace CTilde.Expr
 
 			return this;
 		}
+
+		public override string ToSourceStr()
+		{
+			if (RetValExpr != null)
+				return string.Format("return {0};", RetValExpr.ToSourceStr());
+
+			return string.Format("return;");
+		}
 	}
 }
