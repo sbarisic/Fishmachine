@@ -1,5 +1,4 @@
 uint* int_table = static uint[24];
-
 string tmp_chr = static string[2];
 string temp_buffer = null;
 string temp_buffer2 = null;
@@ -58,11 +57,11 @@ void memory_copy(string dest, string source, int len) {
 void memory_clear(string dest, int len) {
 	uint i = 0;
 
-	print("clear ");
-	printnum2(dest);
+	//print("clear ");
+	//printnum2(dest);
 
-	print("len ");
-	printnum2(len);
+	//print("len ");
+	//printnum2(len);
 
 	while (i < len) {
 		dest[i] = 0;
@@ -120,7 +119,7 @@ int input_readline(string dst) {
 			memory_copy(dst, temp_buffer, idx);
 			ret = input_count - 1;
 			dst[ret] = 0;
-			//memory_clear(input_array, input_count);
+			memory_clear(temp_buffer, input_count);
 			input_count = 0;
 			temp_buffer[0] = 0;
 
