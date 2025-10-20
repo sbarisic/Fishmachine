@@ -24,6 +24,7 @@ namespace Fishmachine
 		public static bool DebugPrintRegisters = false;
 		public static bool DebugRegisterWrite = true;
 		public static bool DebugPrintIP = true;
+		public static bool DebugExceptions = true;
 	}
 
 }

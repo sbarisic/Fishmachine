@@ -1,6 +1,9 @@
-uint* int_table;
+uint* int_table = static uint[24];
+
+string tmp_chr = static string[2];
 string temp_buffer = null;
 string temp_buffer2 = null;
+
 int input_length = 50;
 int input_count = 0;
 
@@ -29,7 +32,10 @@ void printnum(uint num) {
 	syscall_2(SYS_PrintNum, num);
 }
 
-string tmp_chr = static string[2];
+void printnum2(uint num) {
+	printnum(num);
+	print("\n");
+}
 
 void printchar(char c) {
 	tmp_chr[0] = c;
@@ -53,11 +59,10 @@ void memory_clear(string dest, int len) {
 	uint i = 0;
 
 	print("clear ");
-	printnum(dest);
+	printnum2(dest);
 
-	print("\nlen ");
-	printnum(len);
-	print("\n");
+	print("len ");
+	printnum2(len);
 
 	while (i < len) {
 		dest[i] = 0;
@@ -71,7 +76,7 @@ void input_add(char c) {
 
 	if (c == '\b') {
 		if (input_count > 0) {
-			input_count--;
+			input_count = input_count - 1;
 			temp_buffer[input_count] = 0;
 			printchar('\b');
 			printchar(' ');
@@ -85,7 +90,9 @@ void input_add(char c) {
 	// Only add if there is space for at least one more character (for newline)
 	if (input_count < input_length - 1) {
 		temp_buffer[input_count] = c;
-		input_count++;
+		input_count = input_count + 1;
+
+		__asm("DBG_MEM");
 		printchar(c);
 	}
 }
@@ -117,6 +124,7 @@ int input_readline(string dst) {
 			input_count = 0;
 			temp_buffer[0] = 0;
 
+			__asm("DBG_MEM");
 			return ret;
 		}
 
@@ -138,13 +146,18 @@ interrupt void handler_int2_keyboardchar(uint key2) {
 }
 
 naked void kmain() {
-	temp_buffer = alloc(100);
-	temp_buffer2 = alloc(100);
+	//int_table = 32;
+	//__asm("DBG_BREAK");
 
 	int_table[0] = &handler_int0;
 	int_table[1] = &handler_int1_keyboardkey;
 	int_table[2] = &handler_int2_keyboardchar;
 
+	__asm("DBG_MEM");
+	temp_buffer = alloc(100);
+	temp_buffer2 = alloc(100);
+
+	__asm("DBG_MEM");
 	print("Hello, Universe!\n");
 
 	while (true) {

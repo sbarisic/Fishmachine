@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NUnit.Framework.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,8 +9,11 @@ namespace CTilde.Expr
 {
 	public class Expr_TypeDef : Expression
 	{
+		static string[] PtrTypes = new string[] { "string", "voidptr" };
+
 		public string Type;
-		public bool IsArray, IsPointer;
+		public bool IsArray;
+		public bool IsPointer;
 		public int ArraySize = 0;
 
 		public override Expression Parse(Tokenizer Tok)
@@ -42,7 +46,7 @@ namespace CTilde.Expr
 				IsArray = true;
 			}
 
-			if (IsPointerType(Type))
+			if (IsPointerType(this))
 				IsPointer = true;
 
 			return this;
@@ -63,10 +67,27 @@ namespace CTilde.Expr
 			return Void;
 		}
 
+		public static Expr_TypeDef MakeByte()
+		{
+			Expr_TypeDef Byte = new Expr_TypeDef();
+			Byte.Type = "byte";
+			return Byte;
+		}
+
+		public static Expr_TypeDef MakeArray(Expr_TypeDef BaseType, int Size)
+		{
+			Expr_TypeDef ArrayType = new Expr_TypeDef();
+			ArrayType.Type = BaseType.Type;
+			ArrayType.IsArray = true;
+			ArrayType.ArraySize = Size;
+			return ArrayType;
+		}
 
 		public static int GetRawTypeSize(Expr_TypeDef Type)
 		{
-			if (Type.Type == "int" || Type.Type == "uint" || Type.Type == "float" || Type.Type == "string" || Type.Type == "voidptr")
+			if (IsPointerType(Type))
+				return 4;
+			else if (Type.Type == "int" || Type.Type == "uint" || Type.Type == "float")
 				return 4;
 			else if (Type.Type == "byte" || Type.Type == "char" || Type.Type == "bool")
 				return 1;
@@ -74,13 +95,28 @@ namespace CTilde.Expr
 			throw new NotImplementedException();
 		}
 
-		public static int GetTypeSize(Expr_TypeDef Type)
+		public static int GetDerefTypeSize(Expr_TypeDef Type)
 		{
-			if (Type.IsPointer || Type.IsArray)
-				return 4;
+			if (!IsPointerType(Type))
+				throw new Exception("Not pointer or array type");
+
+			if (PtrTypes.Contains(Type.Type))
+				return 1;
+
+			Expr_TypeDef DerefType = new Expr_TypeDef();
+			DerefType.Type = Type.Type;
+			DerefType.IsArray = false;
+			DerefType.IsPointer = false;
+			return GetRawTypeSize(DerefType);
+		}
+
+		/*public static int GetTypeSize(Expr_TypeDef Type)
+		{
+			if (IsPointerType(Type))
+				return GetDerefTypeSize(Type);
 
 			return GetRawTypeSize(Type);
-		}
+		}*/
 
 		public static bool IsUnsigned(string TypeName)
 		{
@@ -89,23 +125,38 @@ namespace CTilde.Expr
 			return false;
 		}
 
-		public static bool IsPointerType(string TypeName)
+		/*public static bool IsPointerType(string TypeName)
 		{
 			if (TypeName == "string" || TypeName == "voidptr")
 				return true;
 
 			return false;
+		}*/
+
+		public static bool IsPointerType(Expr_TypeDef TD)
+		{
+			if (PtrTypes.Contains(TD.Type))
+				return true;
+
+			return TD.IsArray || TD.IsPointer;
 		}
 
-		public static int GetPointerTypeSize(Expr_TypeDef Type)
+		public static bool IsArrayType(Expr_TypeDef TD)
 		{
-			if (Type.Type == "string")
-				return 1; // string is array of bytes
+			return TD.IsArray;
+		}
 
-			if (!(Type.IsPointer || Type.IsArray))
-				throw new Exception("Not pointer or array type");
+		public override string ToSourceStr()
+		{
+			if (PtrTypes.Contains(Type))
+				return Type;
 
-			return GetRawTypeSize(Type);
+			if (IsArray)
+				return string.Format("{0}[{1}]", Type, ArraySize);
+			else if (IsPointer)
+				return string.Format("{0}*", Type);
+			else
+				return Type;
 		}
 	}
 }

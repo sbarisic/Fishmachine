@@ -22,6 +22,7 @@ namespace Fishmachine.VM
 				case FishInst.WAIT:
 				case FishInst.LEAVE:
 				case FishInst.RET:
+				case FishInst.DBG_MEM:
 				case FishInst.DBG_BREAK:
 				case FishInst.SYSCALL_2:
 				case FishInst.FLOAT_ADD:
@@ -114,11 +115,34 @@ namespace Fishmachine.VM
 		byte[] Memory;
 
 		public Graphics Gfx;
+		public uint IntTableAddr;
 
 		public FishRegisters Regs = new FishRegisters();
+		List<VMSymbol> VMSymbols = new List<VMSymbol>();
 
 		public FishVM()
 		{
+		}
+
+		public VMSymbol FindSymbol(string Name)
+		{
+			for (int i = 0; i < VMSymbols.Count; i++)
+			{
+				if (VMSymbols[i].Name == Name)
+					return VMSymbols[i];
+			}
+
+			return null;
+		}
+
+		public void DefineSymbol(string Name, uint Addr)
+		{
+			VMSymbol S = FindSymbol(Name);
+
+			if (S != null)
+				S.Address = Addr;
+			else
+				VMSymbols.Add(new VMSymbol(Name, Addr));
 		}
 
 		public void AllocateMemory(int Size)
@@ -169,8 +193,32 @@ namespace Fishmachine.VM
 
 		public byte ReadByte(uint Address, out FishException E)
 		{
-			Address = VirtualToReal(Address);
-			return MemoryBankForRealAddress(Address, out E)[Address];
+			try
+			{
+				Address = VirtualToReal(Address);
+				byte[] MemBank = MemoryBankForRealAddress(Address, out E);
+
+				if (FishSettings.DebugExceptions && E != FishException.None)
+				{
+					Console.WriteException("{0} reading byte at 0x{1:X}", E, Address);
+
+					uint ESP = Regs.Read(Reg.ESP);
+					PrintMem(ESP, out FishException _);
+
+					Regs.PrintAll();
+				}
+
+				if (E != FishException.None)
+					return 0;
+
+				return MemBank[Address];
+			}
+			catch (Exception Ex)
+			{
+				Console.WriteLine("Exception: {0}", Ex.ToString());
+				E = FishException.AccessViolation;
+				return 0;
+			}
 		}
 
 		public byte[] ReadBytes(uint VirtAddr, int Count, out FishException E)
@@ -508,11 +556,34 @@ namespace Fishmachine.VM
 			return false;
 		}
 
+		public void PrintGlobal(string Name, uint Addr)
+		{
+			uint Val = ReadUInt32(Addr, out FishException E);
+
+			if (E != FishException.None)
+				return;
+
+			Console.WriteLine("Global '{0}' at 0x{1:X4} = 0x{2:X}", Name, Addr, Val);
+		}
+
 		public void PrintMem(uint Start, out FishException E)
 		{
 			int PrintLines = 16;
 			int BytesLen = 16;
 			E = FishException.None;
+
+			for (int i = 0; i < VMSymbols.Count; i++)
+			{
+				uint Val = ReadUInt32(VMSymbols[i].Address, out E);
+				/*if (E != FishException.None)
+					return;*/
+
+				uint Val2 = ReadUInt32(Val, out E);
+				/*if (E != FishException.None)
+					return;*/
+
+				Console.WriteLine("{0} (@ 0x{1:X}) = 0x{2:X}; 0x{3:X}", VMSymbols[i].Name, VMSymbols[i].Address, Val, Val2);
+			}
 
 			bool GrowDown = true;
 
@@ -554,8 +625,8 @@ namespace Fishmachine.VM
 					uint MemPtrLoc = (uint)(MemPtr - k);
 					byte B = ReadByte(MemPtrLoc, out E);
 
-					if (E != FishException.None)
-						return;
+					/*if (E != FishException.None)
+						return;*/
 
 					if (B == 0)
 						Console.ForegroundColor = ConsoleColor.DarkGray;
@@ -575,8 +646,8 @@ namespace Fishmachine.VM
 					uint MemPtrLoc = (uint)(MemPtr - k);
 					byte B = ReadByte(MemPtrLoc, out E);
 
-					if (E != FishException.None)
-						return;
+					/*if (E != FishException.None)
+						return;*/
 
 					char C = Encoding.ASCII.GetString(new byte[] { B })[0];
 					if (char.IsLetterOrDigit(C) || char.IsPunctuation(C) || char.IsSymbol(C) || char.IsWhiteSpace(C))

@@ -46,6 +46,7 @@ namespace Fishmachine.VM
 		WAIT,
 		LEAVE,
 		RET,
+		DBG_MEM,
 		DBG_BREAK,
 		SYSCALL,
 		SYSCALL_2,

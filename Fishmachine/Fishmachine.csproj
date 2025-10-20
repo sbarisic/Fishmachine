@@ -14,6 +14,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="..\bin\Debug\net8.0\ct.asm" Link="ct.asm" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Raylib-cs" Version="7.0.1" />
   </ItemGroup>
 
@@ -28,10 +32,6 @@
     <None Update="data\font.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="..\bin\Debug\net8.0\ct.asm" Link="ct.asm" />
   </ItemGroup>
 
 </Project>

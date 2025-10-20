@@ -25,7 +25,11 @@ namespace Fishmachine.VM
 				Regs.Write(Reg.XSC, 0);
 				// Handle interrupt
 
-				uint IntAddr = ReadUInt32(0x100 + (uint)(IntNum - 1) * 4, out E);
+				uint IntTable = ReadUInt32(IntTableAddr, out E); 
+				if (E != FishException.None)
+					return true;
+
+				uint IntAddr = ReadUInt32(IntTable + (uint)(IntNum - 1) * 4, out E);
 				if (E != FishException.None)
 					return true;
 
@@ -979,6 +983,9 @@ namespace Fishmachine.VM
 						if (E != FishException.None)
 							return true;
 
+						// Consume the two arguments pushed before SYSCALL_2
+						Regs.Write(Reg.ESP, ESP + 8);
+
 						break;
 					}
 
@@ -1213,6 +1220,14 @@ namespace Fishmachine.VM
 						Regs.Write(Reg.EBP, RegVal);
 
 						Regs.Write(Reg.ESP, ESP + sizeof(uint));*/
+						break;
+					}
+
+				case FishInst.DBG_MEM:
+					{
+						Console.PrintInst(Inst);
+						uint StLoc = 0x20000;
+						PrintMem(StLoc, out E);
 						break;
 					}
 

@@ -13,6 +13,7 @@ namespace Fishmachine
 	{
 		public string Name;
 		public bool Global = false;
+		public bool IsVariable = false;
 		public uint Address = 0;
 
 		public uint ResolveAddress()
@@ -118,6 +119,26 @@ namespace Fishmachine
 
 			if (Raw != null)
 			{
+				//if (HasOp1 || HasOp2 || HasOp3)
+				//	throw new Exception("Cannot have raw data and operands in the same instruction");
+				if (HasOp1)
+				{
+					byte[] Op1Bytes = BitConverter.GetBytes(Op1);
+					Array.Copy(Op1Bytes, 0, Raw, 0, Op1Bytes.Length);
+				}
+
+				if (HasOp2)
+				{
+					byte[] Op2Bytes = BitConverter.GetBytes(Op2);
+					Array.Copy(Op2Bytes, 0, Raw, 4, Op2Bytes.Length);
+				}
+
+				if (HasOp3)
+				{
+					byte[] Op3Bytes = BitConverter.GetBytes(Op3);
+					Array.Copy(Op3Bytes, 0, Raw, 8, Op3Bytes.Length);
+				}
+
 				BW.Write(Raw);
 			}
 			else
@@ -210,6 +231,16 @@ namespace Fishmachine
 		{
 			AsmToken Tok = Tokens.Where(T => T.Name == TokenName).FirstOrDefault();
 			return Tok;
+		}
+
+		public AsmToken[] GetAllGlobals()
+		{
+			return Tokens.Where(T => T.Global).ToArray();
+		}
+
+		public AsmToken[] GetGlobalVariables()
+		{
+			return GetAllGlobals().Where(G => G.IsVariable).ToArray();
 		}
 
 		public uint GetSymbolOffset(string SymbolName)
@@ -343,13 +374,37 @@ namespace Fishmachine
 								break;
 							}
 
+						case ".globlvar":
+							{
+								AsmToken Tok = state.FindToken(Tokens[1]);
+								if (Tok == null)
+								{
+									Tok = state.DefineToken(Tokens[1], 0, true);
+									Tok.IsVariable = true;
+								}
+								break;
+							}
+
 						case ".long":
 							{
 								AsmInstr RawStr = new AsmInstr(FishInst.NOP);
 								string QStr = L.Substring(".long".Length).Trim();
 
-								int val = int.Parse(QStr);
-								RawStr.Raw = BitConverter.GetBytes(val);
+								int val = 0;
+
+								if (QStr.StartsWith("."))
+								{
+									AsmToken tt = state.RefToken(QStr);
+
+									RawStr.Raw = BitConverter.GetBytes(0);
+									RawStr.SetOp1(tt, sizeof(int));
+								}
+								else
+								{
+									val = int.Parse(QStr);
+									RawStr.Raw = BitConverter.GetBytes(val);
+								}
+
 								AddAsmInstr(RawStr);
 								break;
 							}
@@ -578,6 +633,7 @@ namespace Fishmachine
 						case "WAIT":
 						case "HALT":
 						case "INVALID":
+						case "DBG_MEM":
 						case "DBG_BREAK":
 						case "NOP":
 						case "LEAVE":

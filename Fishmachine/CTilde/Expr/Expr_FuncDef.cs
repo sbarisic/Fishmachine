@@ -8,9 +8,9 @@ namespace CTilde.Expr
 {
 	public class Expr_FuncDef : Expression
 	{
-		public Expr_TypeDef FuncReturnTypeDef;
 		public string FuncName;
 
+		public Expr_TypeDef FuncReturnTypeDef;
 		//public Expr_VariableDef FuncVariableDef;
 
 		public Expr_ParamsDef FuncParams;

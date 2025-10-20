@@ -134,6 +134,18 @@ namespace Fishmachine
 			WriteLine();
 		}
 
+		public static void WriteException(string Msg)
+		{
+			Console.ForegroundColor = ConsoleColor.Red;
+			Console.WriteLine(Msg);
+			Console.ResetColor();
+		}
+
+		public static void WriteException(string Msg, params object[] Args)
+		{
+			WriteException(string.Format(Msg, Args));
+		}
+
 		public static void WriteLine()
 		{
 			Write("\n");
@@ -272,6 +284,9 @@ namespace Fishmachine
 			Console.WriteLine("ct.asm:\n" + CtAsmSrc);
 			Console.WriteLine();
 			File.WriteAllText("ct.asm", CtAsmSrc);
+
+			string CommentsRemoved = string.Join('\n', CtAsmSrc.Split('\n').Where(L => !L.Trim().StartsWith("#")).ToArray());
+			File.WriteAllText("ct_nocomments.asm", CommentsRemoved);
 		}
 
 		static void Main(string[] args)
@@ -288,9 +303,12 @@ namespace Fishmachine
 			//return;
 
 			AssemblerState AsmState = new AssemblerState();
-			AsmState.DefineToken("int_table", 0x100, true);
+			//AsmState.DefineToken("int_table", 0x100, true);
 
 			byte[] Bytecode = Assemble(AsmState, new[] {/* "stdfish.asm", "test.asm"*/ "ct.asm" }, out uint KMainAddr);
+
+			AsmToken IntTableTok = AsmState.FindToken("int_table");
+			AsmToken[] Globals = AsmState.GetGlobalVariables();
 
 			// Setup VM, load program and run
 
@@ -308,8 +326,13 @@ namespace Fishmachine
 			//uint CC = AsmState.GetSymbolOffset("input_count");
 
 			FishVM VM = new FishVM();
+			VM.IntTableAddr = IntTableTok.Address;
 			VM.Gfx = Gfx;
 
+			foreach (var G in Globals)
+			{
+				VM.DefineSymbol(G.Name, G.Address);
+			}
 
 			VM.AllocateMemory(0x30000);
 			VM.SetMemMgrPointer(0x30000 - 1);
@@ -360,7 +383,6 @@ namespace Fishmachine
 				if (FishSettings.FormatPrint)
 					FormatPrint(VM);
 			}
-
 
 			VM.PrintMem(ESPLoc, out Ex);
 

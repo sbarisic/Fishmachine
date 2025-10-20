@@ -38,14 +38,16 @@ namespace CTilde.FishAsm
 		public string Name;
 		public string Value;
 		public Expr_TypeDef FuncReturnType;
+		public bool IsFunction;
 		public bool Generated = false;
 		public bool Global = false;
 
-		public FishLabel(string Name, Expr_TypeDef FuncReturnType, bool Global)
+		public FishLabel(string Name, Expr_TypeDef FuncReturnType, bool IsFunc, bool Global)
 		{
 			this.Name = Name;
 			this.Global = Global;
 			this.FuncReturnType = FuncReturnType;
+			this.IsFunction = IsFunc;
 			Value = "";
 		}
 
@@ -77,22 +79,22 @@ namespace CTilde.FishAsm
 
 		List<FishLabel> Labels = new List<FishLabel>();
 
-		public string DefineFreeLabel(string LabelName, Expr_TypeDef FuncReturnType, bool Global)
+		public string DefineFreeLabel(string LabelName, Expr_TypeDef FuncReturnType, bool IsFunc, bool Global)
 		{
 			if (!string.IsNullOrEmpty(LabelName))
 				LabelName = "." + LabelName + "_" + (FreeLabel++).ToString("X4");
 
-			DefineLabel(LabelName, FuncReturnType, Global);
+			DefineLabel(LabelName, FuncReturnType, IsFunc, Global);
 			return LabelName;
 		}
 
-		public void DefineLabel(string LabelName, Expr_TypeDef FuncReturnType, bool Global)
+		public void DefineLabel(string LabelName, Expr_TypeDef FuncReturnType, bool IsFunc, bool Global)
 		{
 			if (Labels.Any(l => l.Name == LabelName))
 				throw new Exception(string.Format("Label '{0}' is already defined", LabelName));
 
 			FreeLabel++;
-			Labels.Add(new FishLabel(LabelName, FuncReturnType, Global));
+			Labels.Add(new FishLabel(LabelName, FuncReturnType, IsFunc, Global));
 		}
 
 		public FishLabel[] GetNewLabels()
@@ -271,6 +273,12 @@ namespace CTilde.FishAsm
 				return true;
 
 			return false;
+		}
+
+		public bool IsVarFunction(string VarName)
+		{
+			FishLabel Lbl = GetLabel(VarName);
+			return Lbl.IsFunction;
 		}
 
 		/*public FishLabel GetLabel(string LabelName)
