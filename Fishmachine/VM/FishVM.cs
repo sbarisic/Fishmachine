@@ -231,21 +231,32 @@ namespace Fishmachine.VM
 			return Memory;
 		}
 
-		public FishMemProt GetProtection(uint Address)
+		public IEnumerable<FishMemProt> GetProtection(uint Address, uint Size)
 		{
-			foreach (FishMemProt P in MemProt)
+			if (Size == 1)
 			{
-				if (P.Contains(Address))
-					return P;
+				foreach (FishMemProt P in MemProt)
+				{
+					if (P.Contains(Address))
+						yield return P;
+				}
+			}
+			else
+			{
+				foreach (FishMemProt P in MemProt)
+				{
+					if (P.Intersects(Address, Size))
+						yield return P;
+				}
 			}
 
-			return null;
+			yield break;
 		}
 
 		public void ProtectMemory(uint Address, uint Size, FishMemProt Prot)
 		{
 			FishMemProt Found = null;
-			if ((Found = GetProtection(Address)) == null)
+			if ((Found = GetProtection(Address, Size).FirstOrDefault()) == null)
 			{
 				Prot.BaseAddr = Address;
 				Prot.Size = Size;
@@ -261,7 +272,7 @@ namespace Fishmachine.VM
 			ProtectMemory(Addr, Prot.Size, Prot);
 		}
 
-		public void CheckAccess(uint Address, FishMemPriv Priv, out FishException E)
+		public void CheckAccess(uint Address, uint Size, FishMemPriv Priv, out FishException E)
 		{
 			Address = VirtualToReal(Address);
 			byte[] MemBank = MemoryBankForRealAddress(Address, out E);
@@ -269,7 +280,7 @@ namespace Fishmachine.VM
 			if (E != FishException.None)
 				return;
 
-			FishMemProt P = GetProtection(Address);
+			FishMemProt P = GetProtection(Address, Size).FirstOrDefault();
 			if (P != null)
 			{
 				if (!P.HasAccess(Priv))
@@ -310,7 +321,7 @@ namespace Fishmachine.VM
 				Address = VirtualToReal(Address);
 				byte[] MemBank = MemoryBankForRealAddress(Address, out E);
 
-				CheckAccess(Address, Priv, out E);
+				CheckAccess(Address, 1, Priv, out E);
 				if (E != FishException.None)
 					return 0;
 
@@ -345,7 +356,7 @@ namespace Fishmachine.VM
 		{
 			VirtAddr = VirtualToReal(VirtAddr);
 
-			CheckAccess(VirtAddr, Priv, out E);
+			CheckAccess(VirtAddr, (uint)Count, Priv, out E);
 			if (E != FishException.None)
 				return new byte[0];
 
@@ -426,7 +437,7 @@ namespace Fishmachine.VM
 		{
 			VirtAddress = VirtualToReal(VirtAddress);
 
-			CheckAccess(VirtAddress, Priv, out E);
+			CheckAccess(VirtAddress, 1, Priv, out E);
 			if (E != FishException.None)
 				return;
 
@@ -445,7 +456,7 @@ namespace Fishmachine.VM
 				Console.WriteLine("Write {0} bytes to 0x{1:X}", Value.Length, VirtAddress);
 			}
 
-			CheckAccess(VirtAddress, Priv, out E);
+			CheckAccess(VirtAddress, (uint)Value.Length, Priv, out E);
 			if (E != FishException.None)
 				return;
 

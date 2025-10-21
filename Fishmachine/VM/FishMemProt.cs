@@ -22,6 +22,26 @@ namespace Fishmachine.VM
 			return false;
 		}
 
+		public bool Intersects(uint Addr, uint Sz)
+		{
+			if (Sz == 0)
+				return false;
+
+			if (Addr + Sz <= BaseAddr)
+				return false;
+
+			if (Addr >= BaseAddr + Size)
+				return false;
+
+			if (Addr < BaseAddr && (Addr + Sz) >= (BaseAddr + Size))
+				return true;
+
+			if (Contains(Addr) || Contains(Addr + Sz - 1))
+				return true;
+
+			return true;
+		}
+
 		public static FishMemPriv GetPriv(Reg R, bool Read)
 		{
 			if (R == Reg.EBP || R == Reg.ESP)
