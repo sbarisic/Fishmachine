@@ -98,6 +98,24 @@ namespace Fishmachine
 			}
 		}
 
+		public void Clear()
+		{
+			WaitForRunning();
+
+			for (int y = 0; y < H; y++)
+			{
+				for (int x = 0; x < W; x++)
+				{
+					SetPixel(x, y, BackgroundColor, false);
+				}
+			}
+
+			CurX = 0;
+			CurY = 0;
+
+			Dirty = true;
+		}
+
 		public void Write(char arg1)
 		{
 			WaitForRunning();

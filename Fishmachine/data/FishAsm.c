@@ -11,11 +11,16 @@ define SYS_PrintChar = 1;
 define SYS_PrintNum = 2;
 define SYS_SoftwareInterrupt = 3;
 define SYS_Alloc = 4;
+define SYS_Cls = 5;
 
 voidptr alloc(uint bytes) {
 	voidptr alloc_mem = bytes;
 	syscall_2(SYS_Alloc, &alloc_mem);
 	return alloc_mem;
+}
+
+void clear_screen() {
+	syscall_2(SYS_Cls, 0);
 }
 
 void print(string str) {
@@ -170,6 +175,7 @@ naked void kmain() {
 	int_table[0] = &handler_int0;
 	int_table[1] = &handler_int1_keyboardkey;
 	int_table[2] = &handler_int2_keyboardchar;
+	byte* bptr = 0;
 
 
 	//__asm("SYSCALL $0");
@@ -188,6 +194,17 @@ naked void kmain() {
 		if (cmp(temp_buffer2, "exit") == true) {
 			print("Exiting...\n");
 			break;
+		}
+		else if (cmp(temp_buffer2, "clear") == true) {
+			clear_screen();
+		}
+		else if (cmp(temp_buffer2, "null") == true) {
+			bptr = 0;
+			bptr[0] = 32;
+		}
+		else if (cmp(temp_buffer2, "barely") == true) {
+			bptr = 0x101;
+			bptr[0] = 32;
 		}
 		else {
 			print("You typed: ");
