@@ -80,6 +80,5 @@ naked void kmain() {
 
 	print("Hello Unit Test World!\n");
 
-	wait;
 	__asm("SYSCALL $0");
 }

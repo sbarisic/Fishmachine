@@ -327,7 +327,8 @@ namespace Fishmachine
 
 			uint LoadAddress = 0x1000; // Program load address: 4096
 			uint AllocatedVMMemSize = 0x10000; // 65535 bytes
-			uint StackAddr = AllocatedVMMemSize - 1;
+			uint StackOffset = 0x10;
+			uint StackAddr = AllocatedVMMemSize - StackOffset;
 			uint StackSize = 1024 * 16; // 16 KB
 
 			FishVM VM = new FishVM();
@@ -340,7 +341,7 @@ namespace Fishmachine
 			}
 
 			VM.AllocateMemory(AllocatedVMMemSize);
-			VM.SetMemMgrPointer(AllocatedVMMemSize - StackSize - 1);
+			VM.SetMemMgrPointer(AllocatedVMMemSize - StackSize - StackOffset);
 
 			//VM.LoadToMemory(Bytecode, 0x1000);
 			if (!Silent)
