@@ -152,7 +152,7 @@ namespace Fishmachine.VM
 				VMSymbols.Add(new VMSymbol(Name, Addr));
 		}
 
-		public void AllocateMemory(int Size)
+		public void AllocateMemory(uint Size)
 		{
 			Memory = new byte[Size];
 		}
@@ -163,10 +163,16 @@ namespace Fishmachine.VM
 			MemAllocPtr = Addr;
 		}
 
-		public int LoadToMemory(byte[] Input, int Offset)
+		public uint GetMemMgrPointer(out int AllocatedBytes)
+		{
+			AllocatedBytes = (int)(MemAllocPtrStart - MemAllocPtr);
+			return MemAllocPtrStart;
+		}
+
+		public int LoadToMemory(byte[] Input, uint Offset)
 		{
 			Array.Copy(Input, 0, Memory, Offset, Input.Length);
-			return Input.Length + Offset;
+			return (int)(Input.Length + Offset);
 		}
 
 		public uint VirtualToReal(uint Address)
