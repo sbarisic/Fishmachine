@@ -1178,8 +1178,7 @@ namespace Fishmachine.VM
 				case FishInst.DBG_MEM:
 					{
 						Console.PrintInst(Inst);
-						uint StLoc = 0x20000;
-						PrintMem(StLoc, out E);
+						PrintMem(StackAddr, out E);
 						break;
 					}
 
@@ -1195,8 +1194,7 @@ namespace Fishmachine.VM
 						/*if (Debugger.IsAttached)
 							Debugger.Break();*/
 						Console.PrintInst(Inst);
-						uint StLoc = 0x20000;
-						PrintMem(StLoc, out E);
+						PrintMem(StackAddr, out E);
 						Regs.PrintAll();
 
 						Debugger.Break();

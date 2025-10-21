@@ -321,6 +321,11 @@ namespace Fishmachine
 			//uint BB = AsmState.GetSymbolOffset("input_length");
 			//uint CC = AsmState.GetSymbolOffset("input_count");
 
+			uint LoadAddress = 0x1000; // Program load address: 4096
+			uint AllocatedVMMemSize = 0x10000; // 65535 bytes
+			uint StackAddr = AllocatedVMMemSize - 1;
+			uint StackSize = 1024 * 16; // 16 KB
+
 			FishVM VM = new FishVM();
 			VM.IntTableAddr = IntTableTok.Address;
 			VM.Gfx = Gfx;
@@ -330,25 +335,31 @@ namespace Fishmachine
 				VM.DefineSymbol(G.Name, G.Address);
 			}
 
-			VM.AllocateMemory(0x30000);
-			VM.SetMemMgrPointer(0x30000 - 1);
+			VM.AllocateMemory(AllocatedVMMemSize);
+			VM.SetMemMgrPointer(AllocatedVMMemSize - StackSize - 1);
 
 			//VM.LoadToMemory(Bytecode, 0x1000);
 			if (!Silent)
-				Console.Write("{0} (0x{0:X}) bytes ", Bytecode.Length);
+			{
+				Console.WriteLine("RAM {0} bytes", AllocatedVMMemSize);
+				Console.WriteLine("Stack at 0x{0:X}, size {1} bytes", StackAddr, StackSize);
 
-			VM.LoadToMemory(Bytecode, 0x1000);
+				uint MemMgr = VM.GetMemMgrPointer(out int AllocBytes);
+				Console.WriteLine("Memory manager at 0x{0:X}, allocated {1} bytes", MemMgr, AllocBytes);
+				Console.Write("Program {0} bytes ", Bytecode.Length);
+			}
+
+			VM.LoadToMemory(Bytecode, LoadAddress);
 
 			if (!Silent)
-				Console.WriteLine("loaded @ 0x{0:X}", 0x1000);
+				Console.WriteLine("loaded at 0x{0:X}", LoadAddress);
 
-			uint ESPLoc = 0x20000;
-			VM.Regs.Write(CodeGeneration.Reg.ESP, ESPLoc);
-			VM.Regs.Write(CodeGeneration.Reg.EBP, ESPLoc);
+			VM.SetInitialStack(StackAddr);
 			//VM.Regs.Write(CodeGeneration.Reg.EBP, 0x20000);
 
 			if (!Silent)
-				Console.WriteLine("Jumping to kmain @ 0x{0:X}", KMainAddr);
+				Console.WriteLine("Jumping to kmain at 0x{0:X}", KMainAddr);
+
 			VM.Jump(KMainAddr);
 
 			FishException Ex = FishException.None;
@@ -389,7 +400,7 @@ namespace Fishmachine
 			}
 
 			if (!Silent)
-				VM.PrintMem(ESPLoc, out Ex);
+				VM.PrintMem(StackAddr, out Ex);
 
 			if (Ex != FishException.None)
 				throw new Exception($"VM stopped with exception {Ex}");
@@ -398,8 +409,24 @@ namespace Fishmachine
 			return VM.Out.ToString();
 		}
 
-		static void UnitTest(string SrcFile)
+		static void RunProgram(string SrcFile, bool IsUnitTest)
 		{
+			if (!IsUnitTest)
+			{
+				Console.Write("Running program: ");
+				Console.ForegroundColor = ConsoleColor.DarkYellow;
+				Console.WriteLine(SrcFile);
+				Console.ResetColor();
+
+
+				Console.Silent = false;
+				string ProgOut = CompileAndRun(SrcFile, "ct.asm", false);
+
+				Console.WriteLine("Done!");
+				Console.ReadLine();
+				return;
+			}
+
 			string OutFile = Path.GetFileNameWithoutExtension(SrcFile) + ".asm";
 			string ExpOutFile = "data/tests/" + Path.GetFileNameWithoutExtension(SrcFile) + ".txt";
 			string ExpectedOutput = File.ReadAllText(ExpOutFile).Replace("\r\n", "\n");
@@ -440,8 +467,10 @@ namespace Fishmachine
 			//string OutStr = CompileAndRun("data/FishAsm.c", "FishAsm.asm");
 			//OutStr = CompileAndRun("data/FishAsm.c", "FishAsm.asm");
 
-			UnitTest("data/tests/Test1.c");
-			UnitTest("data/tests/Test2.c");
+			RunProgram("data/FishAsm.c", false);
+
+			//RunProgram("data/tests/Test1.c", true);
+			//RunProgram("data/tests/Test2.c", true);
 
 			//Compile("stdfish.c");
 			//Compile("test.c");

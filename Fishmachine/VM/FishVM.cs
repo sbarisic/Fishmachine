@@ -116,6 +116,7 @@ namespace Fishmachine.VM
 		FishException LastException;
 		bool Halted;
 
+		uint StackAddr = 0x0;
 		uint MemAllocPtrStart = 0x0;
 		uint MemAllocPtr = 0x0;
 		byte[] Memory;
@@ -157,6 +158,13 @@ namespace Fishmachine.VM
 			Memory = new byte[Size];
 		}
 
+		public void SetInitialStack(uint Addr)
+		{
+			StackAddr = Addr;
+			Regs.Write(CodeGeneration.Reg.ESP, Addr);
+			Regs.Write(CodeGeneration.Reg.EBP, Addr);
+		}
+
 		public void SetMemMgrPointer(uint Addr)
 		{
 			MemAllocPtrStart = Addr;
@@ -192,12 +200,21 @@ namespace Fishmachine.VM
 			if (Address == 0)
 			{
 				E = FishException.AccessViolation;
+
+				if (Debugger.IsAttached && true)
+					Debugger.Break();
+
 				return null;
 			}
 
 			if (Address >= Memory.Length)
 			{
 				E = FishException.AccessViolation;
+
+
+				if (Debugger.IsAttached && true)
+					Debugger.Break();
+
 				return null;
 			}
 
@@ -230,6 +247,10 @@ namespace Fishmachine.VM
 			{
 				Console.WriteLine("Exception: {0}", Ex.ToString());
 				E = FishException.AccessViolation;
+
+				if (Debugger.IsAttached && true)
+					Debugger.Break();
+
 				return 0;
 			}
 		}
