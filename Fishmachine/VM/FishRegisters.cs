@@ -144,11 +144,24 @@ namespace Fishmachine.VM
 			}
 		}
 
+		public bool IsSupervisor
+		{
+			get
+			{
+				return GetRFLAGS(7);
+			}
+			set
+			{
+				SetRFLAGS(7, value);
+			}
+		}
+
 
 		public FishRegisters()
 		{
 			Regs = new uint[(int)Reg.MAX_VALUE];
 			ST = new float[8];
+
 			IntEnabled = true;
 			SoftIntEnabled = true;
 		}
@@ -346,7 +359,7 @@ namespace Fishmachine.VM
 			Console.PrintReg(string.Format("EIP 0x{0:X} hex, {0} dec; ", IP));
 			Console.PrintReg(string.Format("RFLAGS 0x{0:X4} hex, {0} dec; ", RFLAGS));
 			Console.WriteLine();
-			Console.PrintReg(string.Format("Zero {0}; Sign {1}; Less {2}; Equal {3}; Greater {4}; IntEn {5}; SofInt {6}", IsZero ? 1 : 0, Sign ? 1 : 0, LessThan ? 1 : 0, Equal ? 1 : 0, GreaterThan ? 1 : 0, IntEnabled ? 1 : 0, SoftIntEnabled ? 1 : 0));
+			Console.PrintReg(string.Format("Zero {0}; Sign {1}; Less {2}; Equal {3}; Greater {4}; IntEn {5}; SofInt {6}; Super {7};", IsZero ? 1 : 0, Sign ? 1 : 0, LessThan ? 1 : 0, Equal ? 1 : 0, GreaterThan ? 1 : 0, IntEnabled ? 1 : 0, SoftIntEnabled ? 1 : 0, IsSupervisor ? 1 : 0));
 			Console.WriteLine();
 
 			foreach (var R in RegsEnum)

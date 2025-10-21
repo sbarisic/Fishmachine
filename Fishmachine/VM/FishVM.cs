@@ -169,7 +169,7 @@ namespace Fishmachine.VM
 			Regs.Write(CodeGeneration.Reg.ESP, Addr);
 			Regs.Write(CodeGeneration.Reg.EBP, Addr);
 
-			ProtectMemory(Addr - Size, Addr, new FishMemProt(FishMemPriv.Stack, "stack"));
+			ProtectMemory(Addr - Size, Addr, new FishMemProt(FishMemPriv.Stack | FishMemPriv.Supervisor, "stack"));
 		}
 
 		public void SetMemMgrPointer(uint Addr)
@@ -184,12 +184,17 @@ namespace Fishmachine.VM
 			return MemAllocPtrStart;
 		}
 
-		public uint LoadToMemory(byte[] Input, uint Offset)
+		public uint LoadToMemory(byte[] Input, uint Offset, bool Supervisor)
 		{
 			Array.Copy(Input, 0, Memory, Offset, Input.Length);
 			uint EndAddr = Offset + (uint)Input.Length;
 
-			ProtectMemory(Offset, (uint)Input.Length, new FishMemProt(FishMemPriv.Execute | FishMemPriv.Read | FishMemPriv.Write, "bytecode"));
+			FishMemPriv Priv = FishMemPriv.ReadWriteExecute;
+
+			if (Supervisor)
+				Priv = Priv | FishMemPriv.Supervisor;
+
+			ProtectMemory(Offset, (uint)Input.Length, new FishMemProt(Priv, "bytecode"));
 			return EndAddr;
 		}
 
@@ -281,8 +286,19 @@ namespace Fishmachine.VM
 				return;
 
 			FishMemProt P = GetProtection(Address, Size).FirstOrDefault();
+
 			if (P != null)
 			{
+				if (P.HasAccess(FishMemPriv.Supervisor))
+				{
+					if (!Regs.IsSupervisor)
+					{
+						Regs.Write(Reg.DB0, Address);
+						E = FishException.AccessViolation;
+						return;
+					}
+				}
+
 				if (!P.HasAccess(Priv))
 				{
 					Regs.Write(Reg.DB0, Address);
@@ -468,6 +484,11 @@ namespace Fishmachine.VM
 			WriteBytes(VirtAddress, BitConverter.GetBytes(UInt), Priv, out E);
 		}
 
+		public void SetSupervisor(bool Sup)
+		{
+			Regs.IsSupervisor = Sup;
+		}
+
 		public void Jump(uint VirtAddress)
 		{
 			Regs.IP = VirtAddress;
@@ -585,7 +606,12 @@ namespace Fishmachine.VM
 
 					if (AllocMem != 0)
 					{
-						ProtectMemory(AllocMem, Bytes, new FishMemProt(FishMemPriv.ReadWrite, "alloc"));
+						FishMemPriv Priv = FishMemPriv.ReadWrite;
+
+						if (Regs.IsSupervisor)
+							Priv = Priv | FishMemPriv.Supervisor;
+
+						ProtectMemory(AllocMem, Bytes, new FishMemProt(Priv, "alloc"));
 					}
 
 					WriteUInt32(BytesPtr, AllocMem, FishMemProt.GetPriv(BytesPtr, StackAddr, StackSize, false), out E);

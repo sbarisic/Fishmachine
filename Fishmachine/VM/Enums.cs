@@ -27,12 +27,17 @@ namespace Fishmachine.VM
 
 	public enum FishMemPriv : byte
 	{
-		None = 0,
-		Read = 1,
-		Write = 2,
-		Execute = 4,
-		Stack = 8,
-		Debugger = 16,
+		None = 0b00000000,
+		Read = 0b00000001,
+		Write = 0b00000010,
+		Execute = 0b00000100,
+		Stack = 0b00001000,
+		Supervisor = 0b00010000,
+
+		Unused1 = 0b00100000,
+		Unused2 = 0b01000000,
+
+		Debugger = 0b10000000,
 		ReadWrite = Read | Write,
 		ReadExecute = Read | Execute,
 		WriteExecute = Write | Execute,

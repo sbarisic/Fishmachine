@@ -354,7 +354,7 @@ namespace Fishmachine
 				Console.Write("Program {0} bytes ", Bytecode.Length);
 			}
 
-			VM.LoadToMemory(Bytecode, LoadAddress);
+			VM.LoadToMemory(Bytecode, LoadAddress, true);
 
 			if (!Silent)
 				Console.WriteLine("loaded at 0x{0:X}", LoadAddress);
@@ -365,6 +365,7 @@ namespace Fishmachine
 			if (!Silent)
 				Console.WriteLine("Jumping to kmain at 0x{0:X}", KMainAddr);
 
+			VM.SetSupervisor(true);
 			VM.Jump(KMainAddr);
 
 			FishException Ex = FishException.None;
