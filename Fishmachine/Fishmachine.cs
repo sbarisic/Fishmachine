@@ -36,6 +36,10 @@ namespace Fishmachine
 			//File.AppendAllText("vm_out.txt", Str);
 		}
 
+		public static void Clear()
+		{
+		}
+
 		public static void PrintInst(FishInst Inst, string Str)
 		{
 			ForegroundColor = ConsoleColor.DarkGray;

@@ -40,10 +40,6 @@ namespace Fishmachine.VM
 					if (PushReg(Reg.RFLAGS, out E))
 						return true;
 
-					/*foreach (var r in saveRegs)
-						if (PushReg(r, out E))
-							return true;*/
-
 					// IntEnabled is restored by popping RFLAGS below, as it is just a bit field in RFLAGS
 					Regs.IntEnabled = false;
 
@@ -95,10 +91,6 @@ namespace Fishmachine.VM
 					default:
 						throw new NotImplementedException();
 				}
-
-				/*for (int i = saveRegs.Length - 1; i >= 0; i--)
-					if (PopReg(saveRegs[i], out E))
-						return true;*/
 
 				if (PopReg(Reg.RFLAGS, out E))
 					return true;
@@ -188,22 +180,6 @@ namespace Fishmachine.VM
 
 						if (PopReg(R, out E))
 							return true;
-
-						/*uint ESP = Regs.Read(Reg.ESP);
-						uint RegVal = ReadUInt32(ESP, out E);
-						if (E != FishException.None)
-							return true;
-
-						Regs.Write(R, RegVal);
-
-						Regs.Write(Reg.ESP, ESP + sizeof(uint));
-
-						if (FishSettings.DebugPrint)
-						{
-							Console.ForegroundColor = ConsoleColor.DarkYellow;
-							Console.WriteLine("Pop ({0}) new {1} from {2}", R, RegVal, ESP);
-							Console.ResetColor();
-						}*/
 
 						break;
 					}
@@ -1160,18 +1136,7 @@ namespace Fishmachine.VM
 
 						if (Leave(out E))
 							return true;
-						/*// Restore ESP from EBP
-						Regs.Write(Reg.ESP, Regs.Read(Reg.EBP));
 
-						// Pop EBP
-						uint ESP = Regs.Read(Reg.ESP);
-						uint RegVal = ReadUInt32(ESP, out E);
-						if (E != FishException.None)
-							return true;
-
-						Regs.Write(Reg.EBP, RegVal);
-
-						Regs.Write(Reg.ESP, ESP + sizeof(uint));*/
 						break;
 					}
 
@@ -1191,8 +1156,6 @@ namespace Fishmachine.VM
 
 				case FishInst.DBG_BREAK:
 					{
-						/*if (Debugger.IsAttached)
-							Debugger.Break();*/
 						Console.PrintInst(Inst);
 						PrintMem(StackAddr, out E);
 						Regs.PrintAll();

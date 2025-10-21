@@ -26,6 +26,7 @@ namespace Fishmachine.VM
 		PrintNum,
 		SoftwareInterrupt,
 		Alloc,
+		Cls,
 	}
 
 	public enum FishInterrupt : byte

@@ -485,6 +485,9 @@ namespace Fishmachine.VM
 				{
 					Console.WriteLine("FAIL - Alloc {0} bytes at 0x{1:X} ({1})", Arg1, 0);
 				}
+			} else if (FInt == FishSyscall.Cls)
+			{
+				Gfx.Clear();
 			}
 			/*else if (Num == 5)
 			{

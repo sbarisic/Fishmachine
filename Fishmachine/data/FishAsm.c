@@ -11,11 +11,16 @@ define SYS_PrintChar = 1;
 define SYS_PrintNum = 2;
 define SYS_SoftwareInterrupt = 3;
 define SYS_Alloc = 4;
+define SYS_Cls = 5;
 
 voidptr alloc(uint bytes) {
 	voidptr alloc_mem = bytes;
 	syscall_2(SYS_Alloc, &alloc_mem);
 	return alloc_mem;
+}
+
+void clear_screen() {
+	syscall_2(SYS_Cls, 0);
 }
 
 void print(string str) {
@@ -188,6 +193,9 @@ naked void kmain() {
 		if (cmp(temp_buffer2, "exit") == true) {
 			print("Exiting...\n");
 			break;
+		}
+		else if (cmp(temp_buffer2, "clear") == true) {
+			clear_screen();
 		}
 		else {
 			print("You typed: ");
