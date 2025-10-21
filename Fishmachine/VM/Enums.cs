@@ -17,6 +17,26 @@ namespace Fishmachine.VM
 		FloatInfinity,
 		FloatNaN,
 		RequestWait,
+
+		AccessViolationRead,
+		AccessViolationWrite,
+		AccessViolationExecute,
+		AccessViolationStack,
+		AccessViolationUnknown,
+	}
+
+	public enum FishMemPriv : byte
+	{
+		None = 0,
+		Read = 1,
+		Write = 2,
+		Execute = 4,
+		Stack = 8,
+		Debugger = 16,
+		ReadWrite = Read | Write,
+		ReadExecute = Read | Execute,
+		WriteExecute = Write | Execute,
+		ReadWriteExecute = Read | Write | Execute,
 	}
 
 	public enum FishSyscall : byte

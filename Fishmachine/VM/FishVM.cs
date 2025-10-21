@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Security.AccessControl;
 using System.Text;
 using System.Threading.Tasks;
@@ -117,9 +118,12 @@ namespace Fishmachine.VM
 		bool Halted;
 
 		uint StackAddr = 0x0;
+		uint StackSize = 0x0;
 		uint MemAllocPtrStart = 0x0;
 		uint MemAllocPtr = 0x0;
 		byte[] Memory;
+
+		List<FishMemProt> MemProt = new List<FishMemProt>();
 
 		public Graphics Gfx;
 		public uint IntTableAddr;
@@ -158,11 +162,14 @@ namespace Fishmachine.VM
 			Memory = new byte[Size];
 		}
 
-		public void SetInitialStack(uint Addr)
+		public void SetInitialStack(uint Addr, uint Size)
 		{
 			StackAddr = Addr;
+			StackSize = Size;
 			Regs.Write(CodeGeneration.Reg.ESP, Addr);
 			Regs.Write(CodeGeneration.Reg.EBP, Addr);
+
+			ProtectMemory(Addr - Size, Addr, new FishMemProt(FishMemPriv.Stack, "stack"));
 		}
 
 		public void SetMemMgrPointer(uint Addr)
@@ -177,10 +184,13 @@ namespace Fishmachine.VM
 			return MemAllocPtrStart;
 		}
 
-		public int LoadToMemory(byte[] Input, uint Offset)
+		public uint LoadToMemory(byte[] Input, uint Offset)
 		{
 			Array.Copy(Input, 0, Memory, Offset, Input.Length);
-			return (int)(Input.Length + Offset);
+			uint EndAddr = Offset + (uint)Input.Length;
+
+			ProtectMemory(Offset, (uint)Input.Length, new FishMemProt(FishMemPriv.Execute | FishMemPriv.Read | FishMemPriv.Write, "bytecode"));
+			return EndAddr;
 		}
 
 		public uint VirtualToReal(uint Address)
@@ -221,12 +231,88 @@ namespace Fishmachine.VM
 			return Memory;
 		}
 
-		public byte ReadByte(uint Address, out FishException E)
+		public FishMemProt GetProtection(uint Address)
+		{
+			foreach (FishMemProt P in MemProt)
+			{
+				if (P.Contains(Address))
+					return P;
+			}
+
+			return null;
+		}
+
+		public void ProtectMemory(uint Address, uint Size, FishMemProt Prot)
+		{
+			FishMemProt Found = null;
+			if ((Found = GetProtection(Address)) == null)
+			{
+				Prot.BaseAddr = Address;
+				Prot.Size = Size;
+				MemProt.Add(Prot);
+			}
+			else
+				throw new Exception();
+		}
+
+		public void ProtectMemoryRange(uint StartAddress, uint EndAddress, FishMemProt Prot)
+		{
+			uint Addr = StartAddress < EndAddress ? StartAddress : EndAddress;
+			ProtectMemory(Addr, Prot.Size, Prot);
+		}
+
+		public void CheckAccess(uint Address, FishMemPriv Priv, out FishException E)
+		{
+			Address = VirtualToReal(Address);
+			byte[] MemBank = MemoryBankForRealAddress(Address, out E);
+
+			if (E != FishException.None)
+				return;
+
+			FishMemProt P = GetProtection(Address);
+			if (P != null)
+			{
+				if (!P.HasAccess(Priv))
+				{
+					Regs.Write(Reg.DB0, Address);
+
+					switch (Priv)
+					{
+						case FishMemPriv.Read:
+							E = FishException.AccessViolationRead;
+							return;
+
+						case FishMemPriv.Write:
+							E = FishException.AccessViolationWrite;
+							return;
+
+						case FishMemPriv.Execute:
+							E = FishException.AccessViolationExecute;
+							return;
+
+						case FishMemPriv.Stack:
+							E = FishException.AccessViolationStack;
+							return;
+
+						default:
+							E = FishException.AccessViolationUnknown;
+							Debugger.Break();
+							return;
+					}
+				}
+			}
+		}
+
+		public byte ReadByte(uint Address, FishMemPriv Priv, out FishException E)
 		{
 			try
 			{
 				Address = VirtualToReal(Address);
 				byte[] MemBank = MemoryBankForRealAddress(Address, out E);
+
+				CheckAccess(Address, Priv, out E);
+				if (E != FishException.None)
+					return 0;
 
 				if (FishSettings.DebugExceptions && E != FishException.None)
 				{
@@ -255,9 +341,13 @@ namespace Fishmachine.VM
 			}
 		}
 
-		public byte[] ReadBytes(uint VirtAddr, int Count, out FishException E)
+		public byte[] ReadBytes(uint VirtAddr, int Count, FishMemPriv Priv, out FishException E)
 		{
 			VirtAddr = VirtualToReal(VirtAddr);
+
+			CheckAccess(VirtAddr, Priv, out E);
+			if (E != FishException.None)
+				return new byte[0];
 
 			byte[] Bytes = MemoryBankForRealAddress(VirtAddr, out E);
 			if (E != FishException.None)
@@ -268,19 +358,22 @@ namespace Fishmachine.VM
 			return Result;
 		}
 
-		public uint ReadUInt32(uint VirtAddr, out FishException E)
+		public uint ReadUInt32(uint VirtAddr, FishMemPriv Priv, out FishException E)
 		{
-			VirtAddr = VirtualToReal(VirtAddr);
+			/*VirtAddr = VirtualToReal(VirtAddr);
 			byte[] Bytes = MemoryBankForRealAddress(VirtAddr, out E);
+			if (E != FishException.None)
+				return 0;*/
+			byte[] Bytes = ReadBytes(VirtAddr, 4, Priv, out E);
 			if (E != FishException.None)
 				return 0;
 
-			return BitConverter.ToUInt32(Bytes, (int)VirtAddr);
+			return BitConverter.ToUInt32(Bytes, 0);
 		}
 
 		byte ReadByteFromIP(out FishException E)
 		{
-			byte Value = ReadByte(Regs.IP, out E);
+			byte Value = ReadByte(Regs.IP, FishMemPriv.Execute, out E);
 			if (E != FishException.None)
 				return 0;
 
@@ -329,13 +422,18 @@ namespace Fishmachine.VM
 			return BitConverter.ToUInt32(Bytes);
 		}
 
-		public void WriteByte(uint VirtAddress, byte Value, out FishException E)
+		public void WriteByte(uint VirtAddress, byte Value, FishMemPriv Priv, out FishException E)
 		{
 			VirtAddress = VirtualToReal(VirtAddress);
+
+			CheckAccess(VirtAddress, Priv, out E);
+			if (E != FishException.None)
+				return;
+
 			MemoryBankForRealAddress(VirtAddress, out E)[VirtAddress] = Value;
 		}
 
-		public void WriteBytes(uint VirtAddress, byte[] Value, out FishException E)
+		public void WriteBytes(uint VirtAddress, byte[] Value, FishMemPriv Priv, out FishException E)
 		{
 			VirtAddress = VirtualToReal(VirtAddress);
 			byte[] MemBank = MemoryBankForRealAddress(VirtAddress, out E);
@@ -347,12 +445,16 @@ namespace Fishmachine.VM
 				Console.WriteLine("Write {0} bytes to 0x{1:X}", Value.Length, VirtAddress);
 			}
 
+			CheckAccess(VirtAddress, Priv, out E);
+			if (E != FishException.None)
+				return;
+
 			Array.Copy(Value, 0, MemBank, VirtAddress, Value.Length);
 		}
 
-		public void WriteUInt32(uint VirtAddress, uint UInt, out FishException E)
+		public void WriteUInt32(uint VirtAddress, uint UInt, FishMemPriv Priv, out FishException E)
 		{
-			WriteBytes(VirtAddress, BitConverter.GetBytes(UInt), out E);
+			WriteBytes(VirtAddress, BitConverter.GetBytes(UInt), Priv, out E);
 		}
 
 		public void Jump(uint VirtAddress)
@@ -460,7 +562,7 @@ namespace Fishmachine.VM
 				bool Failed = false;
 
 				uint BytesPtr = Arg1;
-				uint Bytes = ReadUInt32(BytesPtr, out E);
+				uint Bytes = ReadUInt32(BytesPtr, FishMemProt.GetPriv(BytesPtr, StackAddr, StackSize, true), out E);
 
 				if (E == FishException.None)
 				{
@@ -470,7 +572,12 @@ namespace Fishmachine.VM
 					if (Bytes == 0)
 						AllocMem = 0;
 
-					WriteUInt32(BytesPtr, AllocMem, out E);
+					if (AllocMem != 0)
+					{
+						ProtectMemory(AllocMem, Bytes, new FishMemProt(FishMemPriv.ReadWrite, "alloc"));
+					}
+
+					WriteUInt32(BytesPtr, AllocMem, FishMemProt.GetPriv(BytesPtr, StackAddr, StackSize, false), out E);
 					if (E == FishException.None && FishSettings.DebugPrintMemory)
 					{
 						Console.WriteLine("Alloc {0} bytes at 0x{1:X} ({1})", Bytes, AllocMem);
@@ -485,7 +592,8 @@ namespace Fishmachine.VM
 				{
 					Console.WriteLine("FAIL - Alloc {0} bytes at 0x{1:X} ({1})", Arg1, 0);
 				}
-			} else if (FInt == FishSyscall.Cls)
+			}
+			else if (FInt == FishSyscall.Cls)
 			{
 				Gfx.Clear();
 			}
@@ -524,7 +632,7 @@ namespace Fishmachine.VM
 			uint ESP = Regs.Read(Reg.ESP);
 			uint WriteAddr = ESP - sizeof(uint);
 
-			WriteBytes(WriteAddr, BitConverter.GetBytes(RetAddr), out E);
+			WriteBytes(WriteAddr, BitConverter.GetBytes(RetAddr), FishMemPriv.Stack, out E);
 			if (E != FishException.None)
 				return true;
 
@@ -540,7 +648,7 @@ namespace Fishmachine.VM
 			uint WriteAddr = ESP - sizeof(uint);
 
 			uint RVal = Regs.Read(R);
-			WriteUInt32(WriteAddr, RVal, out E);
+			WriteUInt32(WriteAddr, RVal, FishMemPriv.Stack, out E);
 			if (E != FishException.None)
 				return true;
 
@@ -559,7 +667,7 @@ namespace Fishmachine.VM
 		bool PopReg(Reg R, out FishException E)
 		{
 			uint ESP = Regs.Read(Reg.ESP);
-			uint RegVal = ReadUInt32(ESP, out E);
+			uint RegVal = ReadUInt32(ESP, FishMemPriv.Stack, out E);
 			if (E != FishException.None)
 				return true;
 
@@ -637,7 +745,7 @@ namespace Fishmachine.VM
 
 		public void PrintGlobal(string Name, uint Addr)
 		{
-			uint Val = ReadUInt32(Addr, out FishException E);
+			uint Val = ReadUInt32(Addr, FishMemPriv.Read, out FishException E);
 
 			if (E != FishException.None)
 				return;
@@ -653,11 +761,11 @@ namespace Fishmachine.VM
 
 			for (int i = 0; i < VMSymbols.Count; i++)
 			{
-				uint Val = ReadUInt32(VMSymbols[i].Address, out E);
+				uint Val = ReadUInt32(VMSymbols[i].Address, FishMemPriv.Debugger, out E);
 				/*if (E != FishException.None)
 					return;*/
 
-				uint Val2 = ReadUInt32(Val, out E);
+				uint Val2 = ReadUInt32(Val, FishMemPriv.Debugger, out E);
 				/*if (E != FishException.None)
 					return;*/
 
@@ -702,7 +810,7 @@ namespace Fishmachine.VM
 						Console.Write(" ");
 
 					uint MemPtrLoc = (uint)(MemPtr - k);
-					byte B = ReadByte(MemPtrLoc, out E);
+					byte B = ReadByte(MemPtrLoc, FishMemPriv.Debugger, out E);
 
 					/*if (E != FishException.None)
 						return;*/
@@ -723,7 +831,7 @@ namespace Fishmachine.VM
 						Console.Write(" ");
 
 					uint MemPtrLoc = (uint)(MemPtr - k);
-					byte B = ReadByte(MemPtrLoc, out E);
+					byte B = ReadByte(MemPtrLoc, FishMemPriv.Debugger, out E);
 
 					/*if (E != FishException.None)
 						return;*/

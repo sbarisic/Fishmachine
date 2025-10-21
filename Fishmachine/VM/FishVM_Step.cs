@@ -25,11 +25,11 @@ namespace Fishmachine.VM
 				Regs.Write(Reg.XSC, 0);
 				// Handle interrupt
 
-				uint IntTable = ReadUInt32(IntTableAddr, out E);
+				uint IntTable = ReadUInt32(IntTableAddr, FishMemPriv.Read, out E);
 				if (E != FishException.None)
 					return true;
 
-				uint IntAddr = ReadUInt32(IntTable + (uint)(IntNum - 1) * 4, out E);
+				uint IntAddr = ReadUInt32(IntTable + (uint)(IntNum - 1) * 4, FishMemPriv.Read, out E);
 				if (E != FishException.None)
 					return true;
 
@@ -227,7 +227,7 @@ namespace Fishmachine.VM
 						uint ESP = Regs.Read(Reg.ESP);
 						uint WriteAddr = ESP - sizeof(uint);
 
-						WriteBytes(WriteAddr, BitConverter.GetBytes(Val), out E);
+						WriteBytes(WriteAddr, BitConverter.GetBytes(Val), FishMemPriv.Stack, out E);
 						if (E != FishException.None)
 							return true;
 
@@ -514,7 +514,7 @@ namespace Fishmachine.VM
 						if (Inst == FishInst.MOVE_REG_OFFSET_REG)
 						{
 							byte[] WriteVal = BitConverter.GetBytes(R1Val);
-							WriteBytes(Addr, WriteVal, out E);
+							WriteBytes(Addr, WriteVal, FishMemProt.GetPriv(R2, false), out E);
 							if (E != FishException.None)
 								return true;
 
@@ -528,7 +528,7 @@ namespace Fishmachine.VM
 						else if (Inst == FishInst.MOVEBYTE_REG_OFFSET_REG)
 						{
 							byte WriteB = (byte)(R1Val & 0xFF);
-							WriteByte(Addr, WriteB, out E);
+							WriteByte(Addr, WriteB, FishMemProt.GetPriv(R2, false), out E);
 							if (E != FishException.None)
 								return true;
 
@@ -566,7 +566,7 @@ namespace Fishmachine.VM
 						{
 							uint Addr = (uint)(Regs.Read(R1) + Offset);
 							// Zero extend word from memory
-							byte[] wordBytes = ReadBytes(Addr, 2, out E);
+							byte[] wordBytes = ReadBytes(Addr, 2, FishMemProt.GetPriv(R1, true), out E);
 							if (E != FishException.None)
 								return true;
 
@@ -587,7 +587,7 @@ namespace Fishmachine.VM
 							uint R1Val = Regs.Read(R1);
 							uint ReadAddr = (uint)(R1Val + Offset);
 
-							byte B = ReadByte(ReadAddr, out E);
+							byte B = ReadByte(ReadAddr, FishMemProt.GetPriv(R1, true), out E);
 							if (E != FishException.None)
 								return true;
 
@@ -621,7 +621,7 @@ namespace Fishmachine.VM
 
 						uint Addr = (uint)(Regs.Read(R1) + Offset);
 						// Sign extend byte from memory
-						byte byteVal = ReadByte(Addr, out E);
+						byte byteVal = ReadByte(Addr, FishMemPriv.Read, out E);
 						if (E != FishException.None)
 							return true;
 
@@ -656,7 +656,7 @@ namespace Fishmachine.VM
 
 						uint Addr = (uint)(Regs.Read(R1) + Offset);
 						// Regular 32-bit read
-						uint R1Val = ReadUInt32(Addr, out E);
+						uint R1Val = ReadUInt32(Addr, FishMemProt.GetPriv(R1, true), out E);
 						if (E != FishException.None)
 							return true;
 
@@ -930,7 +930,7 @@ namespace Fishmachine.VM
 						Console.PrintInst(Inst);
 
 						uint ESP = Regs.Read(Reg.ESP);
-						uint RetAddr = ReadUInt32(ESP, out E);
+						uint RetAddr = ReadUInt32(ESP, FishMemPriv.Stack, out E);
 						if (E != FishException.None)
 							return true;
 
@@ -944,11 +944,11 @@ namespace Fishmachine.VM
 						Console.PrintInst(Inst);
 
 						uint ESP = Regs.Read(Reg.ESP);
-						uint SyscallNum = ReadUInt32(ESP, out E);
+						uint SyscallNum = ReadUInt32(ESP, FishMemPriv.Stack, out E);
 						if (E != FishException.None)
 							return true;
 
-						uint Arg1 = ReadUInt32(ESP + 4, out E);
+						uint Arg1 = ReadUInt32(ESP + 4, FishMemPriv.Stack, out E);
 						if (E != FishException.None)
 							return true;
 
@@ -994,7 +994,7 @@ namespace Fishmachine.VM
 
 						if (Inst == FishInst.FLOAT_LOAD_LONG)
 						{
-							float Val = BitConverter.ToSingle(ReadBytes(Addr, 4, out E));
+							float Val = BitConverter.ToSingle(ReadBytes(Addr, 4, FishMemPriv.Read, out E));
 							if (E != FishException.None)
 								return true;
 
@@ -1043,7 +1043,7 @@ namespace Fishmachine.VM
 							Console.ResetColor();
 						}
 
-						WriteBytes(Addr, FBytes, out E);
+						WriteBytes(Addr, FBytes, FishMemPriv.Write, out E);
 						if (E != FishException.None)
 							return true;
 
@@ -1064,7 +1064,7 @@ namespace Fishmachine.VM
 						Console.PrintInst(Inst, Offset, R1);
 
 						uint Addr = (uint)(Regs.Read(R1) + Offset);
-						byte[] FBytes = ReadBytes(Addr, 4, out E);
+						byte[] FBytes = ReadBytes(Addr, 4, FishMemPriv.Read, out E);
 						if (E != FishException.None)
 							return true;
 

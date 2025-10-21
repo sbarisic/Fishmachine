@@ -359,7 +359,7 @@ namespace Fishmachine
 			if (!Silent)
 				Console.WriteLine("loaded at 0x{0:X}", LoadAddress);
 
-			VM.SetInitialStack(StackAddr);
+			VM.SetInitialStack(StackAddr, StackSize);
 			//VM.Regs.Write(CodeGeneration.Reg.EBP, 0x20000);
 
 			if (!Silent)
