@@ -6,6 +6,7 @@ using System;
 using System.CodeDom;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
 using System.Linq;
@@ -869,7 +870,12 @@ namespace CTilde.Langs
 						EmitRaw("# Expr_ConstNumber BEGIN");
 						Indent();
 
-						uint Num = uint.Parse(NumberEx.NumberLiteral);
+						uint Num = 0;
+
+						if (NumberEx.NumberLiteral.StartsWith("0x"))
+							Num = Convert.ToUInt32(NumberEx.NumberLiteral.Substring(2), 16);
+						else
+							Num = uint.Parse(NumberEx.NumberLiteral);
 
 						if (State.IsInsideFunctionBody)
 						{

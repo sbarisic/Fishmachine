@@ -175,6 +175,7 @@ naked void kmain() {
 	int_table[0] = &handler_int0;
 	int_table[1] = &handler_int1_keyboardkey;
 	int_table[2] = &handler_int2_keyboardchar;
+	byte* bptr = 0;
 
 
 	//__asm("SYSCALL $0");
@@ -196,6 +197,14 @@ naked void kmain() {
 		}
 		else if (cmp(temp_buffer2, "clear") == true) {
 			clear_screen();
+		}
+		else if (cmp(temp_buffer2, "null") == true) {
+			bptr = 0;
+			bptr[0] = 32;
+		}
+		else if (cmp(temp_buffer2, "barely") == true) {
+			bptr = 0x101;
+			bptr[0] = 32;
 		}
 		else {
 			print("You typed: ");

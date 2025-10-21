@@ -88,5 +88,10 @@ namespace Fishmachine.VM
 		public FishMemProt(FishMemPriv requiredPriv, string name) : this(requiredPriv, 0, 0, name)
 		{
 		}
+
+		public override string ToString()
+		{
+			return string.Format("{0} [0x{1:X} .. 0x{2:X}] - {3}", Name, BaseAddr, BaseAddr + Size, RequiredPriv);
+		}
 	}
 }

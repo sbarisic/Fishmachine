@@ -18,6 +18,7 @@ namespace Fishmachine.VM
 		FloatNaN,
 		RequestWait,
 
+		PrivilegeViolation,
 		AccessViolationRead,
 		AccessViolationWrite,
 		AccessViolationExecute,

@@ -134,6 +134,7 @@ namespace Fishmachine.VM
 
 		public FishVM()
 		{
+			ProtectMemory(0x0, 0x100, new FishMemProt(FishMemPriv.None, "null page"));
 		}
 
 		public VMSymbol FindSymbol(string Name)
@@ -212,20 +213,9 @@ namespace Fishmachine.VM
 		{
 			E = FishException.None;
 
-			if (Address == 0)
-			{
-				E = FishException.AccessViolation;
-
-				if (Debugger.IsAttached && true)
-					Debugger.Break();
-
-				return null;
-			}
-
 			if (Address >= Memory.Length)
 			{
 				E = FishException.AccessViolation;
-
 
 				if (Debugger.IsAttached && true)
 					Debugger.Break();
@@ -289,12 +279,33 @@ namespace Fishmachine.VM
 
 			if (P != null)
 			{
+				if (P.RequiredPriv == FishMemPriv.None)
+				{
+					if (FishSettings.DebugMemoryProt)
+					{
+						Console.ForegroundColor = ConsoleColor.Yellow;
+						Console.WriteLine("Access violation at 0x{0:X} for {1} access (prot: {2})", Address, Priv, P);
+						Console.ResetColor();
+					}
+
+					Regs.Write(Reg.DB0, Address);
+					E = FishException.AccessViolation;
+					return;
+				}
+
 				if (P.HasAccess(FishMemPriv.Supervisor))
 				{
 					if (!Regs.IsSupervisor)
 					{
+						if (FishSettings.DebugMemoryProt)
+						{
+							Console.ForegroundColor = ConsoleColor.Yellow;
+							Console.WriteLine("Privilege violation at 0x{0:X} for {1} access (prot: {2})", Address, Priv, P);
+							Console.ResetColor();
+						}
+
 						Regs.Write(Reg.DB0, Address);
-						E = FishException.AccessViolation;
+						E = FishException.PrivilegeViolation;
 						return;
 					}
 				}
@@ -303,25 +314,37 @@ namespace Fishmachine.VM
 				{
 					Regs.Write(Reg.DB0, Address);
 
+					if (FishSettings.DebugMemoryProt)
+					{
+						Console.ForegroundColor = ConsoleColor.Yellow;
+						Console.WriteLine("Access violation at 0x{0:X} for {1} access (prot: {2})", Address, Priv, P);
+						Console.ResetColor();
+					}
+
 					switch (Priv)
 					{
 						case FishMemPriv.Read:
+							Regs.Write(Reg.DB1, 1);
 							E = FishException.AccessViolationRead;
 							return;
 
 						case FishMemPriv.Write:
+							Regs.Write(Reg.DB1, 2);
 							E = FishException.AccessViolationWrite;
 							return;
 
 						case FishMemPriv.Execute:
+							Regs.Write(Reg.DB1, 3);
 							E = FishException.AccessViolationExecute;
 							return;
 
 						case FishMemPriv.Stack:
+							Regs.Write(Reg.DB1, 4);
 							E = FishException.AccessViolationStack;
 							return;
 
 						default:
+							Regs.Write(Reg.DB1, 5);
 							E = FishException.AccessViolationUnknown;
 							Debugger.Break();
 							return;
