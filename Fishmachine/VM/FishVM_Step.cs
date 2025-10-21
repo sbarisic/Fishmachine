@@ -14,9 +14,9 @@ namespace Fishmachine.VM
 	{
 		Reg[] saveRegs = new[] { Reg.EAX, Reg.EBX, Reg.ECX, Reg.EDX, Reg.ESI, Reg.EDI, Reg.XSC, Reg.XR1, Reg.EBP };
 
-		bool Step(out FishException E)
+		bool Step(ref FishStackTrace E)
 		{
-			E = FishException.None;
+			E.SetException(this, FishExcept.None);
 
 			// Handle interrupts
 			FishInterrupt IntNum = (FishInterrupt)Regs.Read(Reg.XSC);
@@ -25,19 +25,19 @@ namespace Fishmachine.VM
 				Regs.Write(Reg.XSC, 0);
 				// Handle interrupt
 
-				uint IntTable = ReadUInt32(IntTableAddr, FishMemPriv.Read, out E);
-				if (E != FishException.None)
+				uint IntTable = ReadUInt32(IntTableAddr, FishMemPriv.Read, ref E);
+				if (!E.Is(FishExcept.None))
 					return true;
 
-				uint IntAddr = ReadUInt32(IntTable + (uint)(IntNum - 1) * 4, FishMemPriv.Read, out E);
-				if (E != FishException.None)
+				uint IntAddr = ReadUInt32(IntTable + (uint)(IntNum - 1) * 4, FishMemPriv.Read, ref E);
+				if (!E.Is(FishExcept.None))
 					return true;
 
 				if (IntAddr != 0)
 				{
 					// Preserve EFLAGS
 					IRETStack.Push((Regs.IP, IntNum));
-					if (PushReg(Reg.RFLAGS, out E))
+					if (PushReg(Reg.RFLAGS, ref E))
 						return true;
 
 					// IntEnabled is restored by popping RFLAGS below, as it is just a bit field in RFLAGS
@@ -48,7 +48,7 @@ namespace Fishmachine.VM
 					{
 						case FishInterrupt.Int1_KeyboardKey:
 						case FishInterrupt.Int2_KeyboardChar:
-							if (PushReg(Reg.XR1, out E))
+							if (PushReg(Reg.XR1, ref E))
 								return true;
 
 							Regs.Write(Reg.XR1, 0);
@@ -63,7 +63,7 @@ namespace Fishmachine.VM
 							throw new NotImplementedException();
 					}
 
-					CallLong(IntAddr, out E);
+					CallLong(IntAddr, ref E);
 					return true;
 				}
 			}
@@ -77,7 +77,7 @@ namespace Fishmachine.VM
 				{
 					case FishInterrupt.Int1_KeyboardKey:
 					case FishInterrupt.Int2_KeyboardChar:
-						if (PopReg(Reg.XR1, out E))
+						if (PopReg(Reg.XR1, ref E))
 							return true;
 
 						Regs.Write(Reg.XR1, 0);
@@ -92,16 +92,20 @@ namespace Fishmachine.VM
 						throw new NotImplementedException();
 				}
 
-				if (PopReg(Reg.RFLAGS, out E))
+				if (PopReg(Reg.RFLAGS, ref E))
 					return true;
 
 				IRETStack.Pop();
 			}
 
 
-			FishInst Inst = (FishInst)ReadByteFromIP(out E);
-			if (E != FishException.None)
+			FishInst Inst = (FishInst)ReadByteFromIP(ref E);
+			if (!E.Is(FishExcept.None))
 				return true;
+
+			E.Clear();
+			E.SetException(this, FishExcept.None);
+			CurrentInstruction = Inst;
 
 			if (FishSettings.DebugPrint || FishSettings.DebugPrintInstruction)
 				Console.WriteLine("{0}", Inst);
@@ -117,7 +121,7 @@ namespace Fishmachine.VM
 				case FishInst.WAIT:
 					{
 						Console.PrintInst(Inst);
-						E = FishException.RequestWait;
+						E.SetException(this, FishExcept.RequestWait);
 						return true;
 					}
 
@@ -157,13 +161,14 @@ namespace Fishmachine.VM
 
 				case FishInst.PUSH_REG:
 					{
-						Reg R = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, R);
+						E.SetParams(R);
 
-						if (PushReg(R, out E))
+						if (PushReg(R, ref E))
 							return true;
 
 						break;
@@ -171,14 +176,15 @@ namespace Fishmachine.VM
 
 				case FishInst.POP_REG:
 					{
-						Reg R = (Reg)ReadByteFromIP(out E);
+						Reg R = (Reg)ReadByteFromIP(ref E);
 
-						if (E != FishException.None)
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, R);
+						E.SetParams(R);
 
-						if (PopReg(R, out E))
+						if (PopReg(R, ref E))
 							return true;
 
 						break;
@@ -186,11 +192,12 @@ namespace Fishmachine.VM
 
 				case FishInst.MUL_REG:
 					{
-						Reg R = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, R);
+						E.SetParams(R);
 
 						uint RegVal = Regs.Read(R);
 						uint AX = Regs.Read(Reg.AX);
@@ -202,11 +209,12 @@ namespace Fishmachine.VM
 
 				case FishInst.IMUL_REG:
 					{
-						Reg R = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, R);
+						E.SetParams(R);
 
 						int RegVal = (int)Regs.Read(R);
 						int AX = (int)Regs.Read(Reg.AX);
@@ -218,17 +226,18 @@ namespace Fishmachine.VM
 
 				case FishInst.PUSH_LONG:
 					{
-						uint Val = ReadUInt32FromIP(out E);
-						if (E != FishException.None)
+						uint Val = ReadUInt32FromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, Val);
+						E.SetParams(Val);
 
 						uint ESP = Regs.Read(Reg.ESP);
 						uint WriteAddr = ESP - sizeof(uint);
 
-						WriteBytes(WriteAddr, BitConverter.GetBytes(Val), FishMemPriv.Stack, out E);
-						if (E != FishException.None)
+						WriteBytes(WriteAddr, BitConverter.GetBytes(Val), FishMemPriv.Stack, ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Regs.Write(Reg.ESP, WriteAddr);
@@ -244,15 +253,16 @@ namespace Fishmachine.VM
 					}
 				case FishInst.MOVEBYTE_REG_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R1 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R2 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R2 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, R1, R2);
+						E.SetParams(R1, R2);
 
 						byte Val = (byte)(Regs.Read(R1) & 0xFF);
 						Regs.Write(R2, Val);
@@ -268,15 +278,16 @@ namespace Fishmachine.VM
 					}
 				case FishInst.LEA_ADDR_REG:
 					{
-						uint Addr = ReadUInt32FromIP(out E);
-						if (E != FishException.None)
+						uint Addr = ReadUInt32FromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R2 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R2 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, Addr, R2);
+						E.SetParams(Addr, R2);
 
 						Regs.Write(R2, Addr);
 
@@ -291,19 +302,20 @@ namespace Fishmachine.VM
 					}
 				case FishInst.LEA_OFFSET_REG_REG:
 					{
-						int Offset = ReadInt32FromIP(out E);
-						if (E != FishException.None)
+						int Offset = ReadInt32FromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R1 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R2 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R2 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, Offset, R1, R2);
+						E.SetParams(Offset, R1, R2);
 
 						uint Addr = (uint)(Regs.Read(R1) + Offset);
 						Regs.Write(R2, Addr);
@@ -321,15 +333,16 @@ namespace Fishmachine.VM
 				case FishInst.MOVES_REG_REG:
 				case FishInst.MOVE_REG_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R1 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R2 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R2 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, R1, R2);
+						E.SetParams(R1, R2);
 
 						uint R1Val = 0;
 
@@ -353,15 +366,16 @@ namespace Fishmachine.VM
 
 				case FishInst.TEST_REG_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R1 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R2 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R2 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, R1, R2);
+						E.SetParams(R1, R2);
 
 						uint R1Val = Regs.Read(R1);
 						uint R2Val = Regs.Read(R2);
@@ -389,15 +403,16 @@ namespace Fishmachine.VM
 				case FishInst.BINXOR_REG_REG:
 				case FishInst.BINAND_REG_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R1 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R2 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R2 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, R1, R2);
+						E.SetParams(R1, R2);
 
 						uint R1Val = Regs.Read(R1);
 						uint R2Val = Regs.Read(R2);
@@ -432,15 +447,16 @@ namespace Fishmachine.VM
 
 				case FishInst.CMP_REG_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R1 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R2 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R2 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, R1, R2);
+						E.SetParams(R1, R2);
 
 						uint R1Val = Regs.Read(R1);
 						uint R2Val = Regs.Read(R2);
@@ -474,10 +490,11 @@ namespace Fishmachine.VM
 				case FishInst.SETLESS_REG:
 				case FishInst.SETLESSEQUAL_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None) return true;
+						Reg R1 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None)) return true;
 
 						Console.PrintInst(Inst, R1);
+						E.SetParams(R1);
 
 						uint Val = EvaluateSetCondition(Inst);
 						Regs.Write(R1, Val);
@@ -494,19 +511,20 @@ namespace Fishmachine.VM
 				case FishInst.MOVEBYTE_REG_OFFSET_REG:
 				case FishInst.MOVE_REG_OFFSET_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R1 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						int Offset = ReadInt32FromIP(out E);
-						if (E != FishException.None)
+						int Offset = ReadInt32FromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R2 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R2 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, R1, Offset, R2);
+						E.SetParams(R1, Offset, R2);
 
 						uint R1Val = Regs.Read(R1);
 						uint Addr = (uint)(Regs.Read(R2) + Offset);
@@ -514,8 +532,8 @@ namespace Fishmachine.VM
 						if (Inst == FishInst.MOVE_REG_OFFSET_REG)
 						{
 							byte[] WriteVal = BitConverter.GetBytes(R1Val);
-							WriteBytes(Addr, WriteVal, FishMemProt.GetPriv(R2, false), out E);
-							if (E != FishException.None)
+							WriteBytes(Addr, WriteVal, FishMemProt.GetPriv(R2, false), ref E);
+							if (!E.Is(FishExcept.None))
 								return true;
 
 							if (FishSettings.DebugPrint)
@@ -528,8 +546,8 @@ namespace Fishmachine.VM
 						else if (Inst == FishInst.MOVEBYTE_REG_OFFSET_REG)
 						{
 							byte WriteB = (byte)(R1Val & 0xFF);
-							WriteByte(Addr, WriteB, FishMemProt.GetPriv(R2, false), out E);
-							if (E != FishException.None)
+							WriteByte(Addr, WriteB, FishMemProt.GetPriv(R2, false), ref E);
+							if (!E.Is(FishExcept.None))
 								return true;
 
 							if (FishSettings.DebugPrint)
@@ -548,26 +566,27 @@ namespace Fishmachine.VM
 				case FishInst.MOVEBYTE_OFFSET_REG_REG:
 				case FishInst.MOVEZ_OFFSET_REG_REG:
 					{
-						int Offset = ReadInt32FromIP(out E);
-						if (E != FishException.None)
+						int Offset = ReadInt32FromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R1 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R2 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R2 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, Offset, R1, R2);
+						E.SetParams(Offset, R1, R2);
 
 						if (Inst == FishInst.MOVEZ_OFFSET_REG_REG)
 						{
 							uint Addr = (uint)(Regs.Read(R1) + Offset);
 							// Zero extend word from memory
-							byte[] wordBytes = ReadBytes(Addr, 2, FishMemProt.GetPriv(R1, true), out E);
-							if (E != FishException.None)
+							byte[] wordBytes = ReadBytes(Addr, 2, FishMemProt.GetPriv(R1, true), ref E);
+							if (!E.Is(FishExcept.None))
 								return true;
 
 							ushort wordVal = BitConverter.ToUInt16(wordBytes, 0);
@@ -587,8 +606,8 @@ namespace Fishmachine.VM
 							uint R1Val = Regs.Read(R1);
 							uint ReadAddr = (uint)(R1Val + Offset);
 
-							byte B = ReadByte(ReadAddr, FishMemProt.GetPriv(R1, true), out E);
-							if (E != FishException.None)
+							byte B = ReadByte(ReadAddr, FishMemProt.GetPriv(R1, true), ref E);
+							if (!E.Is(FishExcept.None))
 								return true;
 
 							Regs.Write(R2, B);
@@ -605,24 +624,25 @@ namespace Fishmachine.VM
 
 				case FishInst.MOVES_OFFSET_REG_REG:
 					{
-						int Offset = ReadInt32FromIP(out E);
-						if (E != FishException.None)
+						int Offset = ReadInt32FromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R1 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R2 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R2 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, Offset, R1, R2);
+						E.SetParams(Offset, R1, R2);
 
 						uint Addr = (uint)(Regs.Read(R1) + Offset);
 						// Sign extend byte from memory
-						byte byteVal = ReadByte(Addr, FishMemPriv.Read, out E);
-						if (E != FishException.None)
+						byte byteVal = ReadByte(Addr, FishMemPriv.Read, ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						uint R1Val = (uint)(sbyte)byteVal;
@@ -640,24 +660,25 @@ namespace Fishmachine.VM
 
 				case FishInst.MOVE_OFFSET_REG_REG:
 					{
-						int Offset = ReadInt32FromIP(out E);
-						if (E != FishException.None)
+						int Offset = ReadInt32FromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R1 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R2 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R2 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, Offset, R1, R2);
+						E.SetParams(Offset, R1, R2);
 
 						uint Addr = (uint)(Regs.Read(R1) + Offset);
 						// Regular 32-bit read
-						uint R1Val = ReadUInt32(Addr, FishMemProt.GetPriv(R1, true), out E);
-						if (E != FishException.None)
+						uint R1Val = ReadUInt32(Addr, FishMemProt.GetPriv(R1, true), ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						byte[] ReadVal = BitConverter.GetBytes(R1Val);
@@ -675,15 +696,16 @@ namespace Fishmachine.VM
 
 				case FishInst.SUB_LONG_REG:
 					{
-						uint L1 = ReadUInt32FromIP(out E);
-						if (E != FishException.None)
+						uint L1 = ReadUInt32FromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R2 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R2 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, L1, R2);
+						E.SetParams(L1, R2);
 
 						uint RVal = Regs.Read(R2);
 						Regs.Write(R2, RVal - L1);
@@ -692,15 +714,16 @@ namespace Fishmachine.VM
 
 				case FishInst.SUB_REG_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R1 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R2 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R2 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, R1, R2);
+						E.SetParams(R1, R2);
 
 						uint R1Val = Regs.Read(R1);
 						uint R2Val = Regs.Read(R2);
@@ -718,15 +741,16 @@ namespace Fishmachine.VM
 
 				case FishInst.ADD_REG_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R1 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R2 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R2 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, R1, R2);
+						E.SetParams(R1, R2);
 
 						uint R1Val = Regs.Read(R1);
 						uint R2Val = Regs.Read(R2);
@@ -744,15 +768,16 @@ namespace Fishmachine.VM
 
 				case FishInst.ADD_LONG_REG:
 					{
-						uint L1 = ReadUInt32FromIP(out E);
-						if (E != FishException.None)
+						uint L1 = ReadUInt32FromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R2 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R2 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, L1, R2);
+						E.SetParams(L1, R2);
 
 						uint Result = L1 + Regs.Read(R2);
 						Regs.Write(R2, Result);
@@ -761,15 +786,16 @@ namespace Fishmachine.VM
 
 				case FishInst.MUL_REG_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R1 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R2 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R2 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, R1, R2);
+						E.SetParams(R1, R2);
 
 						uint R1Val = Regs.Read(R1);
 						uint R2Val = Regs.Read(R2);
@@ -787,15 +813,16 @@ namespace Fishmachine.VM
 
 				case FishInst.DIV_REG_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R1 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R2 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R2 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, R1, R2);
+						E.SetParams(R1, R2);
 
 						uint R1Val = Regs.Read(R1);
 						uint R2Val = Regs.Read(R2);
@@ -813,15 +840,16 @@ namespace Fishmachine.VM
 
 				case FishInst.MOVE_LONG_REG:
 					{
-						uint L1 = ReadUInt32FromIP(out E);
-						if (E != FishException.None)
+						uint L1 = ReadUInt32FromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R2 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R2 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, L1, R2);
+						E.SetParams(L1, R2);
 
 						Regs.Write(R2, L1);
 						break;
@@ -829,15 +857,16 @@ namespace Fishmachine.VM
 
 				case FishInst.MOVEZ_LONG_REG:
 					{
-						uint L1 = ReadUInt32FromIP(out E);
-						if (E != FishException.None)
+						uint L1 = ReadUInt32FromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R2 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R2 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, L1, R2);
+						E.SetParams(L1, R2);
 
 						// Zero extend the lower 16 bits of the immediate value
 						uint Result = L1 & 0xFFFF;
@@ -847,15 +876,16 @@ namespace Fishmachine.VM
 
 				case FishInst.MOVES_LONG_REG:
 					{
-						uint L1 = ReadUInt32FromIP(out E);
-						if (E != FishException.None)
+						uint L1 = ReadUInt32FromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R2 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R2 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, L1, R2);
+						E.SetParams(L1, R2);
 
 						// Sign extend the lower 8 bits of the immediate value
 						byte byteVal = (byte)(L1 & 0xFF);
@@ -866,15 +896,16 @@ namespace Fishmachine.VM
 
 				case FishInst.CMP_LONG_REG:
 					{
-						uint L1 = ReadUInt32FromIP(out E);
-						if (E != FishException.None)
+						uint L1 = ReadUInt32FromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R2 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R2 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, L1, R2);
+						E.SetParams(L1, R2);
 
 						uint R2Val = Regs.Read(R2);
 						int Result = (int)R2Val - (int)L1;
@@ -898,14 +929,16 @@ namespace Fishmachine.VM
 
 				case FishInst.CALL_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R1 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, R1);
+						E.SetParams(R1);
+
 						uint Addr = Regs.Read(R1);
 
-						if (CallLong(Addr, out E))
+						if (CallLong(Addr, ref E))
 							return true;
 
 						//Jump(Addr);
@@ -914,12 +947,14 @@ namespace Fishmachine.VM
 
 				case FishInst.CALL_LONG:
 					{
-						uint Addr = ReadUInt32FromIP(out E);
-						if (E != FishException.None)
+						uint Addr = ReadUInt32FromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Console.PrintInst(Inst, Addr);
-						if (CallLong(Addr, out E))
+						Console.PrintInst(Inst, Addr); 
+						E.SetParams(Addr);
+
+						if (CallLong(Addr, ref E))
 							return true;
 
 						break;
@@ -930,8 +965,8 @@ namespace Fishmachine.VM
 						Console.PrintInst(Inst);
 
 						uint ESP = Regs.Read(Reg.ESP);
-						uint RetAddr = ReadUInt32(ESP, FishMemPriv.Stack, out E);
-						if (E != FishException.None)
+						uint RetAddr = ReadUInt32(ESP, FishMemPriv.Stack, ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Regs.Write(Reg.ESP, ESP + sizeof(uint));
@@ -944,16 +979,16 @@ namespace Fishmachine.VM
 						Console.PrintInst(Inst);
 
 						uint ESP = Regs.Read(Reg.ESP);
-						uint SyscallNum = ReadUInt32(ESP, FishMemPriv.Stack, out E);
-						if (E != FishException.None)
+						uint SyscallNum = ReadUInt32(ESP, FishMemPriv.Stack, ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						uint Arg1 = ReadUInt32(ESP + 4, FishMemPriv.Stack, out E);
-						if (E != FishException.None)
+						uint Arg1 = ReadUInt32(ESP + 4, FishMemPriv.Stack, ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Syscall((FishSyscall)SyscallNum, Arg1, out E);
-						if (E != FishException.None)
+						Syscall((FishSyscall)SyscallNum, Arg1, ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						// Consume the two arguments pushed before SYSCALL_2
@@ -964,14 +999,15 @@ namespace Fishmachine.VM
 
 				case FishInst.SYSCALL:
 					{
-						uint SyscallNum = ReadUInt32FromIP(out E);
-						if (E != FishException.None)
+						uint SyscallNum = ReadUInt32FromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, SyscallNum);
+						E.SetParams(SyscallNum);
 
-						Syscall((FishSyscall)SyscallNum, 0, out E);
-						if (E != FishException.None)
+						Syscall((FishSyscall)SyscallNum, 0, ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						break;
@@ -986,16 +1022,17 @@ namespace Fishmachine.VM
 				case FishInst.JUMP_LONG:
 				case FishInst.FLOAT_LOAD_LONG:
 					{
-						uint Addr = ReadUInt32FromIP(out E);
-						if (E != FishException.None)
+						uint Addr = ReadUInt32FromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, Addr);
+						E.SetParams(Addr);
 
 						if (Inst == FishInst.FLOAT_LOAD_LONG)
 						{
-							float Val = BitConverter.ToSingle(ReadBytes(Addr, 4, FishMemPriv.Read, out E));
-							if (E != FishException.None)
+							float Val = BitConverter.ToSingle(ReadBytes(Addr, 4, FishMemPriv.Read, ref E));
+							if (!E.Is(FishExcept.None))
 								return true;
 
 							Regs.FpuPush(Val);
@@ -1013,15 +1050,17 @@ namespace Fishmachine.VM
 				case FishInst.DOUBLE_POP_OFFSET_REG:
 				case FishInst.FLOAT_POP_OFFSET_REG:
 					{
-						int Offset = ReadInt32FromIP(out E);
-						if (E != FishException.None)
+						int Offset = ReadInt32FromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R1 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, Offset, R1);
+						E.SetParams(Offset, R1);
+
 						float FVal = 0;
 
 						if (Inst == FishInst.FLOAT_POP_OFFSET_REG || Inst == FishInst.DOUBLE_POP_OFFSET_REG)
@@ -1043,8 +1082,8 @@ namespace Fishmachine.VM
 							Console.ResetColor();
 						}
 
-						WriteBytes(Addr, FBytes, FishMemPriv.Write, out E);
-						if (E != FishException.None)
+						WriteBytes(Addr, FBytes, FishMemPriv.Write, ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						break;
@@ -1053,19 +1092,20 @@ namespace Fishmachine.VM
 				case FishInst.DOUBLE_LOAD_OFFSET_REG:
 				case FishInst.FLOAT_LOAD_OFFSET_REG:
 					{
-						int Offset = ReadInt32FromIP(out E);
-						if (E != FishException.None)
+						int Offset = ReadInt32FromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R1 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, Offset, R1);
+						E.SetParams(Offset, R1);
 
 						uint Addr = (uint)(Regs.Read(R1) + Offset);
-						byte[] FBytes = ReadBytes(Addr, 4, FishMemPriv.Read, out E);
-						if (E != FishException.None)
+						byte[] FBytes = ReadBytes(Addr, 4, FishMemPriv.Read, ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						float FVal = BitConverter.ToSingle(FBytes);
@@ -1091,6 +1131,7 @@ namespace Fishmachine.VM
 						float Result = 0;
 
 						Console.PrintInst(Inst, string.Format("(FPU STACK {0}, {1})", Val1, Val2));
+						E.SetParams(Val1, Val2);
 
 						if (Inst == FishInst.FLOAT_ADD)
 							Result = Val1 + Val2;
@@ -1103,13 +1144,13 @@ namespace Fishmachine.VM
 
 						if (float.IsInfinity(Result))
 						{
-							E = FishException.FloatInfinity;
+							E.SetException(this, FishExcept.FloatInfinity);
 							return true;
 						}
 
 						if (float.IsNaN(Result))
 						{
-							E = FishException.FloatNaN;
+							E.SetException(this, FishExcept.FloatNaN);
 							return true;
 						}
 
@@ -1119,11 +1160,12 @@ namespace Fishmachine.VM
 
 				case FishInst.JUMP_REG:
 					{
-						Reg R1 = (Reg)ReadByteFromIP(out E);
-						if (E != FishException.None)
+						Reg R1 = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
 							return true;
 
 						Console.PrintInst(Inst, R1);
+						E.SetParams(R1);
 
 						uint Addr = Regs.Read(R1);
 						Jump(Addr);
@@ -1134,7 +1176,7 @@ namespace Fishmachine.VM
 					{
 						Console.PrintInst(Inst);
 
-						if (Leave(out E))
+						if (Leave(ref E))
 							return true;
 
 						break;
@@ -1143,7 +1185,7 @@ namespace Fishmachine.VM
 				case FishInst.DBG_MEM:
 					{
 						Console.PrintInst(Inst);
-						PrintMem(StackAddr, out E);
+						PrintMem(StackAddr, ref E);
 						break;
 					}
 
@@ -1157,7 +1199,7 @@ namespace Fishmachine.VM
 				case FishInst.DBG_BREAK:
 					{
 						Console.PrintInst(Inst);
-						PrintMem(StackAddr, out E);
+						PrintMem(StackAddr, ref E);
 						Regs.PrintAll();
 
 						Debugger.Break();
@@ -1167,7 +1209,7 @@ namespace Fishmachine.VM
 
 				default:
 					{
-						E = FishException.InvalidInstruction;
+						E.SetException(this, FishExcept.InvalidInstruction);
 						return true;
 					}
 			}

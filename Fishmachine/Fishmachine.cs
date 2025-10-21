@@ -368,8 +368,8 @@ namespace Fishmachine
 			VM.SetSupervisor(true);
 			VM.Jump(KMainAddr);
 
-			FishException Ex = FishException.None;
-			while (VM.Run(out Ex) && Gfx.IsWindowOpen())
+			FishStackTrace Ex = new FishStackTrace();
+			while (VM.Run(ref Ex) && Gfx.IsWindowOpen())
 			{
 				bool Interrupted = false;
 
@@ -380,18 +380,18 @@ namespace Fishmachine
 						if (!Silent)
 							Console.WriteLine("Mouse!");
 
-						VM.Interrupt(FishInterrupt.Int0);
+						VM.Interrupt(FishInterrupt.Int0, ref Ex);
 						//VM.Interrupt(FishInterrupt.Int2_KeyboardChar, Encoding.ASCII.GetBytes(new[] { 'M' })[0]);
 						Interrupted = true;
 					}
 					else if (Gfx.CharPressed(out uint Char))
 					{
 						byte B = Encoding.ASCII.GetBytes(new[] { (char)Char })[0];
-						VM.Interrupt(FishInterrupt.Int2_KeyboardChar, B);
+						VM.Interrupt(FishInterrupt.Int2_KeyboardChar, B, ref Ex);
 						Interrupted = true;
 					}
 
-					if (Ex != FishException.RequestWait)
+					if (!Ex.Is(FishExcept.RequestWait))
 						break;
 				}
 
@@ -406,9 +406,9 @@ namespace Fishmachine
 			}
 
 			if (!Silent)
-				VM.PrintMem(StackAddr, out Ex);
+				VM.PrintMem(StackAddr, ref Ex);
 
-			if (Ex != FishException.None)
+			if (!Ex.Is(FishExcept.None))
 				throw new Exception($"VM stopped with exception {Ex}");
 
 			Gfx.Stop();

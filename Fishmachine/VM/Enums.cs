@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Fishmachine.VM
 {
-	public enum FishException : byte
+	public enum FishExcept : byte
 	{
 		None = 0,
 		InvalidInstruction,
