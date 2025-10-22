@@ -1,4 +1,5 @@
 using Fishmachine;
+using Fishmachine.CTilde;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -66,7 +67,7 @@ namespace CTilde.Expr
 
 				Expression FDef = ParseStatement(Tok);
 				if (FDef is not Expr_FuncDef)
-					throw new Exception("Function definition expected after 'naked'");
+					throw new ExprException(PT, "Function definition expected after 'naked'");
 
 				((Expr_FuncDef)FDef).Naked = true;
 				return FDef;
@@ -77,7 +78,7 @@ namespace CTilde.Expr
 
 				Expression FDef = ParseStatement(Tok);
 				if (FDef is not Expr_FuncDef)
-					throw new Exception("Function definition expected after 'interrupt'");
+					throw new ExprException(PT, "Function definition expected after 'interrupt'");
 
 				((Expr_FuncDef)FDef).Interrupt = true;
 				return FDef;
@@ -185,13 +186,13 @@ namespace CTilde.Expr
 			else if (EE is Expr_ConstNumber ConstNumVal)
 				return ConstNumVal;
 			else
-				throw new NotImplementedException();
+				throw new ExprException(PT);
 
 			// Empty statement
 			/*if (Tok.Peek().Is(Symbol.Semicolon))
 				return null;*/
 
-			throw new Exception();
+			throw new ExprException(PT);
 		}
 
 		public static Expression ParseExpression(Tokenizer Tok, Symbol StopSymbol)
@@ -305,7 +306,7 @@ namespace CTilde.Expr
 						else
 						{
 							if (PT.Text[1] != '\\')
-								throw new Exception("Invalid character literal " + PT.Text);
+								throw new ExprException(PT, "Invalid character literal " + PT.Text);
 
 							switch (PT.Text[2])
 							{
@@ -338,7 +339,7 @@ namespace CTilde.Expr
 									break;
 
 								default:
-									throw new Exception("Invalid escape sequence \\" + PT.Text[2]);
+									throw new ExprException(PT, "Invalid escape sequence \\" + PT.Text[2]);
 							}
 						}
 
@@ -348,10 +349,10 @@ namespace CTilde.Expr
 					else if (PT.Text.StartsWith("\"") && PT.Text.EndsWith("\""))
 						LeftExpr = new Expr_ConstString(Tok.NextToken().Text);
 					else
-						throw new NotImplementedException();
+						throw new ExprException(PT);
 				}
 				else
-					throw new NotImplementedException();
+					throw new ExprException(PT);
 			}
 
 			Tok.NextToken().Assert(StopSymbol);

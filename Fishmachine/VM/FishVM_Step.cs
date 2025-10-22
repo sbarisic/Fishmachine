@@ -99,6 +99,7 @@ namespace Fishmachine.VM
 			}
 
 
+			CurrentInstructionIP = Regs.IP;
 			FishInst Inst = (FishInst)ReadByteFromIP(ref E);
 			if (!E.Is(FishExcept.None))
 				return true;

@@ -16,6 +16,7 @@ namespace Fishmachine.VM
 		public uint DB2;
 		public uint DB3;
 
+		public uint InstrIP;
 		public FishInst Instr;
 		public string InstrParams;
 
@@ -23,6 +24,7 @@ namespace Fishmachine.VM
 		{
 			this.Exception = E;
 			this.Regs = VM.Regs;
+			this.InstrIP = VM.CurrentInstructionIP;
 			this.Instr = VM.CurrentInstruction;
 			this.IP = VM.Regs.IP;
 			DB0 = Regs.Read(CodeGeneration.Reg.DB0);
@@ -34,7 +36,7 @@ namespace Fishmachine.VM
 
 		public override string ToString()
 		{
-			return string.Format("IP: 0x{6:X} I: {1}{7}\n    {0} - EAX: 0x{2:X}, EBX: 0x{3:X}, ECX: 0x{4:X}, EDX: 0x{5:X}",
+			return string.Format("(0x{8:X}) {1}{7}\n    {0} - EAX: 0x{2:X}, EBX: 0x{3:X}, ECX: 0x{4:X}, EDX: 0x{5:X} - IP (0x{6:X})",
 				Exception,
 				Instr.ToString(),
 				Regs.Read(CodeGeneration.Reg.EAX),
@@ -42,7 +44,8 @@ namespace Fishmachine.VM
 				Regs.Read(CodeGeneration.Reg.ECX),
 				Regs.Read(CodeGeneration.Reg.EDX),
 				IP,
-				(InstrParams.Length > 0) ? (" " + InstrParams) : ("")
+				(InstrParams.Length > 0) ? (" " + InstrParams) : (""),
+				InstrIP
 				);
 		}
 	}

@@ -131,6 +131,7 @@ namespace Fishmachine.VM
 
 		public FishRegisters Regs = new FishRegisters();
 		public FishInst CurrentInstruction;
+		public uint CurrentInstructionIP;
 		List<VMSymbol> VMSymbols = new List<VMSymbol>();
 
 		public FishVM()
