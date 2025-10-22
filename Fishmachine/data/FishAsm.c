@@ -177,7 +177,6 @@ naked void kmain() {
 	int_table[2] = &handler_int2_keyboardchar;
 	byte* bptr = 0;
 
-
 	//__asm("SYSCALL $0");
 
 	__asm("DBG_MEM");

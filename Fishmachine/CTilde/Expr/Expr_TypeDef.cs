@@ -10,15 +10,18 @@ namespace CTilde.Expr
 	public class Expr_TypeDef : Expression
 	{
 		static string[] PtrTypes = new string[] { "string", "voidptr" };
+		static string[] FloatTypes = new string[] { "float", "double" };
 
 		public string Type;
-		public bool IsArray;
-		public bool IsPointer;
+		public bool IsArray = false;
+		public bool IsPointer = false;
 		public int ArraySize = 0;
 
 		public override Expression Parse(Tokenizer Tok)
 		{
 			Type = Tok.NextToken().Assert(TokenType.Identifier).Text;
+			Token PT = Tok.Peek();
+
 			if (Tok.Peek().Is(Symbol.Star))
 			{
 				Tok.NextToken().Assert(Symbol.Star);
@@ -35,7 +38,7 @@ namespace CTilde.Expr
 				Tok.NextToken().Assert(Symbol.LBracket);
 
 				Token SizeTok = Tok.NextToken();
-				if (SizeTok.Is(TokenType.Decimal))
+				if (SizeTok.Is(TokenType.Number))
 				{
 					ArraySize = int.Parse(SizeTok.Text);
 				}
@@ -51,6 +54,16 @@ namespace CTilde.Expr
 				IsPointer = true;
 
 			return this;
+		}
+
+		public static Expr_TypeDef GetExpressionType(Expression E)
+		{
+			if (E is Expr_Identifier ExIden)
+			{
+				
+			}
+
+			throw new NotImplementedException();
 		}
 
 		public static Expr_TypeDef MakeClassRef(string Name)
@@ -140,6 +153,14 @@ namespace CTilde.Expr
 				return true;
 
 			return TD.IsArray || TD.IsPointer;
+		}
+
+		public static bool IsFloatType(Expr_TypeDef TD)
+		{
+			if (FloatTypes.Contains(TD.Type))
+				return true;
+
+			return false;
 		}
 
 		public static bool IsArrayType(Expr_TypeDef TD)

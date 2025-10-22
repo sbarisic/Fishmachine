@@ -1,0 +1,1047 @@
+﻿using CodeGeneration;
+using CTilde.Expr;
+using CTilde.FishAsm;
+using Fishmachine.VM;
+using System;
+using System.CodeDom;
+using System.Collections;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Diagnostics;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+using System.Text;
+using System.Threading.Tasks;
+using System.Xml.Linq;
+
+namespace CTilde.Langs
+{
+	public partial class FishAsmProvider : LangProvider
+	{
+		public override void Compile(Expression Ex)
+		{
+			switch (Ex)
+			{
+				case Expr_Block Block:
+					{
+						foreach (var E in Block.Expressions)
+						{
+							Compile(E);
+						}
+						break;
+					}
+
+				case Expr_ClassDef ClassDef:
+					{
+						AppendLine("typedef struct {");
+
+						foreach (var E in ClassDef.Variables)
+						{
+							Compile(E);
+						}
+
+						AppendLine("}} {0};", ClassDef.Name);
+
+						foreach (var F in ClassDef.Functions)
+						{
+							Compile(F);
+						}
+						break;
+					}
+
+				case Expr_FuncDef FuncDef:
+					{
+						// Interrupt handler wrappers (preserve regs, forward args)
+						if (FuncDef.FuncName != null && FuncDef.Interrupt)
+						{
+							string implName = FuncDef.FuncName + "_imp";
+
+							EmitRaw(".globl {0}", implName);
+							State.DefineLabel(implName, FuncDef.FuncReturnTypeDef, true, true);
+
+							if (FuncDef.FuncBody != null)
+							{
+								State.ClearVarOffsets();
+								State.ClearArgOffset();
+
+								EmitRaw("{0}:", implName);
+								Indent();
+								State.IsInsideFunctionDef = true;
+
+								if (!FuncDef.Naked)
+								{
+									EmitInstruction(FishInst.PUSH_REG, Reg.EBP);
+									EmitInstruction(FishInst.MOVE_REG_REG, Reg.ESP, Reg.EBP);
+								}
+
+								Compile(FuncDef.FuncParams);
+
+								State.IsInsideFunctionDef = false;
+								State.IsInsideFunctionBody = true;
+
+								Compile(FuncDef.FuncBody);
+
+								if (!FuncDef.Naked)
+								{
+									EmitRaw("# EmitReturn for interrupt impl {0}", implName);
+									EmitReturn();
+								}
+								State.IsInsideFunctionBody = false;
+								Unindent();
+							}
+
+							EmitRaw(".globl {0}", FuncDef.FuncName);
+							State.DefineLabel(FuncDef.FuncName, FuncDef.FuncReturnTypeDef, true, true);
+							EmitRaw("{0}:", FuncDef.FuncName);
+							Indent();
+							EmitInstruction(FishInst.SOFTINT_DISABLE);
+
+							EmitInstruction(FishInst.PUSH_REG, Reg.EBP);
+							EmitInstruction(FishInst.MOVE_REG_REG, Reg.ESP, Reg.EBP);
+
+							Reg[] saveRegs = new[] { Reg.EAX, Reg.EBX, Reg.ECX, Reg.EDX, Reg.ESI, Reg.EDI };
+							foreach (var r in saveRegs)
+								EmitInstruction(FishInst.PUSH_REG, r);
+
+							//int argCount = FuncDef.FuncParams != null ? FuncDef.FuncParams.Definitions.Count : 0;
+							int argCount = FuncDef.FuncParams != null ? FuncDef.FuncParams.Definitions.Count : 0;
+
+							// was: for (int i = 0; i < argCount; i++)
+							for (int i = argCount - 1; i >= 0; i--)
+							{
+								EmitInstruction(FishInst.MOVE_OFFSET_REG_REG, (8 + i * 4), Reg.EBP, Reg.EAX);
+								EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
+							}
+
+							EmitInstruction(FishInst.MOVE_LONG_REG, implName, Reg.EAX);
+							EmitInstruction(FishInst.CALL_REG, Reg.EAX);
+
+							if (argCount > 0)
+								EmitInstruction(FishInst.ADD_LONG_REG, (uint)(argCount * 4), Reg.ESP);
+
+							for (int i = saveRegs.Length - 1; i >= 0; i--)
+								EmitInstruction(FishInst.POP_REG, saveRegs[i]);
+
+							EmitInstruction(FishInst.SOFTINT_ENABLE);
+							EmitInstruction(FishInst.LEAVE);
+
+							EmitRaw("# RET for interrupt impl {0}", FuncDef.FuncName);
+							EmitInstruction(FishInst.RET);
+
+							Unindent();
+							break;
+						}
+
+						// Normal function
+						EmitRaw(".globl {0}", FuncDef.FuncName);
+						State.DefineLabel(FuncDef.FuncName, FuncDef.FuncReturnTypeDef, true, true);
+
+						if (FuncDef.FuncBody != null)
+						{
+							State.ClearVarOffsets();
+							State.ClearArgOffset();
+
+							EmitRaw("{0}:", FuncDef.FuncName);
+							Indent();
+							State.IsInsideFunctionDef = true;
+
+							//EmitInstruction(FishInst.SOFTINT_DISABLE);
+
+							if (!FuncDef.Naked)
+							{
+								EmitInstruction(FishInst.PUSH_REG, Reg.EBP);
+								EmitInstruction(FishInst.MOVE_REG_REG, Reg.ESP, Reg.EBP);
+							}
+
+							Compile(FuncDef.FuncParams);
+
+							State.IsInsideFunctionDef = false;
+							State.IsInsideFunctionBody = true;
+
+							Compile(FuncDef.FuncBody);
+
+							//EmitInstruction(FishInst.SOFTINT_ENABLE);
+
+							if (!FuncDef.Naked)
+							{
+								EmitRaw("# EmitReturn for function {0}", FuncDef.FuncName);
+								EmitReturn();
+							}
+							State.IsInsideFunctionBody = false;
+							Unindent();
+						}
+						break;
+					}
+
+				case Expr_Module Module:
+					{
+						foreach (var E in Module.Expressions)
+							Compile(E);
+
+						EmitLabels();
+						break;
+					}
+
+				case Expr_ParamsDef ParamsDef:
+					{
+						for (int i = 0; i < ParamsDef.Definitions.Count; i++)
+						{
+							ParamDefData ParamDef = ParamsDef.Definitions[i];
+							int Size = Expr_TypeDef.GetRawTypeSize(ParamDef.ParamType);
+							State.DefineVar(ParamDef.Name, Size, true, ParamDef.ParamType, false, true);
+						}
+
+						break;
+					}
+
+				case Expr_TypeDef TypeDef:
+					{
+						string T = TypeDef.Type;
+
+						if (TypeDef.IsPointer)
+							T += "*";
+						else if (TypeDef.IsArray)
+							T += "[]";
+
+						Append(T);
+						break;
+					}
+
+				case Expr_StaticValue StaticValueExpr:
+					{
+
+						EmitRaw("# Expr_StaticValue BEGIN - {0}", StaticValueExpr.ToSourceStr());
+						Indent();
+
+						string StatVar = State.DefineFreeLabel("STATVAR", StaticValueExpr.TypeDefExpr, false, false);
+						EmitRaw("{0}:", StatVar);
+
+						/*Expr_TypeDef ValType = Expr_TypeDef.MakeByte();
+						if (Expr_TypeDef.IsPointerType(StaticValueExpr.TypeDefExpr))
+							ValType = Expr_TypeDef.MakeArray(ValType, StaticValueExpr.TypeDefExpr.ArraySize);
+
+						string StatVarVal = State.DefineFreeLabel("STATVAR_VAL", ValType, false);
+						EmitRaw(".long {0}", StatVarVal);
+						EmitRaw("{0}:", StatVarVal);*/
+
+						if (Expr_TypeDef.IsPointerType(StaticValueExpr.TypeDefExpr))
+						{
+							int ElementSize = Expr_TypeDef.GetDerefTypeSize(StaticValueExpr.TypeDefExpr);
+							EmitRaw(".Raw {0}, {1}", StaticValueExpr.TypeDefExpr.ArraySize * ElementSize, 0);
+						}
+
+
+						Unindent();
+						EmitRaw("# Expr_StaticValue END - {0}", StaticValueExpr.ToSourceStr());
+						break;
+					}
+
+				case Expr_VariableDef VariableDef:
+					{
+						EmitRaw("# VariableDef BEGIN - {0}", VariableDef.Ident.Identifier);
+						Indent();
+
+						if (!State.IsInsideFunctionBody)
+						{
+							State.DefineLabel(VariableDef.Ident.Identifier, VariableDef.Type, false, true);
+							EmitRaw(".globlvar {0}", VariableDef.Ident.Identifier);
+
+							int Size = Expr_TypeDef.GetRawTypeSize(VariableDef.Type);
+							State.DefineVar(VariableDef.Ident.Identifier, Size, false, VariableDef.Type, true, false);
+						}
+						else
+						{
+							int Size = Expr_TypeDef.GetRawTypeSize(VariableDef.Type);
+							State.DefineVar(VariableDef.Ident.Identifier, Size, false, VariableDef.Type, false, false);
+
+							EmitInstruction(FishInst.SUB_LONG_REG, (uint)Size, Reg.ESP);
+						}
+
+						Unindent();
+						EmitRaw("# VariableDef END - {0}", VariableDef.Ident.Identifier);
+						break;
+					}
+
+				case Expr_AssignedVariableDef AssVariableDef:
+					{
+						EmitRaw("# Expr_AssignedVariableDef BEGIN - {0}", AssVariableDef.VariableDef.Ident.Identifier);
+						Indent();
+
+						int Size = Expr_TypeDef.GetRawTypeSize(AssVariableDef.VariableDef.Type);
+						bool Global = State.IsInsideFunctionBody ? false : true;
+
+						// IMPORTANT: If assigned a static value, use the static array type instead of the variable's declared type
+						Expr_TypeDef VarType = AssVariableDef.VariableDef.Type;
+						if (AssVariableDef.AssignmentValue is Expr_StaticValue StaticVal)
+						{
+							VarType = StaticVal.TypeDefExpr;
+						}
+
+						State.DefineVar(AssVariableDef.VariableDef.Ident.Identifier, Size, false, VarType, Global, false);
+
+						if (State.IsInsideFunctionBody)
+						{
+							EmitInstruction(FishInst.SUB_LONG_REG, (uint)Size, Reg.ESP);
+						}
+						else
+						{
+							State.DefineLabel(AssVariableDef.VariableDef.Ident.Identifier, VarType, false, true);
+							EmitRaw(".globlvar {0}", AssVariableDef.VariableDef.Ident.Identifier);
+							EmitRaw("{0}:", AssVariableDef.VariableDef.Ident.Identifier);
+
+							string StatVar = State.DefineFreeLabel("VARMEM", VarType, false, false);
+							EmitRaw(".long {0}", StatVar);
+							EmitRaw("{0}:", StatVar);
+						}
+
+						Unindent();
+						EmitRaw("# Expr_AssignedVariableDef END - {0}", AssVariableDef.VariableDef.Ident.Identifier);
+
+						EmitRaw("# VariableAssign '{0}' BEGIN", AssVariableDef.VariableDef.Ident.Identifier);
+						Indent();
+
+						Compile(AssVariableDef.AssignmentValue);
+
+						if (State.IsInsideFunctionBody)
+						{
+							int VarID = State.GetVarOffset(AssVariableDef.VariableDef.Ident.Identifier);
+							EmitInstruction(FishInst.MOVE_REG_OFFSET_REG, Reg.EAX, VarID, Reg.EBP);
+						}
+
+						Unindent();
+						EmitRaw("# VariableAssign '{0}' END", AssVariableDef.VariableDef.Ident.Identifier);
+						break;
+					}
+
+				case Expr_AssignValue AssValue:
+					{
+						if (AssValue.LExpr is Expr_IndexOp IndexOp)
+						{
+							EmitRaw("# Expr_AssignValue '{0} = {1}' BEGIN", IndexOp.ToSourceStr(), AssValue.ValueExpr.ToSourceStr());
+							Indent();
+
+							// IMPORTANT: Set flag BEFORE compiling IndexOp
+							bool prevAddrOnly = State.IndexEmitOnlyAddress;
+							State.IndexEmitOnlyAddress = true;  // ← Force address mode
+
+							Compile(IndexOp);  // ← Should put address in EAX
+
+							State.IndexEmitOnlyAddress = prevAddrOnly;  // ← Restore flag
+
+							EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.EBX);  // Save address to EBX
+
+							Compile(AssValue.ValueExpr);  // Get value in EAX
+
+							if (IndexOp.LExpr is Expr_Identifier Id)
+							{
+								Expr_TypeDef VarType = State.GetVarType(Id.Identifier);
+								int CopyBytes = Expr_TypeDef.GetDerefTypeSize(VarType);
+
+								// EBX already contains the correct address, just write to it
+								EmitStoreToAddress(CopyBytes, 0, Reg.EAX, Reg.EBX, Expr_TypeDef.IsUnsigned(VarType.Type), false);
+							}
+							else
+								throw new NotImplementedException();
+
+							Unindent();
+							EmitRaw("# Expr_AssignValue '{0} = {1}' END", IndexOp.ToSourceStr(), AssValue.ValueExpr.ToSourceStr());
+						}
+						else
+							throw new NotImplementedException();
+
+						break;
+					}
+
+				case Expr_AssignVariable AssVariable:
+					{
+						Compile(AssVariable.AssignmentValue);
+
+						Expr_TypeDef td = State.GetVarType(AssVariable.Variable.Identifier);
+						int sz = Expr_TypeDef.GetRawTypeSize(td);
+
+						EmitRaw("# Expr_AssignVariable '{0}' BEGIN", AssVariable.ToSourceStr());
+						EmitRaw("# Assign to '{0}'", AssVariable.Variable.Identifier);
+						Indent();
+
+						/*if (AssVariable.Variable.Identifier == "temp_buffer")
+							Debugger.Break();*/
+						/***bool storeaddress = true;
+
+						if (State.IsVarGlobal(AssVariable.Variable.Identifier))
+						{
+							//bool PtrType = Expr_TypeDef.IsPointerType(td);
+
+							storeaddress = false;
+						}*/
+
+						bool storeaddress = !State.IsVarGlobal(AssVariable.Variable.Identifier);
+						//bool storeaddress = true;
+
+						StoreIdentifier(AssVariable.Variable.Identifier, sz, td.IsPointer, Reg.EAX, Expr_TypeDef.IsUnsigned(td.Type), storeaddress);
+
+						Unindent();
+						EmitRaw("# Expr_AssignVariable '{0}' END", AssVariable.ToSourceStr());
+
+						break;
+					}
+
+				case Expr_Identifier id:
+					{
+						EmitRaw("# Expr_Identifier '{0}' BEGIN", id.Identifier);
+						Indent();
+
+						var t = State.GetVarType(id.Identifier);
+
+						if (t == null)
+							throw new NotImplementedException();
+
+						//bool isGlobal = State.IsVarGlobal(id.Identifier);
+						bool isPointer = Expr_TypeDef.IsPointerType(t);
+
+						int sz = Expr_TypeDef.GetRawTypeSize(t);
+
+						/*if (State.IsVarGlobal(id.Identifier))
+							sz = 0;*/
+						//awd
+						FetchIdentifier(id.Identifier, sz, isPointer, Reg.EAX, true, false);
+
+						Unindent();
+						EmitRaw("# Expr_Identifier '{0}' END", id.Identifier);
+						break;
+					}
+
+				case Expr_ConstNull NullEx:
+					{
+						EmitRaw("# Expr_ConstNull BEGIN");
+						Indent();
+
+						if (State.IsInsideFunctionBody)
+						{
+							EmitInstruction(FishInst.MOVE_LONG_REG, (uint)0, Reg.EAX);
+						}
+						else
+							EmitRaw(".long {0}", 0);
+
+						Unindent();
+						EmitRaw("# Expr_ConstNull END");
+						break;
+					}
+
+				case Expr_ConstNumber NumberEx:
+					{
+						EmitRaw("# Expr_ConstNumber BEGIN");
+						Indent();
+
+						uint Num = 0;
+
+						if (NumberEx.NumberLiteral.StartsWith("0x"))
+							Num = Convert.ToUInt32(NumberEx.NumberLiteral.Substring(2), 16);
+
+						else
+							Num = uint.Parse(NumberEx.NumberLiteral);
+
+						if (State.IsInsideFunctionBody)
+						{
+							EmitInstruction(FishInst.MOVE_LONG_REG, Num, Reg.EAX);
+						}
+						else
+							EmitRaw(".long {0}", Num);
+
+						Unindent();
+						EmitRaw("# Expr_ConstNumber END");
+						break;
+					}
+
+				case Expr_ConstString StringEx:
+					{
+						EmitRaw("# Expr_ConstString BEGIN");
+						Indent();
+
+						string LblName = State.DefineLabel(null, StringEx.StringLiteral);
+						EmitInstruction(FishInst.MOVE_LONG_REG, LblName, Reg.EAX);
+
+						Unindent();
+						EmitRaw("# Expr_ConstString END");
+						break;
+					}
+
+				case Expr_ConstChar CharEx:
+					{
+						EmitRaw("# Expr_ConstChar BEGIN");
+						Indent();
+
+						EmitInstruction(FishInst.MOVES_LONG_REG, (uint)CharEx.CharLiteral, Reg.EAX);
+
+						Unindent();
+						EmitRaw("# Expr_ConstChar END");
+						break;
+					}
+
+				case Expr_BinaryOp BinaryExp:
+					{
+						EmitRaw("# Expr_BinaryOp BEGIN ({0})", BinaryExp.ToSourceStr());
+						Indent();
+
+						EmitInstruction(FishInst.PUSH_REG, Reg.ECX);
+
+						Compile(BinaryExp.LExpr);                 // EAX = LHS
+						EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
+
+						Compile(BinaryExp.RExpr);                 // EAX = RHS
+						EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.ECX); // ECX = RHS
+
+						EmitInstruction(FishInst.POP_REG, Reg.EAX);  // EAX = LHS
+
+						switch (BinaryExp.Op)
+						{
+							case BinaryOp.And:
+								EmitInstruction(FishInst.BOLAND_REG_REG, Reg.ECX, Reg.EAX);   // EAX = L && R
+								break;
+
+							case BinaryOp.Or:
+								EmitInstruction(FishInst.BOLOR_REG_REG, Reg.ECX, Reg.EAX);   // EAX = L || R
+								break;
+
+							case BinaryOp.BitwiseAnd:
+								EmitInstruction(FishInst.BINAND_REG_REG, Reg.ECX, Reg.EAX);   // EAX = L || R
+								break;
+
+							case BinaryOp.BitwiseOr:
+								EmitInstruction(FishInst.BINOR_REG_REG, Reg.ECX, Reg.EAX);   // EAX = L || R
+								break;
+
+							default:
+								throw new NotImplementedException();
+						}
+
+						EmitInstruction(FishInst.POP_REG, Reg.ECX);
+
+
+						Unindent();
+						EmitRaw("# Expr_BinaryOp END ({0})", BinaryExp.ToSourceStr());
+
+						break;
+					}
+
+				// FloatExpr
+				case Expr_ConstDecimal DecimalEx:
+					{
+						EmitRaw("# Expr_ConstDecimal BEGIN");
+						Indent();
+
+						float fNum = 0.0f;
+						fNum = float.Parse(DecimalEx.NumberLiteral.TrimEnd('f'));
+
+						if (State.IsInsideFunctionBody)
+						{
+							string LblName = State.DefineLabel(null, DecimalEx.NumberLiteral);
+							//EmitInstruction(FishInst.FLOAT_LOAD_LONG, LblName);
+
+							EmitInstruction(FishInst.MOVE_LONG_REG, LblName, Reg.EAX);
+							EmitInstruction(FishInst.MOVE_OFFSET_REG_REG, 0, Reg.EAX, Reg.EAX);
+						}
+						else
+							EmitRaw(".float {0}", fNum);
+
+						Unindent();
+						EmitRaw("# Expr_ConstDecimal END");
+						break;
+					}
+
+				case Expr_MathOp MathExp:
+					{
+						EmitRaw("# MathOp BEGIN ({0})", MathExp.OpString);
+						Indent();
+
+						if (!MathExp.IsFloat)
+						{
+							Expr_TypeDef LType = GetExpressionType(MathExp.LExpr);
+							Expr_TypeDef RType = GetExpressionType(MathExp.RExpr);
+
+							if (Expr_TypeDef.IsFloatType(LType) || Expr_TypeDef.IsFloatType(RType))
+								MathExp.IsFloat = true;
+						}
+
+						if (MathExp.IsFloat)
+						{
+							Compile(MathExp.RExpr);
+							EmitInstruction(FishInst.FLOAT_PUSH_REG, Reg.EAX);
+
+							Compile(MathExp.LExpr);
+							EmitInstruction(FishInst.FLOAT_PUSH_REG, Reg.EAX);
+
+							switch (MathExp.Op)
+							{
+								case MathOperation.Add:
+									EmitInstruction(FishInst.FLOAT_ADD);
+									break;
+								case MathOperation.Sub:
+									EmitInstruction(FishInst.FLOAT_SUB);
+									break;
+								case MathOperation.Mul:
+									EmitInstruction(FishInst.FLOAT_MUL);
+									break;
+								case MathOperation.Div:
+									EmitInstruction(FishInst.FLOAT_DIV);
+									break;
+								default:
+									throw new NotImplementedException();
+							}
+
+							//EmitInstruction(FishInst.FLOAT_STORE_OFFSET_REG, Reg.ST0, Reg.EAX);
+							//EmitInstruction(FishInst.MOVE_REG_REG, Reg.ST0, Reg.EAX);
+							EmitInstruction(FishInst.FLOAT_POP_REG, Reg.EAX);
+
+
+
+							//throw new NotImplementedException();
+						}
+						else
+						{
+							// LHS then RHS in ECX; avoid EBX (used by global loads)
+							if (MathExp.Op == MathOperation.Sub && MathExp.RExpr is Expr_ConstNumber rnum)
+							{
+								// Optimize: L - imm
+								Compile(MathExp.LExpr);
+								uint imm = uint.Parse(rnum.NumberLiteral);
+								EmitInstruction(FishInst.SUB_LONG_REG, "$" + imm, Reg.EAX);
+							}
+							else
+							{
+								EmitInstruction(FishInst.PUSH_REG, Reg.ECX);
+
+								Compile(MathExp.LExpr);                 // EAX = LHS
+								EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
+
+								Compile(MathExp.RExpr);                 // EAX = RHS
+								EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.ECX); // ECX = RHS
+
+								EmitInstruction(FishInst.POP_REG, Reg.EAX);  // EAX = LHS
+
+								switch (MathExp.Op)
+								{
+									case MathOperation.Add:
+										EmitInstruction(FishInst.ADD_REG_REG, Reg.ECX, Reg.EAX);   // EAX = L + R
+										break;
+
+									case MathOperation.Sub:
+										EmitInstruction(FishInst.SUB_REG_REG, Reg.ECX, Reg.EAX);   // EAX = L - R
+										break;
+
+									case MathOperation.Mul:
+										EmitInstruction(FishInst.MUL_REG_REG, Reg.ECX, Reg.EAX);   // EAX = L * R
+										break;
+
+									case MathOperation.Div:
+										EmitInstruction(FishInst.DIV_REG_REG, Reg.ECX, Reg.EAX);   // EAX = L / R
+										break;
+
+									default:
+										throw new NotImplementedException();
+								}
+
+								EmitInstruction(FishInst.POP_REG, Reg.ECX);
+							}
+						}
+
+						Unindent();
+						EmitRaw("# MathOp END ({0})", MathExp.OpString);
+
+						break;
+					}
+
+				case Expr_ComparisonOp CompExpr:
+					{
+						EmitRaw("# Expr_ComparisonOp BEGIN");
+						Indent();
+
+						// EAX = LHS, ECX = RHS; compare as EAX - ECX
+						Compile(CompExpr.LExpr);
+						EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
+
+						Compile(CompExpr.RExpr);
+						EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.ECX);
+
+						EmitInstruction(FishInst.POP_REG, Reg.EAX);
+
+						EmitRaw("#: {0}", CompExpr.ToSourceStr());
+						EmitRaw("#: EAX - ECX semantics");
+
+						// IMPORTANT: pass (ECX, EAX) so assembler prints "CMP %EAX, %ECX"
+						//EmitInstruction(FishInst.CMP_REG_REG, Reg.ECX, Reg.EAX);
+
+						EmitInstruction(FishInst.CMP_REG_REG, Reg.EAX, Reg.ECX);
+
+						string CmpTrueLabel = State.DefineFreeLabel("COMPARE_TRUE", null, false, false);
+						string CmpEndLabel = State.DefineFreeLabel("COMPARE_END", null, false, false);
+						EmitBranch(CompExpr.Op, false, CmpTrueLabel);
+						EmitInstruction(FishInst.MOVE_LONG_REG, (uint)0, Reg.ECX); // false
+						EmitInstruction(FishInst.JUMP_LONG, CmpEndLabel);
+						EmitRaw("{0}:", CmpTrueLabel);
+						EmitInstruction(FishInst.MOVE_LONG_REG, (uint)1, Reg.ECX); // false
+						EmitRaw("{0}:", CmpEndLabel);
+
+						EmitInstruction(FishInst.MOVE_REG_REG, Reg.ECX, Reg.EAX);
+
+						Unindent();
+						EmitRaw("# Expr_ComparisonOp END");
+						break;
+					}
+
+				case Expr_IfElseStatement IfExpr:
+					{
+						EmitRaw("# If BEGIN");
+						Indent();
+
+						string EndLblName = State.DefineFreeLabel("ENDIF", null, false, false);
+						string ElseLblName = EndLblName;
+
+						if (IfExpr.ElseBody != null)
+							ElseLblName = State.DefineFreeLabel("ELSE", null, false, false);
+
+						EmitRaw("#: {0}", IfExpr.ConditionValue.ToSourceStr());
+
+						/*Compile(IfExpr.ConditionValue); // sets flags for EAX vs ECX
+						if (IfExpr.ConditionValue is Expr_ComparisonOp Cmp)
+						{
+							EmitBranch(Cmp.Op, true, ElseLblName);
+						}
+						else if (IfExpr.ConditionValue is Expr_BinaryOp BinOp)
+						{
+							EmitInstruction(FishInst.CMP_REG_REG, Reg.EAX, Reg.EAX);
+							EmitInstruction(FishInst.JUMP_IF_ZERO_LONG, ElseLblName);
+
+							//throw new NotImplementedException();
+						}*/
+
+						EmitTestBranch(IfExpr.ConditionValue, true, ElseLblName);
+
+						//State.PushBreakLabel(EndLblName);
+						Compile(IfExpr.Body);
+						//State.PopBreakLabel();
+
+						if (IfExpr.ElseBody != null)
+						{
+							EmitInstruction(FishInst.JUMP_LONG, EndLblName);
+							Unindent();
+							EmitRaw("# Else BEGIN");
+							Indent();
+							EmitRaw("{0}:", ElseLblName);
+
+							//State.PushBreakLabel(EndLblName);
+							Compile(IfExpr.ElseBody);
+							//State.PopBreakLabel();
+
+							Unindent();
+							EmitRaw("# Else END");
+							Indent();
+						}
+
+						EmitRaw("{0}:", EndLblName);
+
+						Unindent();
+						EmitRaw("# If END");
+						break;
+					}
+
+				case Expr_WhileStatement WhileExpr:
+					{
+						EmitRaw("# While BEGIN '{0}'", WhileExpr.ToSourceStr());
+						Indent();
+
+						string LblName = State.DefineFreeLabel("WHILE", null, false, false);
+						string EndLblName = State.DefineFreeLabel("ENDWHILE", null, false, false);
+						EmitRaw("{0}:", LblName);
+						State.PushLoopLabel(LblName);
+
+						EmitTestBranch(WhileExpr.ConditionValue, true, EndLblName);
+
+						State.PushBreakLabel(EndLblName);
+
+						if (WhileExpr.Body.Expressions.Count > 0)
+						{
+							EmitInstruction(FishInst.PUSH_REG, Reg.EBX);
+							EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
+							Compile(WhileExpr.Body);
+							EmitInstruction(FishInst.POP_REG, Reg.EAX);
+							EmitInstruction(FishInst.POP_REG, Reg.EBX);
+						}
+
+						State.PopBreakLabel();
+						State.PopLoopLabel();
+
+						EmitInstruction(FishInst.JUMP_LONG, LblName);
+						EmitRaw("{0}:", EndLblName);
+
+						Unindent();
+						EmitRaw("# While END '{0}'", WhileExpr.ToSourceStr());
+						break;
+					}
+
+				case Expr_BreakExpr BreakExpr:
+					{
+						string BreakLbl = State.PeekBreakLabel();
+						EmitInstruction(FishInst.JUMP_LONG, BreakLbl);
+
+						break;
+					}
+
+				case Expr_WaitExpr WaitExpr:
+					{
+						EmitInstruction(FishInst.WAIT);
+						break;
+					}
+
+				case Expr_ContinueExpr ContinueExpr:
+					{
+						EmitRaw("# Continue");
+						string BreakLbl = State.PeekLoopLabel();
+						EmitInstruction(FishInst.JUMP_LONG, BreakLbl);
+
+						break;
+					}
+
+				case Expr_AddressOfOp AddrOfExpr:
+					{
+						EmitRaw("# Expr_AddressOfOp BEGIN");
+						Indent();
+
+						if (AddrOfExpr.ValExpr is Expr_Identifier Ident)
+						{
+							if (State.IsVarGlobal(Ident.Identifier))
+							{
+								bool IsFunc = State.IsVarFunction(Ident.Identifier);
+
+								if (IsFunc)
+								{
+									EmitInstruction(FishInst.MOVE_LONG_REG, Ident.Identifier, Reg.EAX);
+								}
+								else
+								{
+									throw new NotImplementedException();
+								}
+							}
+							else
+							{
+								FetchIdentifier(Ident.Identifier, 0, false, Reg.EAX, true, false);
+							}
+						}
+						else
+							throw new NotImplementedException();
+
+						Unindent();
+						EmitRaw("# Expr_AddressOfOp END");
+						break;
+					}
+
+				case Expr_IndexOp IndexExpr:
+					{
+						EmitRaw("# IndexOp BEGIN");
+						Indent();
+
+						// DIAGNOSTIC: Print the flag value immediately
+						EmitRaw("#: DIAGNOSTIC - IndexEmitOnlyAddress = {0}", State.IndexEmitOnlyAddress ? 1 : 0);
+
+						// IMPORTANT: Capture the flag at the START, before compiling child expressions
+						bool onlyAddress = State.IndexEmitOnlyAddress;
+
+						EmitRaw("#: EAX = {0}", IndexExpr.IndexValExpr.ToSourceStr());
+						Compile(IndexExpr.IndexValExpr); // index in EAX
+
+						if (IndexExpr.LExpr is Expr_Identifier id)
+						{
+							Expr_TypeDef idType = State.GetVarType(id.Identifier);
+							int elemSize = Expr_TypeDef.GetDerefTypeSize(idType);
+
+							EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.EBX); // EBX = index (scaled below)
+
+							if (elemSize > 1)
+							{
+								EmitRaw("#: EBX = EBX * {0}", elemSize);
+								EmitInstruction(FishInst.MOVE_LONG_REG, "$" + elemSize, Reg.EAX);
+								EmitInstruction(FishInst.MUL_REG, Reg.EBX);
+								EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.EBX); // EBX = scaled index
+							}
+
+							bool isGlobal = State.IsVarGlobal(id.Identifier);
+							bool isPointerType = Expr_TypeDef.IsPointerType(idType);
+							bool isArrayType = idType.IsArray;
+
+							EmitRaw("#: {0}[EBX] OnlyAddress: {1} (isGlobal:{2}, isArray:{3}, isPointer:{4})",
+								id.Identifier, onlyAddress ? 1 : 0, isGlobal ? 1 : 0, isArrayType ? 1 : 0, isPointerType ? 1 : 0);
+
+							if (onlyAddress)
+							{
+								// We want the address of the element
+								if (isGlobal && isArrayType)
+								{
+									// Static array: compute address as intermediate + offset
+									FetchIdentifier(id.Identifier, 0, /*treatAsPointer*/ false, Reg.EAX, true, true);
+								}
+								else if (isGlobal && isPointerType)
+								{
+									// Pointer variable: dereference to get allocated memory, then add offset
+									FetchIdentifier(id.Identifier, 0, /*treatAsPointer*/ true, Reg.EAX, true, true);
+								}
+								else
+								{
+									// Local variable (pointer or array)
+									FetchIdentifier(id.Identifier, 0, isPointerType, Reg.EAX, true, true);
+								}
+							}
+							else
+							{
+								// We want the value at the indexed location
+								FetchIdentifier(id.Identifier, elemSize, isPointerType, Reg.EAX, true, true);
+							}
+						}
+						else
+						{
+							EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.EBX);
+							Compile(IndexExpr.LExpr);
+							EmitInstruction(FishInst.ADD_REG_REG, Reg.EBX, Reg.EAX);
+						}
+
+						Unindent();
+						EmitRaw("# IndexOp END");
+						break;
+					}
+
+				case Expr_IncDecOp IncDecExp:
+					{
+						EmitRaw("# Expr_IncDecOp BEGIN");
+						Indent();
+
+						if (IncDecExp.LExpr is Expr_Identifier Id)
+						{
+							string name = Id.Identifier;
+							Expr_TypeDef nameType = State.GetVarType(name);
+							int sz = 0;
+							bool ispointer = Expr_TypeDef.IsPointerType(nameType);
+
+							if (ispointer)
+								sz = Expr_TypeDef.GetDerefTypeSize(nameType);
+							else
+								sz = Expr_TypeDef.GetRawTypeSize(nameType);
+
+							FetchIdentifier(name, sz, ispointer, Reg.EAX, false, false);
+
+							if (IncDecExp.Inc)
+								EmitInstruction(FishInst.ADD_LONG_REG, "$" + 1, Reg.EAX);
+							else
+								EmitInstruction(FishInst.SUB_LONG_REG, "$" + 1, Reg.EAX);
+
+							bool isGlobal = State.IsVarGlobal(name);
+							StoreIdentifier(name, sz, ispointer, Reg.EAX, false, isGlobal);
+						}
+						else
+							throw new NotImplementedException();
+
+						Unindent();
+						EmitRaw("# Expr_IncDecOp END");
+						break;
+					}
+
+				case Expr_ReturnStatement ReturnExp:
+					{
+						EmitRaw("# Expr_ReturnStatement BEGIN");
+						Indent();
+
+						if (ReturnExp.RetValExpr != null)
+						{
+							Compile(ReturnExp.RetValExpr);
+						}
+
+						EmitReturn();
+
+						Unindent();
+						EmitRaw("# Expr_ReturnStatement END");
+						break;
+					}
+
+				case Expr_FuncCall FuncCallExp:
+					{
+						EmitRaw("# Expr_FuncCall BEGIN");
+						Indent();
+
+						if (FuncCallExp.Function.Identifier == "__asm")
+						{
+							foreach (var Arg in FuncCallExp.Arguments)
+							{
+								if (Arg is Expr_ConstString S)
+								{
+									EmitRaw(S.RawString);
+								}
+								else
+								{
+									throw new NotImplementedException("Only string literals are supported in __asm");
+								}
+							}
+						}
+						else if (FuncCallExp.Function.Identifier == "syscall_2")
+						{
+							EmitRaw("# syscall_2 BEGIN");
+							Indent();
+
+							if (FuncCallExp.Arguments.Count != 2)
+								throw new Exception("syscall_2 requires exactly 2 arguments");
+
+							Expr_ConstNumber NumExp = FuncCallExp.Arguments[0] as Expr_ConstNumber;
+							Expression A0 = FuncCallExp.Arguments[1];
+
+							Compile(A0);
+							EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
+							EmitInstruction(FishInst.MOVE_LONG_REG, "$" + NumExp.NumberLiteral, Reg.EAX);
+							EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
+
+							EmitInstruction(FishInst.SYSCALL_2);
+
+							Unindent();
+							EmitRaw("# syscall_2 END");
+						}
+						else
+						{
+							EmitRaw("# FuncCall BEGIN - '{0}'", FuncCallExp.Function.ToSourceStr());
+							Indent();
+
+							//if (FuncCallExp.Function.Identifier == "printfloat")
+							//	Debugger.Break();
+
+							// was: for (int i = 0; i < FuncCallExp.Arguments.Count; i++)
+							for (int i = FuncCallExp.Arguments.Count - 1; i >= 0; i--)
+							{
+								Expression arg = FuncCallExp.Arguments[i];
+								EmitCallArg(arg);
+							}
+
+							EmitInstruction(FishInst.MOVE_LONG_REG, FuncCallExp.Function.Identifier, Reg.EAX);
+							EmitInstruction(FishInst.CALL_REG, Reg.EAX);
+
+							EmitInstruction(FishInst.ADD_LONG_REG, (uint)(FuncCallExp.Arguments.Count * 4), Reg.ESP);
+
+							Unindent();
+							EmitRaw("# FuncCall END - '{0}'", FuncCallExp.Function.ToSourceStr());
+						}
+
+						Unindent();
+						EmitRaw("# Expr_FuncCall END");
+						break;
+					}
+
+				case Expr_DefineExpr DefineExpr:
+					{
+						// Skip, compile time use only
+						break;
+					}
+
+				default:
+					{
+						throw new NotImplementedException("Could not compile expression of type " + Ex.GetType());
+					}
+			}
+		}
+	}
+}

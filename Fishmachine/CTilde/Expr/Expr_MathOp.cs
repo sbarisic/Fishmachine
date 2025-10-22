@@ -5,22 +5,29 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
-namespace CTilde.Expr {
-	public enum MathOperation {
+namespace CTilde.Expr
+{
+	public enum MathOperation
+	{
 		Add,
 		Sub,
 		Mul,
 		Div
 	}
 
-	public class Expr_MathOp : Expression {
+	public class Expr_MathOp : Expression
+	{
 		public Expression LExpr;
 		public MathOperation Op;
 		public Expression RExpr;
+		public bool IsFloat;
 
-		public string OpString {
-			get {
-				switch (Op) {
+		public string OpString
+		{
+			get
+			{
+				switch (Op)
+				{
 					case MathOperation.Add:
 						return "+";
 
@@ -39,11 +46,13 @@ namespace CTilde.Expr {
 			}
 		}
 
-		public Expr_MathOp(Expression LExpr) {
+		public Expr_MathOp(Expression LExpr)
+		{
 			this.LExpr = LExpr;
 		}
 
-		public override Expression Parse(Tokenizer Tok) {
+		public override Expression Parse(Tokenizer Tok)
+		{
 			Token T = Tok.NextToken();
 
 			if (T.Is(Symbol.Addition))
@@ -58,6 +67,15 @@ namespace CTilde.Expr {
 				throw new NotImplementedException("Unexpected token " + T);
 
 			RExpr = Expression.ParseExpression(Tok, Symbol.Semicolon);
+
+
+
+			//Expr_TypeDef LExprType = Expr_TypeDef.GetExpressionType(LExpr);
+			//Expr_TypeDef RExprType = Expr_TypeDef.GetExpressionType(RExpr);
+
+
+			//throw new NotImplementedException();
+
 			return this;
 		}
 

@@ -8,13 +8,13 @@ using System.Xml.Linq;
 
 namespace CTilde.Expr
 {
-	public class Expr_ConstNumber : Expression
+	public class Expr_ConstDecimal : Expression
 	{
 		public string NumberLiteral;
 
-		public Expr_ConstNumber(Token PeekTok, string NumberLiteral)
+		public Expr_ConstDecimal(Token PeekTok, string NumberLiteral)
 		{
-			if (NumberLiteral.Contains(".") || NumberLiteral.EndsWith("f"))
+			if (!(NumberLiteral.Contains(".") || NumberLiteral.EndsWith("f")))
 				throw new ExprException(PeekTok, "Number expected, got decimal '" + NumberLiteral + "'");
 
 			this.NumberLiteral = NumberLiteral;

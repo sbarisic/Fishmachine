@@ -36,6 +36,8 @@ namespace Fishmachine.VM
 					return 1;
 
 				// One register, 2 byte total
+				case FishInst.FLOAT_PUSH_REG:
+				case FishInst.FLOAT_POP_REG:
 				case FishInst.PUSH_REG:
 				case FishInst.JUMP_REG:
 				case FishInst.CALL_REG:
@@ -61,9 +63,11 @@ namespace Fishmachine.VM
 				case FishInst.MOVES_REG_REG:
 				case FishInst.MOVEBYTE_REG_REG:
 				case FishInst.CMP_REG_REG:
+				case FishInst.BOLAND_REG_REG:
+				case FishInst.BOLOR_REG_REG:
+				case FishInst.BINXOR_REG_REG:
 				case FishInst.BINAND_REG_REG:
 				case FishInst.BINOR_REG_REG:
-				case FishInst.BINXOR_REG_REG:
 					return 3;
 
 				// One 32-bit operand, 5 byte total
@@ -131,6 +135,7 @@ namespace Fishmachine.VM
 
 		public FishRegisters Regs = new FishRegisters();
 		public FishInst CurrentInstruction;
+		public uint CurrentInstructionIP;
 		List<VMSymbol> VMSymbols = new List<VMSymbol>();
 
 		public FishVM()
@@ -597,6 +602,20 @@ namespace Fishmachine.VM
 
 				Gfx.Write(Arg1.ToString());
 				//File.AppendAllText("vm_sys.txt", ((char)Arg1).ToString());
+			}
+			else if (FInt == FishSyscall.PrintFloat)
+			{
+				float F = BitConverter.ToSingle(BitConverter.GetBytes(Arg1));
+				string FStr = F.ToString("0.0##############");
+				Console.WriteLine("PrintFloat '{0}'", FStr);
+				Out.AppendFormat("{0}", F);
+
+				if (FishSettings.DebugPrint)
+				{
+					Console.WriteLine("VM: EAX (float) = '{1}'", FStr);
+				}
+
+				Gfx.Write(FStr.ToString());
 			}
 			else if (FInt == FishSyscall.SoftwareInterrupt)
 			{

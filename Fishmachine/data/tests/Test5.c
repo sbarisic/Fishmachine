@@ -41,9 +41,9 @@ void test_print(bool cond, string text) {
 }
 
 naked void kmain() {
-	int_table[0] = addrof handler_int0;
-	int_table[1] = addrof handler_int1_keyboardkey;
-	int_table[2] = addrof handler_int2_keyboardchar;
+	int_table[0] = &handler_int0;
+	int_table[1] = &handler_int1_keyboardkey;
+	int_table[2] = &handler_int2_keyboardchar;
 
 	uint a = 3;
 	uint b = 4;

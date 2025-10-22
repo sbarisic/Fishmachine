@@ -25,7 +25,8 @@ namespace CTilde
 		@continue,
 		interrupt,
 		wait,
-		define
+		define,
+		addrof,
 	}
 
 	public enum Symbol : int
@@ -49,11 +50,13 @@ namespace CTilde
 		GreaterThanOrEqual,
 		LessThan,
 		LessThanOrEqual,
-		AddressOf,
+		//AddressOf,
 		Increment,
 		Decrement,
 		BinaryAnd,
-		BinaryOr
+		BinaryOr,
+		BitwiseAnd,
+		BitwiseOr
 	}
 
 	public class Tokenizer
@@ -95,7 +98,8 @@ namespace CTilde
 				{ "=", (int)Symbol.Assignment },
 				{ ",", (int)Symbol.Comma },
 				{ ";", (int)Symbol.Semicolon },
-				{ "&", (int)Symbol.AddressOf },
+				{ "&", (int)Symbol.BitwiseAnd },
+				{ "|", (int)Symbol.BitwiseOr },
 				{ "+", (int)Symbol.Addition },
 				{ "-", (int)Symbol.Subtraction },
 				{ "*", (int)Symbol.Star },
