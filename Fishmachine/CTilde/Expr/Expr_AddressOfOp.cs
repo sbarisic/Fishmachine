@@ -17,7 +17,7 @@ namespace CTilde.Expr
 
 		public override Expression Parse(Tokenizer Tok)
 		{
-			Tok.NextToken().Assert(Symbol.AddressOf);
+			Tok.NextToken().Assert(Keyword.addrof);
 			ValExpr = Expression.ParseExpression(Tok, Symbol.Semicolon);
 
 			/*Token T = Tok.NextToken();
@@ -35,7 +35,7 @@ namespace CTilde.Expr
 
 		public override string ToSourceStr()
 		{
-			return string.Format("&({0})", ValExpr.ToSourceStr());
+			return string.Format("addrof ({0})", ValExpr.ToSourceStr());
 		}
 	}
 }

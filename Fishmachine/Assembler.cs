@@ -1,8 +1,10 @@
 ﻿using CodeGeneration;
+using Fishmachine.CTilde;
 using Fishmachine.VM;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -15,18 +17,26 @@ namespace Fishmachine
 		public bool Global = false;
 		public bool IsVariable = false;
 		public uint Address = 0;
+		public int AsmLine;
 
-		public uint ResolveAddress()
+		public AsmToken()
+		{
+
+		}
+
+		public uint ResolveAddress(AsmToken AT)
 		{
 			if (Address == 0)
-				throw new Exception(string.Format("Linker error: could not resolve symbol '{0}'", Name));
+			{
+				throw new ExprException(AT, string.Format("Linker error: could not resolve symbol '{0}'", Name));
+			}
 
 			return Address;
 		}
 
 		public override string ToString()
 		{
-			return string.Format("{0} @ {1}", Name, Address);
+			return string.Format("[line {0}] {1} @ {2} ({3})", AsmLine, Name, Address, ((Global ? "glob " : "") + (IsVariable ? "var " : "")).Trim());
 		}
 	}
 
@@ -195,13 +205,14 @@ namespace Fishmachine
 	{
 		List<AsmToken> Tokens = new List<AsmToken>();
 
-		public AsmToken RefToken(string TokenName)
+		public AsmToken RefToken(int AsmLine, string TokenName)
 		{
 			AsmToken Tok = Tokens.Where(T => T.Name == TokenName).FirstOrDefault();
 
 			if (Tok == null)
 			{
 				Tok = new AsmToken();
+				Tok.AsmLine = AsmLine;
 				Tok.Name = TokenName;
 				Tokens.Add(Tok);
 			}
@@ -214,9 +225,9 @@ namespace Fishmachine
 			Tokens.RemoveAll(T => !T.Global);
 		}
 
-		public AsmToken DefineToken(string TokenName, uint Addr, bool Global, bool ReassignAddress = true)
+		public AsmToken DefineToken(int AsmLine, string TokenName, uint Addr, bool Global, bool ReassignAddress = true)
 		{
-			AsmToken Tok = RefToken(TokenName);
+			AsmToken Tok = RefToken(AsmLine, TokenName);
 
 			if (!Tok.Global)
 				Tok.Global = Global;
@@ -288,7 +299,7 @@ namespace Fishmachine
 			CurAddr += (uint)Instr.Size(CurAddr);
 		}
 
-		bool TryParseToken(AssemblerState state, string TokenStr, out AsmToken Token, out uint Value)
+		bool TryParseToken(int AsmLine, AssemblerState state, string TokenStr, out AsmToken Token, out uint Value)
 		{
 			Token = null;
 			Value = 0;
@@ -306,7 +317,7 @@ namespace Fishmachine
 			}
 			else
 			{
-				Token = state.RefToken(TokenStr);
+				Token = state.RefToken(AsmLine, TokenStr);
 				return true;
 			}
 
@@ -326,6 +337,7 @@ namespace Fishmachine
 			for (int i = 0; i < Lines.Length; i++)
 			{
 				string L = Lines[i].Trim();
+				int AsmLine = i + 1;
 
 				if (L.StartsWith("#"))
 					continue;
@@ -360,7 +372,7 @@ namespace Fishmachine
 
 						case ".comm":
 							{
-								state.DefineToken(Tokens[1], 0, true, false);
+								state.DefineToken(AsmLine, Tokens[1], 0, true, false);
 								break;
 							}
 
@@ -369,7 +381,7 @@ namespace Fishmachine
 								AsmToken Tok = state.FindToken(Tokens[1]);
 								if (Tok == null)
 								{
-									state.DefineToken(Tokens[1], 0, true);
+									state.DefineToken(AsmLine, Tokens[1], 0, true);
 								}
 								break;
 							}
@@ -379,9 +391,23 @@ namespace Fishmachine
 								AsmToken Tok = state.FindToken(Tokens[1]);
 								if (Tok == null)
 								{
-									Tok = state.DefineToken(Tokens[1], 0, true);
+									Tok = state.DefineToken(AsmLine, Tokens[1], 0, true);
 									Tok.IsVariable = true;
 								}
+								break;
+							}
+
+						case ".float":
+							{
+								AsmInstr RawStr = new AsmInstr(FishInst.NOP);
+								string QStr = L.Substring(".float".Length).Trim().TrimEnd('f');
+
+								float val = 0;
+
+								val = float.Parse(QStr, CultureInfo.InvariantCulture);
+								RawStr.Raw = BitConverter.GetBytes(val);
+
+								AddAsmInstr(RawStr);
 								break;
 							}
 
@@ -394,7 +420,7 @@ namespace Fishmachine
 
 								if (QStr.StartsWith("."))
 								{
-									AsmToken tt = state.RefToken(QStr);
+									AsmToken tt = state.RefToken(AsmLine,QStr);
 
 									RawStr.Raw = BitConverter.GetBytes(0);
 									RawStr.SetOp1(tt, sizeof(int));
@@ -447,7 +473,7 @@ namespace Fishmachine
 				{
 					// Label
 					string LabelName = L.Substring(0, L.Length - 1).Trim();
-					state.DefineToken(LabelName, CurAddr, false);
+					state.DefineToken(AsmLine, LabelName, CurAddr, false);
 				}
 				else
 				{
@@ -465,6 +491,8 @@ namespace Fishmachine
 						case "IMUL_REG":
 						case "POP_REG":
 						case "PUSH_REG":
+						case "FLOAT_POP_REG":
+						case "FLOAT_PUSH_REG":
 						case "CALL_REG":
 						case "SETNOTEQUAL_REG":
 						case "SETEQUAL_REG":
@@ -481,6 +509,8 @@ namespace Fishmachine
 
 							break;
 
+						case "BOLAND_REG_REG":
+						case "BOLOR_REG_REG":
 						case "BINAND_REG_REG":
 						case "BINOR_REG_REG":
 						case "BINXOR_REG_REG":
@@ -516,7 +546,7 @@ namespace Fishmachine
 
 								Instr = new AsmInstr(Enum.Parse<FishInst>(Tokens[0]));
 
-								if (TryParseToken(state, Tokens[1], out AsmToken Tok, out uint Val))
+								if (TryParseToken(AsmLine, state, Tokens[1], out AsmToken Tok, out uint Val))
 								{
 									if (Tok != null)
 									{
@@ -561,7 +591,7 @@ namespace Fishmachine
 								Throw(i, $"{Tokens[0]} requires 2 operands");
 
 							Instr = new AsmInstr(Enum.Parse<FishInst>(Tokens[0]));
-							Instr.SetOp1(state.RefToken(Tokens[1]), 4);
+							Instr.SetOp1(state.RefToken(AsmLine, Tokens[1]), 4);
 							Instr.SetOp2((byte)ParseReg(i, Tokens[2]), 1);
 
 							AddAsmInstr(Instr);
@@ -614,7 +644,7 @@ namespace Fishmachine
 
 								Instr = new AsmInstr(Enum.Parse<FishInst>(Tokens[0]));
 
-								if (TryParseToken(state, Tokens[1], out AsmToken Tok, out uint Val))
+								if (TryParseToken(AsmLine, state, Tokens[1], out AsmToken Tok, out uint Val))
 								{
 									if (Tok != null)
 									{
@@ -699,17 +729,17 @@ namespace Fishmachine
 						{
 							if (Instr.Op1Token != null)
 							{
-								Instr.SetOp1(Instr.Op1Token.ResolveAddress(), 4);
+								Instr.SetOp1(Instr.Op1Token.ResolveAddress(Instr.Op1Token), 4);
 							}
 
 							if (Instr.Op2Token != null)
 							{
-								Instr.SetOp2(Instr.Op2Token.ResolveAddress(), 4);
+								Instr.SetOp2(Instr.Op2Token.ResolveAddress(Instr.Op2Token), 4);
 							}
 
 							if (Instr.Op3Token != null)
 							{
-								Instr.SetOp3(Instr.Op3Token.ResolveAddress(), 4);
+								Instr.SetOp3(Instr.Op3Token.ResolveAddress(Instr.Op3Token), 4);
 							}
 						}
 

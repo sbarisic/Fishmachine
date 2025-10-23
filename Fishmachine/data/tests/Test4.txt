@@ -1,0 +1,7 @@
+a (should be 6.0): 6
+b (should be 7.0): 7
+result (should be 0.0): 0
+result = a + b (should be 13): 13
+result = b - a (should be 1): 1
+result = a * b (should be 42): 42
+result = b / a (should be 1.16666666667): 1.1666666

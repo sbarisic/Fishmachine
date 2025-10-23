@@ -1,1 +1,7 @@
 Hello Unit Test World!
+if (true) - True
+while (true) - True
+break; - PASSED
+func_call() - PASS
+return; - PASSED
+End of Test1

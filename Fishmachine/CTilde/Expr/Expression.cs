@@ -1,4 +1,5 @@
 using Fishmachine;
+using Fishmachine.CTilde;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -66,7 +67,7 @@ namespace CTilde.Expr
 
 				Expression FDef = ParseStatement(Tok);
 				if (FDef is not Expr_FuncDef)
-					throw new Exception("Function definition expected after 'naked'");
+					throw new ExprException(PT, "Function definition expected after 'naked'");
 
 				((Expr_FuncDef)FDef).Naked = true;
 				return FDef;
@@ -77,7 +78,7 @@ namespace CTilde.Expr
 
 				Expression FDef = ParseStatement(Tok);
 				if (FDef is not Expr_FuncDef)
-					throw new Exception("Function definition expected after 'interrupt'");
+					throw new ExprException(PT, "Function definition expected after 'interrupt'");
 
 				((Expr_FuncDef)FDef).Interrupt = true;
 				return FDef;
@@ -185,13 +186,13 @@ namespace CTilde.Expr
 			else if (EE is Expr_ConstNumber ConstNumVal)
 				return ConstNumVal;
 			else
-				throw new NotImplementedException();
+				throw new ExprException(PT);
 
 			// Empty statement
 			/*if (Tok.Peek().Is(Symbol.Semicolon))
 				return null;*/
 
-			throw new Exception();
+			throw new ExprException(PT);
 		}
 
 		public static Expression ParseExpression(Tokenizer Tok, Symbol StopSymbol)
@@ -214,7 +215,7 @@ namespace CTilde.Expr
 						return new Expr_MathOp(LeftExpr).Parse<Expr_MathOp>(Tok);
 					}
 
-					if (Tok.Peek().Is(Symbol.BinaryAnd) || Tok.Peek().Is(Symbol.BinaryOr))
+					if (Tok.Peek().Is(Symbol.BinaryAnd) || Tok.Peek().Is(Symbol.BinaryOr) || Tok.Peek().Is(Symbol.BitwiseAnd) || Tok.Peek().Is(Symbol.BitwiseOr))
 					{
 						return new Expr_BinaryOp(LeftExpr).Parse<Expr_BinaryOp>(Tok);
 					}
@@ -242,7 +243,7 @@ namespace CTilde.Expr
 				{
 					LeftExpr = new Expr_StaticValue().Parse<Expr_StaticValue>(Tok);
 				}
-				else if (Tok.Peek().Is(Symbol.AddressOf) && Tok.Peek(2).Is(TokenType.Identifier))
+				else if (Tok.Peek().Is(Keyword.addrof) && Tok.Peek(2).Is(TokenType.Identifier))
 				{
 					LeftExpr = new Expr_AddressOfOp().Parse<Expr_AddressOfOp>(Tok);
 				}
@@ -264,20 +265,24 @@ namespace CTilde.Expr
 				else if (Tok.Peek().Is(Keyword.@true))
 				{
 					Tok.NextToken().Assert(Keyword.@true);
-					LeftExpr = new Expr_ConstNumber("1");
+					LeftExpr = new Expr_ConstNumber(Tok.Peek(), "1");
 				}
 				else if (Tok.Peek().Is(Keyword.@false))
 				{
 					Tok.NextToken().Assert(Keyword.@false);
-					LeftExpr = new Expr_ConstNumber("0");
+					LeftExpr = new Expr_ConstNumber(Tok.Peek(), "0");
 				}
 				else if (Tok.Peek().Is(TokenType.Identifier) && Tok.Peek(2).Is(Symbol.LBracket))
 				{
 					LeftExpr = new Expr_IndexOp(new Expr_Identifier().Parse<Expr_Identifier>(Tok)).Parse<Expr_IndexOp>(Tok);
 				}
-				else if (Tok.Peek().Is(TokenType.Number) || Tok.Peek().Is(TokenType.Decimal))
+				else if (Tok.Peek().Is(TokenType.Number))
 				{
-					LeftExpr = new Expr_ConstNumber(Tok.NextToken().Text);
+					LeftExpr = new Expr_ConstNumber(Tok.Peek(), Tok.NextToken().Text);
+				}
+				else if (Tok.Peek().Is(TokenType.Decimal))
+				{
+					LeftExpr = new Expr_ConstDecimal(Tok.Peek(), Tok.NextToken().Text);
 				}
 				else if (Tok.Peek().Is(TokenType.Identifier) && Tok.Peek(2).Is(Symbol.LParen))
 				{
@@ -305,7 +310,7 @@ namespace CTilde.Expr
 						else
 						{
 							if (PT.Text[1] != '\\')
-								throw new Exception("Invalid character literal " + PT.Text);
+								throw new ExprException(PT, "Invalid character literal " + PT.Text);
 
 							switch (PT.Text[2])
 							{
@@ -338,7 +343,7 @@ namespace CTilde.Expr
 									break;
 
 								default:
-									throw new Exception("Invalid escape sequence \\" + PT.Text[2]);
+									throw new ExprException(PT, "Invalid escape sequence \\" + PT.Text[2]);
 							}
 						}
 
@@ -348,10 +353,10 @@ namespace CTilde.Expr
 					else if (PT.Text.StartsWith("\"") && PT.Text.EndsWith("\""))
 						LeftExpr = new Expr_ConstString(Tok.NextToken().Text);
 					else
-						throw new NotImplementedException();
+						throw new ExprException(PT);
 				}
 				else
-					throw new NotImplementedException();
+					throw new ExprException(PT);
 			}
 
 			Tok.NextToken().Assert(StopSymbol);
