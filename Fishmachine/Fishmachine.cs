@@ -475,13 +475,13 @@ namespace Fishmachine
 			//string OutStr = CompileAndRun("data/FishAsm.c", "FishAsm.asm");
 			//OutStr = CompileAndRun("data/FishAsm.c", "FishAsm.asm");
 
-			//RunProgram("data/FishAsm.c", false);
+			RunProgram("data/FishAsm.c", false);
 			//RunProgram("data/tests/Test4.c", false);
 
-			RunProgram("data/tests/Test1.c", true);
+			/*RunProgram("data/tests/Test1.c", true);
 			RunProgram("data/tests/Test2.c", true);
 			RunProgram("data/tests/Test3.c", true);
-			RunProgram("data/tests/Test4.c", true);
+			RunProgram("data/tests/Test4.c", true);*/
 
 			//RunProgram("data/tests/Test5.c", true);
 

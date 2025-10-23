@@ -15,7 +15,7 @@ define SYS_Cls = 5;
 
 voidptr alloc(uint bytes) {
 	voidptr alloc_mem = bytes;
-	syscall_2(SYS_Alloc, &alloc_mem);
+	syscall_2(SYS_Alloc, addrof alloc_mem);
 	return alloc_mem;
 }
 
@@ -172,9 +172,9 @@ naked void kmain() {
 	//int_table = 32;
 	//__asm("DBG_BREAK");
 
-	int_table[0] = &handler_int0;
-	int_table[1] = &handler_int1_keyboardkey;
-	int_table[2] = &handler_int2_keyboardchar;
+	int_table[0] = addrof handler_int0;
+	int_table[1] = addrof handler_int1_keyboardkey;
+	int_table[2] = addrof handler_int2_keyboardchar;
 	byte* bptr = 0;
 
 	//__asm("SYSCALL $0");
