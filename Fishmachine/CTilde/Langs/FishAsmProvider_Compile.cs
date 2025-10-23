@@ -487,10 +487,10 @@ namespace CTilde.Langs
 
 						EmitInstruction(FishInst.PUSH_REG, Reg.ECX);
 
-						Compile(BinaryExp.LExpr);                 // EAX = LHS
+						Compile(BinaryExp.RExpr);                 // EAX = LHS
 						EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
 
-						Compile(BinaryExp.RExpr);                 // EAX = RHS
+						Compile(BinaryExp.LExpr);                 // EAX = RHS
 						EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.ECX); // ECX = RHS
 
 						EmitInstruction(FishInst.POP_REG, Reg.EAX);  // EAX = LHS
@@ -506,11 +506,15 @@ namespace CTilde.Langs
 								break;
 
 							case BinaryOp.BitwiseAnd:
-								EmitInstruction(FishInst.BINAND_REG_REG, Reg.ECX, Reg.EAX);   // EAX = L || R
+								EmitInstruction(FishInst.BINAND_REG_REG, Reg.ECX, Reg.EAX);   // EAX = L & R
 								break;
 
 							case BinaryOp.BitwiseOr:
-								EmitInstruction(FishInst.BINOR_REG_REG, Reg.ECX, Reg.EAX);   // EAX = L || R
+								EmitInstruction(FishInst.BINOR_REG_REG, Reg.ECX, Reg.EAX);   // EAX = L | R
+								break;
+
+							case BinaryOp.BitwiseXor:
+								EmitInstruction(FishInst.BINXOR_REG_REG, Reg.ECX, Reg.EAX);   // EAX = L ^ R
 								break;
 
 							default:

@@ -69,6 +69,11 @@ naked void kmain() {
 	test_print(((a - 1) == 2), "(a - 1) == 2");
 	test_print(((a * 1) == 3), "(a * 1) == 3");
 	test_print(((b / 2) == 2), "(b / 2) == 2");
+
+	test_print(((a & 5) == 1), "(a & 5) == 1");
+	test_print(((a | 5) == 7), "(a | 5) == 7");
+	test_print(((a ^ 5) == 6), "(a ^ 5) == 6");
+
 	test_print((a == 9), "a == 9");
 	test_print((b == 9), "b == 9");
 	test_print(((a + b) == 9), "(a + b) == 9");
