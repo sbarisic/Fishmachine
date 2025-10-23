@@ -51,6 +51,10 @@ void test_print(bool cond, string text) {
 	}
 }
 
+float fadd(float a, float b) {
+	return a + b;
+}
+
 naked void kmain() {
 	int_table[0] = addrof handler_int0;
 	int_table[1] = addrof handler_int1_keyboardkey;
@@ -83,6 +87,10 @@ naked void kmain() {
 
 	result = b / a;
 	print("result = b / a (should be 1.16666666667): ");
+	printfloat(result);
+
+	result = fadd(a, b);
+	print("result = fadd(a, b) (should be 13): ");
 	printfloat(result);
 
 	//wait;
