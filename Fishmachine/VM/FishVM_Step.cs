@@ -160,6 +160,40 @@ namespace Fishmachine.VM
 						break;
 					}
 
+				case FishInst.FLOAT_PUSH_REG:
+					{
+						Reg R = (Reg)ReadByteFromIP(ref E);
+						if (!E.Is(FishExcept.None))
+							return true;
+
+						Console.PrintInst(Inst, R);
+						E.SetParams(R);
+
+
+						float Val = BitConverter.ToSingle(BitConverter.GetBytes(Regs.Read(R)));
+						Regs.FpuPush(Val);
+
+						break;
+					}
+
+				case FishInst.FLOAT_POP_REG:
+					{
+						Reg R = (Reg)ReadByteFromIP(ref E);
+
+						if (!E.Is(FishExcept.None))
+							return true;
+
+						Console.PrintInst(Inst, R);
+						E.SetParams(R);
+
+						float Val = Regs.FpuPop();
+						uint UVal = BitConverter.ToUInt32(BitConverter.GetBytes(Val));
+
+						Regs.Write(R, UVal);
+
+						break;
+					}
+
 				case FishInst.PUSH_REG:
 					{
 						Reg R = (Reg)ReadByteFromIP(ref E);
@@ -400,9 +434,11 @@ namespace Fishmachine.VM
 						break;
 					}
 
-				case FishInst.BINOR_REG_REG:
-				case FishInst.BINXOR_REG_REG:
 				case FishInst.BINAND_REG_REG:
+				case FishInst.BINOR_REG_REG:
+				case FishInst.BOLOR_REG_REG:
+				case FishInst.BINXOR_REG_REG:
+				case FishInst.BOLAND_REG_REG:
 					{
 						Reg R1 = (Reg)ReadByteFromIP(ref E);
 						if (!E.Is(FishExcept.None))
@@ -420,16 +456,24 @@ namespace Fishmachine.VM
 
 						switch (Inst)
 						{
-							case FishInst.BINOR_REG_REG:
+							case FishInst.BOLOR_REG_REG:
 								Regs.Write(R2, ((R1Val != 0) || (R2Val != 0)) ? 1u : 0u);
+								break;
+
+							case FishInst.BOLAND_REG_REG:
+								Regs.Write(R2, ((R1Val != 0) && (R2Val != 0)) ? 1u : 0u);
 								break;
 
 							case FishInst.BINXOR_REG_REG:
 								Regs.Write(R2, ((R1Val != 0) ^ (R2Val != 0)) ? 1u : 0u);
 								break;
 
+							case FishInst.BINOR_REG_REG:
+								Regs.Write(R2, R1Val | R2Val);
+								break;
+
 							case FishInst.BINAND_REG_REG:
-								Regs.Write(R2, ((R1Val != 0) && (R2Val != 0)) ? 1u : 0u);
+								Regs.Write(R2, R1Val & R2Val);
 								break;
 
 							default:
@@ -952,7 +996,7 @@ namespace Fishmachine.VM
 						if (!E.Is(FishExcept.None))
 							return true;
 
-						Console.PrintInst(Inst, Addr); 
+						Console.PrintInst(Inst, Addr);
 						E.SetParams(Addr);
 
 						if (CallLong(Addr, ref E))

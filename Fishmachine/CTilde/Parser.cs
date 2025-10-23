@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -24,7 +25,7 @@ namespace CTilde
 			{
 				return new Expr_Module().Parse(Tokenizer);
 			}
-			catch (ExprException E)
+			catch (ExprException E) when (!Debugger.IsAttached)
 			{
 				Console.WriteLine(E);
 				throw;

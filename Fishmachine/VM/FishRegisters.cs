@@ -32,6 +32,7 @@ namespace Fishmachine.VM
 			}
 		}
 
+		int StCount;
 		float[] ST;
 		uint[] Regs;
 		uint RFLAGS;
@@ -161,6 +162,7 @@ namespace Fishmachine.VM
 		{
 			Regs = new uint[(int)Reg.MAX_VALUE];
 			ST = new float[8];
+			StCount = 0;
 
 			IntEnabled = true;
 			SoftIntEnabled = true;
@@ -177,12 +179,16 @@ namespace Fishmachine.VM
 					Console.ResetColor();
 				}
 
+				if (StCount >= ST.Length)
+					throw new Exception("FPU Stack Overflow");
+
 				for (int i = ST.Length - 1; i >= 1; i--)
 				{
 					ST[i] = ST[i - 1];
 				}
 
 				ST[0] = Val;
+				StCount++;
 			}
 		}
 
@@ -190,12 +196,16 @@ namespace Fishmachine.VM
 		{
 			lock (Lck)
 			{
+				if (StCount <= 0)
+					throw new Exception("FPU Stack Underflow");
+
 				float Val = ST[0];
 
 				for (int i = 1; i < ST.Length; i++)
 				{
 					ST[i - 1] = ST[i];
 				}
+				StCount--;
 
 				if (FishSettings.DebugPrint || FishSettings.DebugPrintFloats)
 				{
@@ -212,6 +222,9 @@ namespace Fishmachine.VM
 		{
 			lock (Lck)
 			{
+				if (StCount <= 0)
+					throw new Exception("FPU Stack Underflow");
+
 				if (FishSettings.DebugPrint || FishSettings.DebugPrintFloats)
 				{
 					Console.ForegroundColor = ConsoleColor.DarkBlue;

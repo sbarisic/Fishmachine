@@ -29,12 +29,37 @@ interrupt void handler_int2_keyboardchar(uint key2) {
 	print(tmp_chr);
 }
 
+void func_call() {
+	print("func_call() - PASS\n");
+	return;
+
+	print("return; - FAILED\n");
+}
+
 naked void kmain() {
-	int_table[0] = &handler_int0;
-	int_table[1] = &handler_int1_keyboardkey;
-	int_table[2] = &handler_int2_keyboardchar;
+	int_table[0] = addrof handler_int0;
+	int_table[1] = addrof handler_int1_keyboardkey;
+	int_table[2] = addrof handler_int2_keyboardchar;
 
 	print("Hello Unit Test World!\n");
 
+	if (true) {
+		print("if (true) - True\n");
+	}
+	else {
+		print("if (true) - False\n");
+	}
+
+	while (true) {
+		print("while (true) - True\n");
+		break;
+		print("break; - FAILED\n");
+	}
+	print("break; - PASSED\n");
+
+	func_call();
+	print("return; - PASSED\n");
+
+	print("End of Test1\n");
 	__asm("SYSCALL $0");
 }

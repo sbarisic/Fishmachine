@@ -433,7 +433,7 @@ namespace Fishmachine
 				return;
 			}
 
-			string OutFile = Path.GetFileNameWithoutExtension(SrcFile) + ".asm";
+			string OutFile = "data/tests/" + Path.GetFileNameWithoutExtension(SrcFile) + ".asm";
 			string ExpOutFile = "data/tests/" + Path.GetFileNameWithoutExtension(SrcFile) + ".txt";
 			string ExpectedOutput = File.ReadAllText(ExpOutFile).Replace("\r\n", "\n");
 
@@ -447,6 +447,8 @@ namespace Fishmachine
 			Console.Silent = false;
 
 			bool Pass = Out == ExpectedOutput;
+
+			File.WriteAllText("data/tests/" + Path.GetFileNameWithoutExtension(SrcFile) + "_out.txt", Out);
 
 			if (Pass)
 			{
@@ -473,10 +475,15 @@ namespace Fishmachine
 			//string OutStr = CompileAndRun("data/FishAsm.c", "FishAsm.asm");
 			//OutStr = CompileAndRun("data/FishAsm.c", "FishAsm.asm");
 
-			RunProgram("data/FishAsm.c", false);
+			//RunProgram("data/FishAsm.c", false);
+			//RunProgram("data/tests/Test4.c", false);
 
-			//RunProgram("data/tests/Test1.c", true);
-			//RunProgram("data/tests/Test2.c", true);
+			RunProgram("data/tests/Test1.c", true);
+			RunProgram("data/tests/Test2.c", true);
+			RunProgram("data/tests/Test3.c", true);
+			RunProgram("data/tests/Test4.c", true);
+
+			//RunProgram("data/tests/Test5.c", true);
 
 			//Compile("stdfish.c");
 			//Compile("test.c");

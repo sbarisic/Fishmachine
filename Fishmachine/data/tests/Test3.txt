@@ -1,0 +1,10 @@
+Hello Unit Test World!
+a (should be 3): 3
+b (should be 4): 4
+result (should be 0): 0
+result = a + b (should be 7): 7
+result = b - a (should be 1): 1
+result = a * b (should be 12): 12
+result = b / a (should be 1): 1
+result = a & b (should be 0): 0
+result = a | b (should be 7): 7

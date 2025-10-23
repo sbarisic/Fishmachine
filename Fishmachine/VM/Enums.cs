@@ -53,6 +53,7 @@ namespace Fishmachine.VM
 		SoftwareInterrupt,
 		Alloc,
 		Cls,
+		PrintFloat,
 	}
 
 	public enum FishInterrupt : byte
@@ -109,11 +110,15 @@ namespace Fishmachine.VM
 		CALL_REG,
 		CALL_LONG,
 
+		FLOAT_PUSH_REG,
 		PUSH_REG,
 		PUSH_LONG,
 
+		FLOAT_POP_REG,
 		POP_REG,
 
+		BOLAND_REG_REG,
+		BOLOR_REG_REG,
 		BINAND_REG_REG,
 		BINOR_REG_REG,
 		BINXOR_REG_REG,
