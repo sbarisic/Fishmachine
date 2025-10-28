@@ -129,7 +129,6 @@ namespace Fishmachine.VM
 
 		List<FishMemProt> MemProt = new List<FishMemProt>();
 
-		public Graphics Gfx;
 		public uint IntTableAddr;
 		public StringBuilder Out = new StringBuilder();
 
@@ -252,6 +251,12 @@ namespace Fishmachine.VM
 			}
 
 			yield break;
+		}
+
+		public uint MemMgrAlloc(uint Bytes)
+		{
+			MemAllocPtr = MemAllocPtr - Bytes;
+			return MemAllocPtr;
 		}
 
 		public void ProtectMemory(uint Address, uint Size, FishMemProt Prot)
@@ -428,6 +433,11 @@ namespace Fishmachine.VM
 			return BitConverter.ToUInt32(Bytes, 0);
 		}
 
+		public uint ReadUInt32FromStack(uint StackAddr, ref FishStackTrace E)
+		{
+			return ReadUInt32(StackAddr, FishMemProt.GetPriv(StackAddr, StackAddr, StackSize, true), ref E);
+		}
+
 		byte ReadByteFromIP(ref FishStackTrace E)
 		{
 			byte Value = ReadByte(Regs.IP, FishMemPriv.Execute, ref E);
@@ -558,6 +568,45 @@ namespace Fishmachine.VM
 			Interrupt(Num, ref E);
 		}
 
+		public void Interrupt(FishInterrupt Num, uint[] Args, ref FishStackTrace E)
+		{
+			if (Args == null)
+				Interrupt(Num, ref E);
+			else if (Args.Length == 1)
+				Interrupt(Num, Args[0], ref E);
+			else
+				throw new NotImplementedException();
+		}
+
+		List<FishSyscallHandler> SyscallHandlers = new List<FishSyscallHandler>();
+
+		public FishSyscallHandler FindHandler(FishSyscall Syscall)
+		{
+			foreach (FishSyscallHandler Handler in SyscallHandlers)
+			{
+				if (Handler.Syscall == Syscall)
+					return Handler;
+			}
+
+			return null;
+		}
+
+		public void RegisterSyscall(FishSyscallHandler Handler)
+		{
+			if (FindHandler(Handler.Syscall) == null)
+				SyscallHandlers.Add(Handler);
+			else
+				throw new Exception("Syscall already registered '" + Handler.Syscall.ToString() + "'");
+		}
+
+		public void RegisterSyscall(FishSyscall Syscall, object UserData, FishSyscallFunc F)
+		{
+			if (FindHandler(Syscall) == null)
+				SyscallHandlers.Add(new FishSyscallHandler(Syscall, UserData, F));
+			else
+				throw new Exception("Syscall already registered '" + Syscall.ToString() + "'");
+		}
+
 		public void Syscall(FishSyscall FInt, uint Arg1, ref FishStackTrace E)
 		{
 			E.SetException(this, FishExcept.None);
@@ -572,103 +621,28 @@ namespace Fishmachine.VM
 			}
 			//}
 
+			FishSyscallHandler Handler = FindHandler(FInt);
+			if (Handler != null)
+			{
+				FishSyscallArgs Args = new FishSyscallArgs()
+				{
+					VM = this,
+					Args = new uint[] { Arg1 },
+					E = ref E
+				};
+
+
+				Handler.Invoke(ref Args);
+
+				if (Args.Return != null && Args.Return.Length > 0)
+				{
+					uint BytesPtr = Arg1;
+					WriteUInt32(BytesPtr, Args.Return[0], FishMemProt.GetPriv(BytesPtr, StackAddr, StackSize, false), ref E);
+				}
+			}
 
 			if (FInt == FishSyscall.StopMachine)
-			{
 				Halted = true;
-			}
-			else if (FInt == FishSyscall.PrintChar)
-			{
-				Console.WriteLine("PrintChar '{0}'", (char)Arg1);
-				Out.Append((char)Arg1);
-
-				if (FishSettings.DebugPrint)
-				{
-					Console.WriteLine("VM: 0x{0:X} = '{1}'", Arg1, (char)Arg1);
-				}
-
-				Gfx.Write((char)Arg1);
-				//File.AppendAllText("vm_sys.txt", ((char)Arg1).ToString());
-			}
-			else if (FInt == FishSyscall.PrintNum)
-			{
-				Console.WriteLine("PrintNum '{0}'", Arg1);
-				Out.AppendFormat("{0}", Arg1);
-
-				if (FishSettings.DebugPrint)
-				{
-					Console.WriteLine("VM: 0x{0:X} = '{1}'", Arg1, Arg1);
-				}
-
-				Gfx.Write(Arg1.ToString());
-				//File.AppendAllText("vm_sys.txt", ((char)Arg1).ToString());
-			}
-			else if (FInt == FishSyscall.PrintFloat)
-			{
-				float F = BitConverter.ToSingle(BitConverter.GetBytes(Arg1));
-				string FStr = F.ToString("0.0##############");
-				Console.WriteLine("PrintFloat '{0}'", FStr);
-				Out.AppendFormat("{0}", F);
-
-				if (FishSettings.DebugPrint)
-				{
-					Console.WriteLine("VM: EAX (float) = '{1}'", FStr);
-				}
-
-				Gfx.Write(FStr.ToString());
-			}
-			else if (FInt == FishSyscall.SoftwareInterrupt)
-			{
-				Console.WriteLine("Interrupt {0}!", Arg1);
-				Interrupt((FishInterrupt)Arg1, ref E);
-			}
-			else if (FInt == FishSyscall.Alloc)
-			{
-				bool Failed = false;
-
-				uint BytesPtr = Arg1;
-				uint Bytes = ReadUInt32(BytesPtr, FishMemProt.GetPriv(BytesPtr, StackAddr, StackSize, true), ref E);
-
-				if (E.Is(FishExcept.None))
-				{
-					MemAllocPtr = MemAllocPtr - Bytes;
-					uint AllocMem = MemAllocPtr;
-
-					if (Bytes == 0)
-						AllocMem = 0;
-
-					if (AllocMem != 0)
-					{
-						FishMemPriv Priv = FishMemPriv.ReadWrite;
-
-						if (Regs.IsSupervisor)
-							Priv = Priv | FishMemPriv.Supervisor;
-
-						ProtectMemory(AllocMem, Bytes, new FishMemProt(Priv, "alloc"));
-					}
-
-					WriteUInt32(BytesPtr, AllocMem, FishMemProt.GetPriv(BytesPtr, StackAddr, StackSize, false), ref E);
-					if (E.Is(FishExcept.None) && FishSettings.DebugPrintMemory)
-					{
-						Console.WriteLine("Alloc {0} bytes at 0x{1:X} ({1})", Bytes, AllocMem);
-					}
-					else
-						Failed = true;
-				}
-				else
-					Failed = true;
-
-				if (Failed && FishSettings.DebugPrintMemory)
-				{
-					Console.WriteLine("FAIL - Alloc {0} bytes at 0x{1:X} ({1})", Arg1, 0);
-				}
-			}
-			else if (FInt == FishSyscall.Cls)
-			{
-				Gfx.Clear();
-			}
-
-
 		}
 
 		bool CallLong(uint Addr, ref FishStackTrace E)
@@ -798,6 +772,12 @@ namespace Fishmachine.VM
 				return;
 
 			Console.WriteLine("Global '{0}' at 0x{1:X4} = 0x{2:X}", Name, Addr, Val);
+		}
+
+		public void PrintStack()
+		{
+			FishStackTrace Ex = new FishStackTrace();
+			PrintMem(StackAddr, ref Ex);
 		}
 
 		public void PrintMem(uint Start, ref FishStackTrace E)
@@ -949,6 +929,58 @@ namespace Fishmachine.VM
 			}
 
 			return false;
+		}
+
+		Queue<FishIntQueueItem> FishIntQueue = new Queue<FishIntQueueItem>();
+
+		public void EnqueueInterrupt(FishInterrupt Num, uint[] Args)
+		{
+			FishIntQueue.Enqueue(new FishIntQueueItem(Num, Args));
+		}
+
+		public void RunStandalone(bool Silent = false)
+		{
+			Thread BgThread = new Thread(() =>
+			{
+				FishStackTrace Ex = new FishStackTrace();
+
+				while (Run(ref Ex))
+				{
+					bool Interrupted = false;
+					while (!Interrupted)
+					{
+						if (FishIntQueue.Count > 0)
+						{
+							Interrupted = true;
+							FishIntQueueItem Item = FishIntQueue.Dequeue();
+							Interrupt(Item.Int, Item.Args, ref Ex);
+						}
+
+						if (!Ex.Is(FishExcept.RequestWait))
+							break;
+						
+						Thread.Sleep(1);
+					}
+
+					if (!Silent)
+						if (FishSettings.FormatPrint)
+							Program.FormatPrint(this);
+				}
+			});
+			BgThread.IsBackground = true;
+			BgThread.Start();
+		}
+	}
+
+	struct FishIntQueueItem
+	{
+		public FishInterrupt Int;
+		public uint[] Args;
+
+		public FishIntQueueItem(FishInterrupt Int, uint[] Args)
+		{
+			this.Int = Int;
+			this.Args = Args;
 		}
 	}
 }

@@ -9,205 +9,15 @@ using System.Text.Unicode;
 
 namespace Fishmachine
 {
-	static class Console
-	{
-		static FileStream FS;
-		public static bool Silent = false;
-
-		static void OpenWrite()
-		{
-			if (FS == null)
-			{
-				if (File.Exists("vm_out.txt"))
-					File.Delete("vm_out.txt");
-
-				FS = File.OpenWrite("vm_out.txt");
-			}
-		}
-
-		public static void Write(string Str)
-		{
-			if (!Silent)
-				System.Console.Write(Str);
-
-			OpenWrite();
-			FS.Write(Encoding.UTF8.GetBytes(Str));
-			FS.Flush();
-			//File.AppendAllText("vm_out.txt", Str);
-		}
-
-		public static void Clear()
-		{
-		}
-
-		public static void PrintInst(FishInst Inst, string Str)
-		{
-			ForegroundColor = ConsoleColor.DarkGray;
-			Write(Inst.ToString());
-
-			if (!string.IsNullOrEmpty(Str))
-			{
-				Write(" " + Str);
-			}
-
-			WriteLine();
-			ResetColor();
-		}
-
-		public static void PrintInst(FishInst Inst)
-		{
-			PrintInst(Inst, "");
-		}
-
-		public static void PrintInst(FishInst Inst, int Offset, Reg R1, Reg R2)
-		{
-			PrintInst(Inst, string.Format("{0}(%{1}), %{2}", Offset, R1, R2));
-		}
-
-		public static void PrintInst(FishInst Inst, Reg R1, int Offset, Reg R2)
-		{
-			PrintInst(Inst, string.Format("%{0}, {1}(%{2})", R1, Offset, R2));
-		}
-
-		public static void PrintInst(FishInst Inst, uint A1)
-		{
-			PrintInst(Inst, string.Format("0x{0:X}", A1));
-		}
-
-		public static void PrintInst(FishInst Inst, uint A1, Reg R)
-		{
-			PrintInst(Inst, string.Format("0x{0:X}, %{1}", A1, R));
-		}
-
-		public static void PrintInst(FishInst Inst, int Offset, Reg R)
-		{
-			PrintInst(Inst, string.Format("{0}(%{1})", Offset, R));
-		}
-
-		public static void PrintInst(FishInst Inst, Reg R)
-		{
-			PrintInst(Inst, "%" + R.ToString());
-		}
-
-		public static void PrintInst(FishInst Inst, Reg R1, Reg R2)
-		{
-			PrintInst(Inst, string.Format("%{0}, %{1}", R1, R2));
-		}
-
-		public static void PrintReg(string Str)
-		{
-			ForegroundColor = ConsoleColor.DarkYellow;
-			const char SplitChar = '=';
-
-			if (Str.Contains(SplitChar))
-			{
-				string[] SplStr = Str.Split(SplitChar);
-				Write(SplStr[0]);
-				ForegroundColor = ConsoleColor.White;
-
-				for (int i = 1; i < SplStr.Length; i++)
-				{
-					Write(SplitChar + "");
-					Write(SplStr[i]);
-				}
-			}
-			else
-				Write(Str);
-			ResetColor();
-		}
-
-		public static void PrintReg(Reg R, string Val)
-		{
-			PrintReg(string.Format("{0} = {1}", R, Val));
-		}
-
-		public static void PrintReg(Reg R, uint Val)
-		{
-			PrintReg(R, string.Format("0x{0:X8} hex, {0} dec; ", Val));
-		}
-
-		public static void Write(string Fmt, params object[] Args)
-		{
-			if (Args.Length == 0)
-				Write(Fmt);
-			else
-				Write(string.Format(Fmt, Args));
-		}
-
-		public static void WriteLine(string Fmt, params object[] Args)
-		{
-			Write(Fmt, Args);
-			WriteLine();
-		}
-
-		public static void WriteException(string Msg)
-		{
-			Console.ForegroundColor = ConsoleColor.Red;
-			Console.WriteLine(Msg);
-			Console.ResetColor();
-		}
-
-		public static void WriteException(string Msg, params object[] Args)
-		{
-			WriteException(string.Format(Msg, Args));
-		}
-
-		public static void WriteLine()
-		{
-			Write("\n");
-		}
-
-		public static string ReadLine()
-		{
-			return System.Console.ReadLine();
-		}
-
-		public static void ResetColor()
-		{
-			System.Console.ResetColor();
-		}
-
-		public static System.ConsoleColor ForegroundColor
-		{
-			get
-			{
-				return System.Console.ForegroundColor;
-			}
-
-			set
-			{
-				System.Console.ForegroundColor = value;
-			}
-		}
-	}
-
 	internal class Program
 	{
+		const bool PrintSrcAndAsm = false;
+
 		static void HookOutput()
 		{
 			if (File.Exists("vm_out.txt"))
 				File.Delete("vm_out.txt");
 		}
-
-		/*static void Compile(string CFile)
-		{
-			// Compile
-			string Src = "";
-
-			if (File.Exists(CFile))
-			{
-				Src = File.ReadAllText(CFile).Trim() + "\n";
-			}
-
-			Compiler compiler = Compiler.FromSource(Src);
-
-			string OutAsmName = Path.GetFileNameWithoutExtension(CFile) + ".asm";
-
-			if (File.Exists(OutAsmName))
-				File.Delete(OutAsmName);
-
-			File.WriteAllText(OutAsmName, compiler.Assembly);
-		}*/
 
 		static byte[] Assemble(AssemblerState AsmState, string[] AsmFiles)
 		{
@@ -238,7 +48,7 @@ namespace Fishmachine
 			return Bytecode;
 		}
 
-		static void FormatPrint(FishVM VM)
+		public static void FormatPrint(FishVM VM)
 		{
 			System.Console.CursorLeft = 0;
 			System.Console.CursorTop = 1;
@@ -284,7 +94,7 @@ namespace Fishmachine
 
 			string CtAsmSrc = Lng.CompileToSource();
 
-			if (!Silent)
+			if (!Silent && PrintSrcAndAsm)
 			{
 				Console.WriteLine(OutFile + ":\n" + CtAsmSrc);
 				Console.WriteLine();
@@ -333,12 +143,19 @@ namespace Fishmachine
 
 			FishVM VM = new FishVM();
 			VM.IntTableAddr = IntTableTok.Address;
-			VM.Gfx = Gfx;
+			//VM.Gfx = Gfx;
 
 			foreach (var G in Globals)
 			{
 				VM.DefineSymbol(G.Name, G.Address);
 			}
+
+			VM.RegisterSyscall(FishSyscall.PrintChar, Gfx, Syscall_PrintChar);
+			VM.RegisterSyscall(FishSyscall.PrintNum, Gfx, Syscall_PrintNum);
+			VM.RegisterSyscall(FishSyscall.PrintFloat, Gfx, Syscall_PrintFloat);
+			VM.RegisterSyscall(FishSyscall.SoftwareInterrupt, Gfx, Syscall_SoftwareInterrupt);
+			VM.RegisterSyscall(FishSyscall.Alloc, Gfx, Syscall_Alloc);
+			VM.RegisterSyscall(FishSyscall.Cls, Gfx, Syscall_Cls);
 
 			VM.AllocateMemory(AllocatedVMMemSize);
 			VM.SetMemMgrPointer(AllocatedVMMemSize - StackSize - StackOffset);
@@ -357,7 +174,10 @@ namespace Fishmachine
 			VM.LoadToMemory(Bytecode, LoadAddress, true);
 
 			if (!Silent)
-				Console.WriteLine("loaded at 0x{0:X}", LoadAddress);
+			{
+				int MemPerc = (int)(((float)Bytecode.Length / AllocatedVMMemSize) * 100);
+				Console.WriteLine("loaded at 0x{0:X} ({1} %)", LoadAddress, MemPerc);
+			}
 
 			VM.SetInitialStack(StackAddr, StackSize);
 			//VM.Regs.Write(CodeGeneration.Reg.EBP, 0x20000);
@@ -368,48 +188,28 @@ namespace Fishmachine
 			VM.SetSupervisor(true);
 			VM.Jump(KMainAddr);
 
-			FishStackTrace Ex = new FishStackTrace();
-			while (VM.Run(ref Ex) && Gfx.IsWindowOpen())
+			VM.RunStandalone(Silent);
+
+			while (Gfx.IsWindowOpen())
 			{
-				bool Interrupted = false;
-
-				while (!Interrupted && Gfx.IsWindowOpen())
+				if (Gfx.MousePressed())
 				{
-					if (Gfx.MousePressed())
-					{
-						if (!Silent)
-							Console.WriteLine("Mouse!");
+					if (!Silent)
+						Console.WriteLine("Mouse!");
 
-						VM.Interrupt(FishInterrupt.Int0, ref Ex);
-						//VM.Interrupt(FishInterrupt.Int2_KeyboardChar, Encoding.ASCII.GetBytes(new[] { 'M' })[0]);
-						Interrupted = true;
-					}
-					else if (Gfx.CharPressed(out uint Char))
-					{
-						byte B = Encoding.ASCII.GetBytes(new[] { (char)Char })[0];
-						VM.Interrupt(FishInterrupt.Int2_KeyboardChar, B, ref Ex);
-						Interrupted = true;
-					}
-
-					if (!Ex.Is(FishExcept.RequestWait))
-						break;
+					VM.EnqueueInterrupt(FishInterrupt.Int0, null);
 				}
 
-				/*else if (Gfx.KeyPressed(out uint Key))
+				if (Gfx.CharPressed(out uint Char))
 				{
-					VM.Interrupt(FishInterrupt.Int1_KeyboardKey, Key);
-				}*/
-
-				if (!Silent)
-					if (FishSettings.FormatPrint)
-						FormatPrint(VM);
+					byte B = Encoding.ASCII.GetBytes(new[] { (char)Char })[0];
+					VM.EnqueueInterrupt(FishInterrupt.Int2_KeyboardChar, new uint[] { B });
+				}
 			}
 
-			if (!Silent)
-				VM.PrintMem(StackAddr, ref Ex);
 
-			if (!Ex.Is(FishExcept.None))
-				throw new Exception($"VM stopped with exception {Ex}");
+			if (!Silent)
+				VM.PrintStack();
 
 			Gfx.Stop();
 			return VM.Out.ToString();
@@ -465,6 +265,109 @@ namespace Fishmachine
 			Thread.Sleep(500);
 		}
 
+		static void Syscall_PrintChar(object UserData, ref FishSyscallArgs Syscall)
+		{
+			Graphics Gfx = (Graphics)UserData;
+			uint Arg1 = Syscall.Args[0];
+
+			Console.WriteLine("PrintChar '{0}'", (char)Arg1);
+			Syscall.VM.Out.Append((char)Arg1);
+
+			if (FishSettings.DebugPrint)
+			{
+				Console.WriteLine("VM: 0x{0:X} = '{1}'", Arg1, (char)Arg1);
+			}
+
+			Gfx.Write((char)Arg1);
+			//File.AppendAllText("vm_sys.txt", ((char)Arg1).ToString());
+		}
+
+		static void Syscall_PrintNum(object UserData, ref FishSyscallArgs Syscall)
+		{
+			Graphics Gfx = (Graphics)UserData;
+			uint Arg1 = Syscall.Args[0];
+
+			Console.WriteLine("PrintNum '{0}'", Arg1);
+			Syscall.VM.Out.AppendFormat("{0}", Arg1);
+
+			if (FishSettings.DebugPrint)
+			{
+				Console.WriteLine("VM: 0x{0:X} = '{1}'", Arg1, Arg1);
+			}
+
+			Gfx.Write(Arg1.ToString());
+			//File.AppendAllText("vm_sys.txt", ((char)Arg1).ToString());
+		}
+
+		static void Syscall_PrintFloat(object UserData, ref FishSyscallArgs Syscall)
+		{
+			Graphics Gfx = (Graphics)UserData;
+			uint Arg1 = Syscall.Args[0];
+
+			float F = BitConverter.ToSingle(BitConverter.GetBytes(Arg1));
+			string FStr = F.ToString("0.0##############");
+			Console.WriteLine("PrintFloat '{0}'", FStr);
+			Syscall.VM.Out.AppendFormat("{0}", F);
+
+			if (FishSettings.DebugPrint)
+			{
+				Console.WriteLine("VM: EAX (float) = '{1}'", FStr);
+			}
+
+			Gfx.Write(FStr.ToString());
+		}
+
+		static void Syscall_SoftwareInterrupt(object UserData, ref FishSyscallArgs Syscall)
+		{
+			uint Arg1 = Syscall.Args[0];
+
+			Console.WriteLine("Interrupt {0}!", Arg1);
+			Syscall.VM.Interrupt((FishInterrupt)Arg1, ref Syscall.E);
+		}
+
+		static void Syscall_Alloc(object UserData, ref FishSyscallArgs Syscall)
+		{
+			uint Arg1 = Syscall.Args[0];
+			bool Failed = false;
+
+			uint BytesPtr = Arg1;
+			uint Bytes = Syscall.VM.ReadUInt32FromStack(BytesPtr, ref Syscall.E);
+
+			if (Syscall.E.Is(FishExcept.None))
+			{
+				uint AllocMem = Syscall.VM.MemMgrAlloc(Bytes);
+
+				if (Bytes == 0)
+					AllocMem = 0;
+
+				if (AllocMem != 0)
+				{
+					FishMemPriv Priv = FishMemPriv.ReadWrite;
+
+					if (Syscall.VM.Regs.IsSupervisor)
+						Priv = Priv | FishMemPriv.Supervisor;
+
+					Syscall.VM.ProtectMemory(AllocMem, Bytes, new FishMemProt(Priv, "alloc"));
+				}
+
+				Syscall.Return = new uint[] { AllocMem };
+			}
+			else
+				Failed = true;
+
+			if (Failed && FishSettings.DebugPrintMemory)
+			{
+				Console.WriteLine("FAIL - Alloc {0} bytes at 0x{1:X} ({1})", Arg1, 0);
+			}
+		}
+
+		static void Syscall_Cls(object UserData, ref FishSyscallArgs Syscall)
+		{
+			Graphics Gfx = (Graphics)UserData;
+			Gfx.Clear();
+		}
+
+
 		static void Main(string[] args)
 		{
 			HookOutput();
@@ -478,10 +381,10 @@ namespace Fishmachine
 			RunProgram("data/FishAsm.c", false);
 			//RunProgram("data/tests/Test4.c", false);
 
-			/*RunProgram("data/tests/Test1.c", true);
-			RunProgram("data/tests/Test2.c", true);
-			RunProgram("data/tests/Test3.c", true);
-			RunProgram("data/tests/Test4.c", true);*/
+			//RunProgram("data/tests/Test1.c", true);
+			//RunProgram("data/tests/Test2.c", true);
+			//RunProgram("data/tests/Test3.c", true);
+			//RunProgram("data/tests/Test4.c", true);
 
 			//RunProgram("data/tests/Test5.c", true);
 
