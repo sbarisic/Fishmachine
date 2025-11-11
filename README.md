@@ -1,3 +1,5 @@
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/sbarisic/Fishmachine)
+
 # Fishmachine
 
 Custom virtual machine with a C-like compiler and assembler that compiles and runs a small program on a simulated CPU/GPU.
@@ -25,9 +27,9 @@ Custom virtual machine with a C-like compiler and assembler that compiles and ru
 - Keyboard character interrupt (Int2_KeyboardChar) integration with the graphics window.
 
 ## Repository layout
-- Fishmachine/ Ö app entry point, VM, graphics, and CTilde integration
-- ccompiler/ Ö codegen helpers and instruction emission utilities
-- Fishmachine/data/FishAsm.c Ö sample CTilde program compiled and run by the VM
+- Fishmachine/ ‚Ä¶ app entry point, VM, graphics, and CTilde integration
+- ccompiler/ ‚Ä¶ codegen helpers and instruction emission utilities
+- Fishmachine/data/FishAsm.c ‚Ä¶ sample CTilde program compiled and run by the VM
 
 ## Build
 Prerequisites: .NET 8 SDK
@@ -44,7 +46,7 @@ Artifacts (in bin/Debug/net8.0 by default):
 - On start, the CTilde compiler compiles Fishmachine/data/FishAsm.c to ct.asm.
 - The assembler links it to bytecode.bin and the VM jumps to kmain.
 - The graphics window shows output. Typing sends characters via Int2_KeyboardChar.
-- The sample echoes input lines as ìYou typed: <line>î. Backspace is handled.
+- The sample echoes input lines as ‚ÄúYou typed: <line>‚Äù. Backspace is handled.
 
 ## Editing the program
 - Edit Fishmachine/data/FishAsm.c (C-like syntax). Example snippets used:
