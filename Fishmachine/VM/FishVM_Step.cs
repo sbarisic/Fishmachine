@@ -465,7 +465,7 @@ namespace Fishmachine.VM
 								break;
 
 							case FishInst.BINXOR_REG_REG:
-								Regs.Write(R2, ((R1Val != 0) ^ (R2Val != 0)) ? 1u : 0u);
+								Regs.Write(R2, R1Val ^ R2Val);
 								break;
 
 							case FishInst.BINOR_REG_REG:

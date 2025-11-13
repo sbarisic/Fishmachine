@@ -23,5 +23,10 @@ namespace CTilde.Expr {
 			ThisVar.Ident = new Expr_Identifier("this");
 			return ThisVar;
 		}
+
+		public override string ToSourceStr()
+		{
+			return string.Format("{0} {1}", Type.ToSourceStr(), Ident.ToSourceStr());
+		}
 	}
 }

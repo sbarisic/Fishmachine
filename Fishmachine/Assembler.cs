@@ -420,7 +420,7 @@ namespace Fishmachine
 
 								if (QStr.StartsWith("."))
 								{
-									AsmToken tt = state.RefToken(AsmLine,QStr);
+									AsmToken tt = state.RefToken(AsmLine, QStr);
 
 									RawStr.Raw = BitConverter.GetBytes(0);
 									RawStr.SetOp1(tt, sizeof(int));
@@ -455,7 +455,7 @@ namespace Fishmachine
 								AsmInstr RawStr = new AsmInstr(FishInst.NOP);
 								string QStr = L.Substring(".String".Length).Trim();
 								QStr = QStr.Substring(1, QStr.Length - 2);
-								QStr = QStr.Replace("\\n", "\n").Replace("\\t", "\t");
+								QStr = QStr.Replace("\\n", "\n").Replace("\\t", "\t").Replace("\\\"", "\"").Replace("\\\\", "\\");
 
 								int Len = QStr.Length;
 								RawStr.Raw = new byte[Len + 1];

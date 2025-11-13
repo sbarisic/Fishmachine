@@ -12,7 +12,8 @@ namespace CTilde.Expr
 		And,
 		Or,
 		BitwiseAnd,
-		BitwiseOr
+		BitwiseOr,
+		BitwiseXor,
 	}
 
 	public class Expr_BinaryOp : Expression
@@ -38,6 +39,8 @@ namespace CTilde.Expr
 				Op = BinaryOp.BitwiseAnd;
 			else if (T.Is(Symbol.BitwiseOr))
 				Op = BinaryOp.BitwiseOr;
+			else if (T.Is(Symbol.BitwiseXor))
+				Op = BinaryOp.BitwiseXor;
 			else
 				throw new NotImplementedException("Unexpected token " + T);
 
@@ -60,6 +63,9 @@ namespace CTilde.Expr
 
 				case BinaryOp.BitwiseOr:
 					return string.Format("({0}) | ({1})", LExpr.ToSourceStr(), RExpr.ToSourceStr());
+
+				case BinaryOp.BitwiseXor:
+					return string.Format("({0}) ^ ({1})", LExpr.ToSourceStr(), RExpr.ToSourceStr());
 
 				default:
 					throw new NotImplementedException();

@@ -110,6 +110,12 @@ namespace CTilde.Expr
 
 				return new Expr_WhileStatement().Parse(Tok);
 			}
+			else if (Tok.Peek().Is(Keyword.@for))
+			{
+				Tok.NextToken().Assert(Keyword.@for);
+
+				return new Expr_ForStatement().Parse(Tok);
+			}
 			else if (Tok.Peek().Is(Keyword.@return))
 			{
 				return new Expr_ReturnStatement().Parse(Tok);
@@ -215,7 +221,7 @@ namespace CTilde.Expr
 						return new Expr_MathOp(LeftExpr).Parse<Expr_MathOp>(Tok);
 					}
 
-					if (Tok.Peek().Is(Symbol.BinaryAnd) || Tok.Peek().Is(Symbol.BinaryOr) || Tok.Peek().Is(Symbol.BitwiseAnd) || Tok.Peek().Is(Symbol.BitwiseOr))
+					if (Tok.Peek().Is(Symbol.BinaryAnd) || Tok.Peek().Is(Symbol.BinaryOr) || Tok.Peek().Is(Symbol.BitwiseAnd) || Tok.Peek().Is(Symbol.BitwiseOr) || Tok.Peek().Is(Symbol.BitwiseXor))
 					{
 						return new Expr_BinaryOp(LeftExpr).Parse<Expr_BinaryOp>(Tok);
 					}

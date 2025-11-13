@@ -15,7 +15,7 @@ define SYS_Cls = 5;
 
 voidptr alloc(uint bytes) {
 	voidptr alloc_mem = bytes;
-	syscall_2(SYS_Alloc, &alloc_mem);
+	syscall_2(SYS_Alloc, addrof alloc_mem);
 	return alloc_mem;
 }
 
@@ -172,9 +172,9 @@ naked void kmain() {
 	//int_table = 32;
 	//__asm("DBG_BREAK");
 
-	int_table[0] = &handler_int0;
-	int_table[1] = &handler_int1_keyboardkey;
-	int_table[2] = &handler_int2_keyboardchar;
+	int_table[0] = addrof handler_int0;
+	int_table[1] = addrof handler_int1_keyboardkey;
+	int_table[2] = addrof handler_int2_keyboardchar;
 	byte* bptr = 0;
 
 	//__asm("SYSCALL $0");
@@ -201,9 +201,44 @@ naked void kmain() {
 			bptr = 0;
 			bptr[0] = 32;
 		}
+		else if (cmp(temp_buffer2, "test") == true) {
+			print("This is a test!\n");
+		}
+		else if (cmp(temp_buffer2, "long") == true) {
+			print("This is a test!\n");
+			print(" THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG\n");
+			print(" the quick brown fox jumps over the laz dog\n");
+			print(" 0123456789 !@#$%^&*()_+-=[]{}|;':,.<>/?`~\n");
+			print(" Lorem ipsum dolor sit amet, consectetur adipiscing elit,\n"); 
+			print(" sed do eiusmod tempor incididunt\n");
+			print(" ut labore et dolore magna aliqua.\n");
+			print(" Ut enim ad minim veniam,\n");
+			print(" quis nostrud exercitation ullamco laboris\n");
+			print(" nisi ut aliquip ex ea commodo consequat.\n");
+			print(" Duis aute irure dolor in reprehenderit\n");
+			print(" in voluptate velit esse cillum dolore eu fugiat nulla pariatur.\n");
+			print(" Excepteur sint occaecat cupidatat non proident, sunt in\n");
+			print(" culpa qui officia deserunt mollit anim id est laborum.\n");
+			print(" sed do eiusmod tempor incididunt\n");
+			print(" ut labore et dolore magna aliqua.\n");
+			print(" Ut enim ad minim veniam,\n");
+			print(" quis nostrud exercitation ullamco laboris\n");
+			print(" nisi ut aliquip ex ea commodo consequat.\n");
+			print(" Duis aute irure dolor in reprehenderit\n");
+			print(" in voluptate velit esse cillum dolore eu fugiat nulla pariatur.\n");
+			print(" Excepteur sint occaecat cupidatat non proident, sunt in\n");
+			print(" culpa qui officia deserunt mollit anim id est laborum.\n");
+		}
 		else if (cmp(temp_buffer2, "barely") == true) {
 			bptr = 0x101;
 			bptr[0] = 32;
+		}
+		else if (cmp(temp_buffer2, "forloop") == true) {
+			for (uint i = 0; i < 5; i = i + 1) {
+				print("Forloop! ");
+			}
+
+			print("\nDone!\n");
 		}
 		else {
 			print("You typed: ");

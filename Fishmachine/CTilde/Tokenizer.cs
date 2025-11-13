@@ -16,6 +16,7 @@ namespace CTilde
 		@if,
 		@else,
 		@while,
+		@for,
 		@true,
 		@false,
 		naked,
@@ -56,7 +57,8 @@ namespace CTilde
 		BinaryAnd,
 		BinaryOr,
 		BitwiseAnd,
-		BitwiseOr
+		BitwiseOr,
+		BitwiseXor
 	}
 
 	public class Tokenizer
@@ -100,6 +102,7 @@ namespace CTilde
 				{ ";", (int)Symbol.Semicolon },
 				{ "&", (int)Symbol.BitwiseAnd },
 				{ "|", (int)Symbol.BitwiseOr },
+				{ "^", (int)Symbol.BitwiseXor },
 				{ "+", (int)Symbol.Addition },
 				{ "-", (int)Symbol.Subtraction },
 				{ "*", (int)Symbol.Star },
