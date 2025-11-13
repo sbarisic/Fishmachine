@@ -381,10 +381,12 @@ namespace Fishmachine
 			RunProgram("data/FishAsm.c", false);
 			//RunProgram("data/tests/Test4.c", false);
 
-			//RunProgram("data/tests/Test1.c", true);
-			//RunProgram("data/tests/Test2.c", true);
-			//RunProgram("data/tests/Test3.c", true);
-			//RunProgram("data/tests/Test4.c", true);
+			/*
+			RunProgram("data/tests/Test1.c", true);
+			RunProgram("data/tests/Test2.c", true);
+			RunProgram("data/tests/Test3.c", true);
+			RunProgram("data/tests/Test4.c", true);
+			//*/
 
 			//RunProgram("data/tests/Test5.c", true);
 

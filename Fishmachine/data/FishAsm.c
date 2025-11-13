@@ -206,10 +206,10 @@ naked void kmain() {
 		}
 		else if (cmp(temp_buffer2, "long") == true) {
 			print("This is a test!\n");
-			print("THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG\n");
-			print("the quick brown fox jumps over the laz dog\n");
-			print("0123456789 !@#$%^&*()_+-=[]{}|;':,.<>/?`~\n");
-			print("Lorem ipsum dolor sit amet, consectetur adipiscing elit,\n"); 
+			print(" THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG\n");
+			print(" the quick brown fox jumps over the laz dog\n");
+			print(" 0123456789 !@#$%^&*()_+-=[]{}|;':,.<>/?`~\n");
+			print(" Lorem ipsum dolor sit amet, consectetur adipiscing elit,\n"); 
 			print(" sed do eiusmod tempor incididunt\n");
 			print(" ut labore et dolore magna aliqua.\n");
 			print(" Ut enim ad minim veniam,\n");
@@ -232,6 +232,13 @@ naked void kmain() {
 		else if (cmp(temp_buffer2, "barely") == true) {
 			bptr = 0x101;
 			bptr[0] = 32;
+		}
+		else if (cmp(temp_buffer2, "forloop") == true) {
+			for (uint i = 0; i < 5; i = i + 1) {
+				print("Forloop! ");
+			}
+
+			print("\nDone!\n");
 		}
 		else {
 			print("You typed: ");

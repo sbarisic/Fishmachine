@@ -16,6 +16,7 @@ namespace CTilde
 		@if,
 		@else,
 		@while,
+		@for,
 		@true,
 		@false,
 		naked,

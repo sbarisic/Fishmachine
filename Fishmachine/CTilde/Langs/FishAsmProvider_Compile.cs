@@ -318,10 +318,12 @@ namespace CTilde.Langs
 
 				case Expr_AssignValue AssValue:
 					{
+						EmitRaw("# Expr_AssignValue '{0} = {1}' BEGIN", AssValue.LExpr.ToSourceStr(), AssValue.ValueExpr.ToSourceStr());
+						Indent();
+
 						if (AssValue.LExpr is Expr_IndexOp IndexOp)
 						{
-							EmitRaw("# Expr_AssignValue '{0} = {1}' BEGIN", IndexOp.ToSourceStr(), AssValue.ValueExpr.ToSourceStr());
-							Indent();
+							EmitRaw("# AssignValue IndexOp");
 
 							// IMPORTANT: Set flag BEFORE compiling IndexOp
 							bool prevAddrOnly = State.IndexEmitOnlyAddress;
@@ -345,13 +347,47 @@ namespace CTilde.Langs
 							}
 							else
 								throw new NotImplementedException();
+						}
+						else if (AssValue.LExpr is Expr_Identifier IdentOp)
+						{
+							EmitRaw("# AssignValue Identifier");
+
+							Compile(AssValue.ValueExpr);
+
+							Expr_TypeDef td = State.GetVarType(IdentOp.Identifier);
+							int sz = Expr_TypeDef.GetRawTypeSize(td);
+
+							EmitRaw("# Expr_AssignVariable '{0}' BEGIN", AssValue.ToSourceStr());
+							EmitRaw("# Assign to '{0}'", IdentOp.Identifier);
+							Indent();
+
+							/*if (AssVariable.Variable.Identifier == "temp_buffer")
+								Debugger.Break();*/
+							/***bool storeaddress = true;
+
+							if (State.IsVarGlobal(AssVariable.Variable.Identifier))
+							{
+								//bool PtrType = Expr_TypeDef.IsPointerType(td);
+
+								storeaddress = false;
+							}*/
+
+							bool storeaddress = !State.IsVarGlobal(IdentOp.Identifier);
+							//bool storeaddress = true;
+
+							StoreIdentifier(IdentOp.Identifier, sz, td.IsPointer, Reg.EAX, Expr_TypeDef.IsUnsigned(td.Type), storeaddress);
 
 							Unindent();
-							EmitRaw("# Expr_AssignValue '{0} = {1}' END", IndexOp.ToSourceStr(), AssValue.ValueExpr.ToSourceStr());
+							EmitRaw("# Expr_AssignVariable '{0}' END", AssValue.ToSourceStr());
 						}
 						else
 							throw new NotImplementedException();
 
+
+
+
+						Unindent();
+						EmitRaw("# Expr_AssignValue '{0} = {1}' END", AssValue.LExpr.ToSourceStr(), AssValue.ValueExpr.ToSourceStr());
 						break;
 					}
 
@@ -782,6 +818,44 @@ namespace CTilde.Langs
 
 						Unindent();
 						EmitRaw("# While END '{0}'", WhileExpr.ToSourceStr());
+						break;
+					}
+
+				case Expr_ForStatement ForExpr:
+					{
+						EmitRaw("# For BEGIN '{0}'", ForExpr.ToSourceStr());
+						Indent();
+
+						Compile(ForExpr.Exp1); // initialization
+
+						string LblName = State.DefineFreeLabel("FOR", null, false, false);
+						string EndLblName = State.DefineFreeLabel("ENDFOR", null, false, false);
+						EmitRaw("{0}:", LblName);
+						State.PushLoopLabel(LblName);
+
+						EmitTestBranch(ForExpr.Exp2, true, EndLblName);
+
+						State.PushBreakLabel(EndLblName);
+
+						if (ForExpr.Body.Expressions.Count > 0)
+						{
+							EmitInstruction(FishInst.PUSH_REG, Reg.EBX);
+							EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
+							Compile(ForExpr.Body);
+							EmitInstruction(FishInst.POP_REG, Reg.EAX);
+							EmitInstruction(FishInst.POP_REG, Reg.EBX);
+						}
+
+						Compile(ForExpr.Exp3); // iteration
+
+						State.PopBreakLabel();
+						State.PopLoopLabel();
+
+						EmitInstruction(FishInst.JUMP_LONG, LblName);
+						EmitRaw("{0}:", EndLblName);
+
+						Unindent();
+						EmitRaw("# For END '{0}'", ForExpr.ToSourceStr());
 						break;
 					}
 

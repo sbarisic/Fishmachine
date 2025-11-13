@@ -110,6 +110,12 @@ namespace CTilde.Expr
 
 				return new Expr_WhileStatement().Parse(Tok);
 			}
+			else if (Tok.Peek().Is(Keyword.@for))
+			{
+				Tok.NextToken().Assert(Keyword.@for);
+
+				return new Expr_ForStatement().Parse(Tok);
+			}
 			else if (Tok.Peek().Is(Keyword.@return))
 			{
 				return new Expr_ReturnStatement().Parse(Tok);
