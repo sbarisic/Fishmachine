@@ -477,6 +477,39 @@ namespace CTilde.Langs
 			EmitRaw("# END EmitTestBranch for condition: {0}, Inverted {1}, JumpLabel '{2}'", Cond.ToSourceStr(), Inverted ? 1u : 0u, JumpLabel);
 		}
 
+		void EmitStoreToIdent(string SourceStr, Expression ValueExpr, Expr_Identifier Ident)
+		{
+			EmitRaw("# AssignValue Identifier");
+
+			Compile(ValueExpr);
+
+			Expr_TypeDef td = State.GetVarType(Ident.Identifier);
+			int sz = Expr_TypeDef.GetRawTypeSize(td);
+
+			EmitRaw("# Expr_AssignVariable '{0}' BEGIN", SourceStr);
+			EmitRaw("# Assign to '{0}'", Ident.Identifier);
+			Indent();
+
+			/*if (AssVariable.Variable.Identifier == "temp_buffer")
+				Debugger.Break();*/
+			/***bool storeaddress = true;
+
+			if (State.IsVarGlobal(AssVariable.Variable.Identifier))
+			{
+				//bool PtrType = Expr_TypeDef.IsPointerType(td);
+
+				storeaddress = false;
+			}*/
+
+			bool storeaddress = !State.IsVarGlobal(Ident.Identifier);
+			//bool storeaddress = true;
+
+			StoreIdentifier(Ident.Identifier, sz, td.IsPointer, Reg.EAX, Expr_TypeDef.IsUnsigned(td.Type), storeaddress);
+
+			Unindent();
+			EmitRaw("# Expr_AssignVariable '{0}' END", SourceStr);
+		}
+
 
 		// Emits a single function call argument onto the stack in right-to-left order context.
 		// - Identifiers of array-like storage (globals declared as static string[N] or actual arrays) decay to address.

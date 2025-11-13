@@ -350,40 +350,10 @@ namespace CTilde.Langs
 						}
 						else if (AssValue.LExpr is Expr_Identifier IdentOp)
 						{
-							EmitRaw("# AssignValue Identifier");
-
-							Compile(AssValue.ValueExpr);
-
-							Expr_TypeDef td = State.GetVarType(IdentOp.Identifier);
-							int sz = Expr_TypeDef.GetRawTypeSize(td);
-
-							EmitRaw("# Expr_AssignVariable '{0}' BEGIN", AssValue.ToSourceStr());
-							EmitRaw("# Assign to '{0}'", IdentOp.Identifier);
-							Indent();
-
-							/*if (AssVariable.Variable.Identifier == "temp_buffer")
-								Debugger.Break();*/
-							/***bool storeaddress = true;
-
-							if (State.IsVarGlobal(AssVariable.Variable.Identifier))
-							{
-								//bool PtrType = Expr_TypeDef.IsPointerType(td);
-
-								storeaddress = false;
-							}*/
-
-							bool storeaddress = !State.IsVarGlobal(IdentOp.Identifier);
-							//bool storeaddress = true;
-
-							StoreIdentifier(IdentOp.Identifier, sz, td.IsPointer, Reg.EAX, Expr_TypeDef.IsUnsigned(td.Type), storeaddress);
-
-							Unindent();
-							EmitRaw("# Expr_AssignVariable '{0}' END", AssValue.ToSourceStr());
+							EmitStoreToIdent(AssValue.ToSourceStr(), AssValue.ValueExpr, IdentOp);
 						}
 						else
 							throw new NotImplementedException();
-
-
 
 
 						Unindent();
@@ -393,34 +363,7 @@ namespace CTilde.Langs
 
 				case Expr_AssignVariable AssVariable:
 					{
-						Compile(AssVariable.AssignmentValue);
-
-						Expr_TypeDef td = State.GetVarType(AssVariable.Variable.Identifier);
-						int sz = Expr_TypeDef.GetRawTypeSize(td);
-
-						EmitRaw("# Expr_AssignVariable '{0}' BEGIN", AssVariable.ToSourceStr());
-						EmitRaw("# Assign to '{0}'", AssVariable.Variable.Identifier);
-						Indent();
-
-						/*if (AssVariable.Variable.Identifier == "temp_buffer")
-							Debugger.Break();*/
-						/***bool storeaddress = true;
-
-						if (State.IsVarGlobal(AssVariable.Variable.Identifier))
-						{
-							//bool PtrType = Expr_TypeDef.IsPointerType(td);
-
-							storeaddress = false;
-						}*/
-
-						bool storeaddress = !State.IsVarGlobal(AssVariable.Variable.Identifier);
-						//bool storeaddress = true;
-
-						StoreIdentifier(AssVariable.Variable.Identifier, sz, td.IsPointer, Reg.EAX, Expr_TypeDef.IsUnsigned(td.Type), storeaddress);
-
-						Unindent();
-						EmitRaw("# Expr_AssignVariable '{0}' END", AssVariable.ToSourceStr());
-
+						EmitStoreToIdent(AssVariable.ToSourceStr(), AssVariable.AssignmentValue, AssVariable.Variable);
 						break;
 					}
 
