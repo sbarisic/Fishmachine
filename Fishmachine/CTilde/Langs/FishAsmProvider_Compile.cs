@@ -370,7 +370,6 @@ namespace CTilde.Langs
 							if (IndexOp.LExpr is Expr_Identifier Id)
 							{
 								Expr_TypeDef VarType = State.GetVarType(Id.Identifier);
-								int Offset = 0;
 								int CopyBytes;
 
 								// Check if this is struct member access
@@ -383,9 +382,8 @@ namespace CTilde.Langs
 										{
 											Expr_TypeDef fieldType = FST.GetFieldType(MemAcc.MemberName);
 											CopyBytes = Expr_TypeDef.GetRawTypeSize(State.Types, fieldType);
-											Offset = FST.GetFieldOffset(MemAcc.MemberName);
 											
-											EmitRaw("#: Struct field '{0}.{1}' size={2} offset={3}", Id.Identifier, MemAcc.MemberName, CopyBytes, Offset);
+											EmitRaw("#: Struct field '{0}.{1}' size={2}", Id.Identifier, MemAcc.MemberName, CopyBytes);
 										}
 										else
 										{
@@ -403,8 +401,8 @@ namespace CTilde.Langs
 									CopyBytes = Expr_TypeDef.GetDerefTypeSize(State.Types, VarType);
 								}
 
-								// EBX already contains the correct address, just write to it
-								EmitStoreToAddress(CopyBytes, Offset, Reg.EAX, Reg.EBX, Expr_TypeDef.IsUnsigned(VarType.Type), false);
+								// EBX already contains the correct address (base + offset), so pass offset=0
+								EmitStoreToAddress(CopyBytes, 0, Reg.EAX, Reg.EBX, Expr_TypeDef.IsUnsigned(VarType.Type), false);
 							}
 							else
 								throw new NotImplementedException();
