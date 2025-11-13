@@ -205,7 +205,9 @@ namespace CTilde.Langs
 				EmitInstruction(FishInst.MOVEBYTE_REG_OFFSET_REG, SrcReg, offset, DstAddr);
 			}
 			else
-				throw new NotImplementedException();
+				throw new NotImplementedException(string.Format("EmitStoreToAddress does not support size={0}. " +
+					"For structs >4 bytes, consider passing/returning by reference or implementing a calling convention " +
+					"where the caller provides a return buffer address.", size));
 		}
 
 		void FetchIdentifier(string name, int size, bool ispointer, Reg DestReg, bool isunsigned, bool sumEBX/*, bool fetchaddress*/)
@@ -498,19 +500,7 @@ namespace CTilde.Langs
 			EmitRaw("# Assign to '{0}'", Ident.Identifier);
 			Indent();
 
-			/*if (AssVariable.Variable.Identifier == "temp_buffer")
-				Debugger.Break();*/
-			/***bool storeaddress = true;
-
-			if (State.IsVarGlobal(AssVariable.Variable.Identifier))
-			{
-				//bool PtrType = Expr_TypeDef.IsPointerType(td);
-
-				storeaddress = false;
-			}*/
-
 			bool storeaddress = !State.IsVarGlobal(Ident.Identifier);
-			//bool storeaddress = true;
 
 			StoreIdentifier(Ident.Identifier, sz, td.IsPointer, Reg.EAX, Expr_TypeDef.IsUnsigned(td.Type), storeaddress);
 
