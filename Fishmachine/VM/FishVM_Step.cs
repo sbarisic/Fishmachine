@@ -577,7 +577,7 @@ namespace Fishmachine.VM
 						if (Inst == FishInst.MOVE_REG_OFFSET_REG)
 						{
 							byte[] WriteVal = BitConverter.GetBytes(R1Val);
-							WriteBytes(Addr, WriteVal, FishMemProt.GetPriv(R2, false), ref E);
+							WriteBytes(Addr, WriteVal, FishMemProt.GetPriv(Addr, StackAddr, StackSize, false), ref E);
 							if (!E.Is(FishExcept.None))
 								return true;
 
@@ -591,7 +591,7 @@ namespace Fishmachine.VM
 						else if (Inst == FishInst.MOVEBYTE_REG_OFFSET_REG)
 						{
 							byte WriteB = (byte)(R1Val & 0xFF);
-							WriteByte(Addr, WriteB, FishMemProt.GetPriv(R2, false), ref E);
+							WriteByte(Addr, WriteB, FishMemProt.GetPriv(Addr, StackAddr, StackSize, false), ref E);
 							if (!E.Is(FishExcept.None))
 								return true;
 

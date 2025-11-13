@@ -371,17 +371,37 @@ namespace CTilde.Langs
 							{
 								Expr_TypeDef VarType = State.GetVarType(Id.Identifier);
 								int Offset = 0;
+								int CopyBytes;
 
+								// Check if this is struct member access
 								if (IndexOp.IndexValExpr is Expr_MemberAccessOp MemAcc)
+								{
+									// This is struct member access - get the field's type and size
 									if (State.Types.TryGetType(VarType.Type, out FishTypeDef FT))
+									{
 										if (FT is FishStructDef FST)
 										{
-											VarType = new Expr_TypeDef(FST.GetFieldType(MemAcc.MemberName));
-											VarType.IsPointer = true;
+											Expr_TypeDef fieldType = FST.GetFieldType(MemAcc.MemberName);
+											CopyBytes = Expr_TypeDef.GetRawTypeSize(State.Types, fieldType);
 											Offset = FST.GetFieldOffset(MemAcc.MemberName);
+											
+											EmitRaw("#: Struct field '{0}.{1}' size={2} offset={3}", Id.Identifier, MemAcc.MemberName, CopyBytes, Offset);
 										}
-
-								int CopyBytes = Expr_TypeDef.GetDerefTypeSize(State.Types, VarType);
+										else
+										{
+											throw new NotImplementedException("Expected struct type");
+										}
+									}
+									else
+									{
+										throw new NotImplementedException("Could not find struct type");
+									}
+								}
+								else
+								{
+									// This is array/pointer indexing - use deref size
+									CopyBytes = Expr_TypeDef.GetDerefTypeSize(State.Types, VarType);
+								}
 
 								// EBX already contains the correct address, just write to it
 								EmitStoreToAddress(CopyBytes, Offset, Reg.EAX, Reg.EBX, Expr_TypeDef.IsUnsigned(VarType.Type), false);
@@ -964,15 +984,16 @@ namespace CTilde.Langs
 						{
 							Expr_TypeDef idType = State.GetVarType(id.Identifier);
 							int elemSize = 1;
+							bool isMemberAccess = IndexExpr.IndexValExpr is Expr_MemberAccessOp;
 
-							if (!(IndexExpr.IndexValExpr is Expr_MemberAccessOp))
+							if (!isMemberAccess)
 								elemSize = Expr_TypeDef.GetDerefTypeSize(State.Types, idType);
-							//else
-							//	Debugger.Break();
 
-							EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.EBX); // EBX = index (scaled below)
+							EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.EBX); // EBX = index/offset
 
-							if (elemSize > 1)
+							// For struct member access, the offset is already in bytes - don't scale it
+							// For array indexing, scale by element size
+							if (!isMemberAccess && elemSize > 1)
 							{
 								EmitRaw("#: EBX = EBX * {0}", elemSize);
 								EmitInstruction(FishInst.MOVE_LONG_REG, "$" + elemSize, Reg.EAX);
@@ -1002,14 +1023,26 @@ namespace CTilde.Langs
 								}
 								else
 								{
-									// Local variable (pointer or array)
+									// Local variable (pointer or array) or struct member access
 									FetchIdentifier(id.Identifier, 0, isPointerType, Reg.EAX, true, true);
 								}
 							}
 							else
 							{
 								// We want the value at the indexed location
-								FetchIdentifier(id.Identifier, elemSize, isPointerType, Reg.EAX, true, true);
+								// For struct member access, use the field size from the struct definition
+								int accessSize = elemSize;
+								if (isMemberAccess)
+								{
+									Expr_MemberAccessOp memOp = IndexExpr.IndexValExpr as Expr_MemberAccessOp;
+									if (State.Types.TryGetType(idType.Type, out FishTypeDef FT))
+										if (FT is FishStructDef FST)
+										{
+											Expr_TypeDef fieldType = FST.GetFieldType(memOp.MemberName);
+											accessSize = Expr_TypeDef.GetRawTypeSize(State.Types, fieldType);
+										}
+								}
+								FetchIdentifier(id.Identifier, accessSize, isPointerType, Reg.EAX, true, true);
 							}
 						}
 						else
@@ -1041,7 +1074,7 @@ namespace CTilde.Langs
 							if (ispointer)
 								sz = Expr_TypeDef.GetDerefTypeSize(State.Types, nameType);
 							else
-								sz = Expr_TypeDef.GetRawTypeSize(State.Types, nameType);
+							 sz = Expr_TypeDef.GetRawTypeSize(State.Types, nameType);
 
 							FetchIdentifier(name, sz, ispointer, Reg.EAX, false, false);
 
