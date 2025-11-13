@@ -360,6 +360,24 @@ namespace Fishmachine
 						case ".data":
 							break;
 
+						case ".struct":
+							{
+
+								break;
+							}
+
+						case ".field":
+							{
+								string FieldName = Tokens[1];
+								int Size = int.Parse(Tokens[2]);
+								break;
+							}
+
+						case ".endstruct":
+							{
+								break;
+							}
+
 						case ".align":
 							{
 								int Align = int.Parse(Tokens[1]);

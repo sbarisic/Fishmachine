@@ -40,43 +40,46 @@ void test_print(bool cond, string text) {
 	}
 }
 
+bool get_true() {
+	print("+");
+	return true;
+}
+
+bool get_false() {
+	print("-");
+	return false;
+}
+
 naked void kmain() {
-	int_table[0] = &handler_int0;
-	int_table[1] = &handler_int1_keyboardkey;
-	int_table[2] = &handler_int2_keyboardchar;
+	int_table[0] = addrof handler_int0;
+	int_table[1] = addrof handler_int1_keyboardkey;
+	int_table[2] = addrof handler_int2_keyboardchar;
 
 	uint a = 3;
 	uint b = 4;
 
-	test_print((true), "true");
-	test_print((false), "false");
-	test_print((1 == 1), "1 == 1");
-	test_print((1 != 1), "1 != 1");
-	test_print((1 == 0), "1 == 0");
-	test_print((1 != 0), "1 != 0");
-	test_print((1 > 1), "1 > 1");
-	test_print((1 < 1), "1 < 1");
-	test_print((1 >= 1), "1 >= 1");
-	test_print((1 <= 1), "1 <= 1");
-	test_print((1 > 2), "1 > 2");
-	test_print((1 < 2), "1 < 2");
-	test_print((1 >= 2), "1 >= 2");
-	test_print((1 <= 2), "1 <= 2");
-	test_print((a == 3), "a == 3");
-	test_print((b == 4), "b == 4");
-	test_print(((a + b) == 7), "(a + b) == 7");
-	test_print(((a + 1) == 4), "(a + 1) == 4");
-	test_print(((a - 1) == 2), "(a - 1) == 2");
-	test_print(((a * 1) == 3), "(a * 1) == 3");
-	test_print(((b / 2) == 2), "(b / 2) == 2");
-	test_print((a == 9), "a == 9");
-	test_print((b == 9), "b == 9");
-	test_print(((a + b) == 9), "(a + b) == 9");
-	test_print(((a + 1) == 9), "(a + 1) == 9");
-	test_print(((a - 1) == 9), "(a - 1) == 9");
-	test_print(((a * 1) == 9), "(a * 1) == 9");
-	test_print(((b / 2) == 9), "(b / 2) == 9");
+	test_print((true && true), "true && true");
+	test_print((true && false), "true && false");
+	test_print((false && true), "false && true");
+	test_print((false && false), "false && false");
 
+
+	test_print((true || true), "true || true");
+	test_print((true || false), "true || false");
+	test_print((false || true), "false || true");
+	test_print((false || false), "false || false");
+
+
+	test_print((get_true() && get_true()), "get_true() && get_true()");
+	test_print((get_true() && get_false()), "get_true() && get_false()");
+	test_print((get_false() && get_true()), "get_false() && get_true()");
+	test_print((get_false() && get_false()), "get_false() && get_false()");
+
+
+	test_print((get_true() || get_true()), "get_true() || get_true()");
+	test_print((get_true() || get_false()), "get_true() || get_false()");
+	test_print((get_false() || get_true()), "get_false() || get_true()");
+	test_print((get_false() || get_false()), "get_false() || get_false()");
 
 	print("Hello Unit Test World!\n");
 

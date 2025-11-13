@@ -1,0 +1,17 @@
+true && true - True
+true && false - False
+false && true - False
+false && false - False
+true || true - True
+true || false - True
+false || true - True
+false || false - False
+++get_true() && get_true() - True
+-+get_true() && get_false() - False
++-get_false() && get_true() - False
+--get_false() && get_false() - False
+++get_true() || get_true() - True
+-+get_true() || get_false() - True
++-get_false() || get_true() - True
+--get_false() || get_false() - False
+Hello Unit Test World!

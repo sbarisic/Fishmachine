@@ -1,4 +1,5 @@
-﻿using NUnit.Framework.Interfaces;
+﻿using Fishmachine.CTilde.FishAsm;
+using NUnit.Framework.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,6 +17,18 @@ namespace CTilde.Expr
 		public bool IsArray = false;
 		public bool IsPointer = false;
 		public int ArraySize = 0;
+
+		public Expr_TypeDef()
+		{
+		}
+
+		public Expr_TypeDef(Expr_TypeDef Clone)
+		{
+			Type = Clone.Type;
+			IsArray = Clone.IsArray;
+			IsPointer = Clone.IsPointer;
+			ArraySize = Clone.ArraySize;
+		}
 
 		public override Expression Parse(Tokenizer Tok)
 		{
@@ -60,7 +73,7 @@ namespace CTilde.Expr
 		{
 			if (E is Expr_Identifier ExIden)
 			{
-				
+
 			}
 
 			throw new NotImplementedException();
@@ -97,7 +110,7 @@ namespace CTilde.Expr
 			return ArrayType;
 		}
 
-		public static int GetRawTypeSize(Expr_TypeDef Type)
+		public static int GetRawTypeSize(TypeSystem TS, Expr_TypeDef Type)
 		{
 			if (IsPointerType(Type))
 				return 4;
@@ -106,10 +119,18 @@ namespace CTilde.Expr
 			else if (Type.Type == "byte" || Type.Type == "char" || Type.Type == "bool")
 				return 1;
 
+			if (TS != null)
+			{
+				int S = TS.GetSize(Type.Type);
+
+				if (S != -1)
+					return S;
+			}
+
 			throw new NotImplementedException();
 		}
 
-		public static int GetDerefTypeSize(Expr_TypeDef Type)
+		public static int GetDerefTypeSize(TypeSystem TS, Expr_TypeDef Type)
 		{
 			if (!IsPointerType(Type))
 				throw new Exception("Not pointer or array type");
@@ -121,7 +142,7 @@ namespace CTilde.Expr
 			DerefType.Type = Type.Type;
 			DerefType.IsArray = false;
 			DerefType.IsPointer = false;
-			return GetRawTypeSize(DerefType);
+			return GetRawTypeSize(TS, DerefType);
 		}
 
 		/*public static int GetTypeSize(Expr_TypeDef Type)

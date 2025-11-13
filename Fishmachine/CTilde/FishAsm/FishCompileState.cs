@@ -1,8 +1,10 @@
-﻿using CTilde.Expr;
+using CTilde.Expr;
+using Fishmachine.CTilde.FishAsm;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.SymbolStore;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -78,6 +80,8 @@ namespace CTilde.FishAsm
 		int ArgOffset;
 
 		List<FishLabel> Labels = new List<FishLabel>();
+
+		public TypeSystem Types = new TypeSystem();
 
 		public string DefineFreeLabel(string LabelName, Expr_TypeDef FuncReturnType, bool IsFunc, bool Global)
 		{
@@ -229,6 +233,7 @@ namespace CTilde.FishAsm
 			}
 			else
 			{
+				// Local variables live at [EBP-4 - ArgOffset]
 				DefineVar(VarName, -4 - (ArgOffset), Size, TypeStr, Global, Param);
 			}
 
@@ -265,6 +270,14 @@ namespace CTilde.FishAsm
 				throw new NotImplementedException();
 
 			return Lbl.FuncReturnType;
+		}
+
+		public bool IsVarParam(string VarName)
+		{
+			if (ContainsKey(VarName))
+				return GetKeyValue(VarName).Param;
+
+			return false;
 		}
 
 		public bool IsVarGlobal(string VarName)

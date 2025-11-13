@@ -105,7 +105,7 @@ namespace Fishmachine
 			//File.WriteAllText("ct_nocomments.asm", CommentsRemoved);
 		}
 
-		static string CompileAndRun(string Src, string OutFile, bool Silent)
+		static string CompileAndRun(string Src, string OutFile, bool Silent, bool AutoClose)
 		{
 			CTildeCompile(Src, OutFile, Silent);
 
@@ -205,6 +205,9 @@ namespace Fishmachine
 					byte B = Encoding.ASCII.GetBytes(new[] { (char)Char })[0];
 					VM.EnqueueInterrupt(FishInterrupt.Int2_KeyboardChar, new uint[] { B });
 				}
+
+				if (AutoClose && VM.IsHalted())
+					break;
 			}
 
 
@@ -226,7 +229,7 @@ namespace Fishmachine
 
 
 				Console.Silent = false;
-				string ProgOut = CompileAndRun(SrcFile, "ct.asm", false);
+				string ProgOut = CompileAndRun(SrcFile, "ct.asm", false, false);
 
 				Console.WriteLine("Done!");
 				Console.ReadLine();
@@ -243,7 +246,7 @@ namespace Fishmachine
 			Console.ResetColor();
 			Console.Write(" ... ");
 			Console.Silent = true;
-			string Out = CompileAndRun(SrcFile, OutFile, true);
+			string Out = CompileAndRun(SrcFile, OutFile, true, true);
 			Console.Silent = false;
 
 			bool Pass = Out == ExpectedOutput;
@@ -378,17 +381,19 @@ namespace Fishmachine
 			//string OutStr = CompileAndRun("data/FishAsm.c", "FishAsm.asm");
 			//OutStr = CompileAndRun("data/FishAsm.c", "FishAsm.asm");
 
-			RunProgram("data/FishAsm.c", false);
-			//RunProgram("data/tests/Test4.c", false);
+			//RunProgram("data/FishAsm.c", false);
+			//RunProgram("data/tests/Test6.c", false);
 
-			/*
+			//*
 			RunProgram("data/tests/Test1.c", true);
 			RunProgram("data/tests/Test2.c", true);
 			RunProgram("data/tests/Test3.c", true);
 			RunProgram("data/tests/Test4.c", true);
+			RunProgram("data/tests/Test5.c", true);
+			RunProgram("data/tests/Test6.c", true);
 			//*/
 
-			//RunProgram("data/tests/Test5.c", true);
+			//
 
 			//Compile("stdfish.c");
 			//Compile("test.c");

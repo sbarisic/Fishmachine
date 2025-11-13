@@ -1,6 +1,7 @@
-﻿using CodeGeneration;
+using CodeGeneration;
 using CTilde.Expr;
 using CTilde.FishAsm;
+using Fishmachine.CTilde.FishAsm;
 using Fishmachine.VM;
 using System;
 using System.CodeDom;
@@ -204,7 +205,9 @@ namespace CTilde.Langs
 				EmitInstruction(FishInst.MOVEBYTE_REG_OFFSET_REG, SrcReg, offset, DstAddr);
 			}
 			else
-				throw new NotImplementedException();
+				throw new NotImplementedException(string.Format("EmitStoreToAddress does not support size={0}. " +
+					"For structs >4 bytes, consider passing/returning by reference or implementing a calling convention " +
+					"where the caller provides a return buffer address.", size));
 		}
 
 		void FetchIdentifier(string name, int size, bool ispointer, Reg DestReg, bool isunsigned, bool sumEBX/*, bool fetchaddress*/)
@@ -422,6 +425,13 @@ namespace CTilde.Langs
 				TD.Type = "uint";
 				return TD;
 			}
+			else if (E is Expr_IndexOp IndEx)
+			{
+				Expr_TypeDef td = State.GetVarType((IndEx.LExpr as Expr_Identifier).Identifier);
+				if (State.Types.TryGetType(td.Type, out FishTypeDef FT))
+					if (FT is FishStructDef FST)
+						return FST.GetFieldType(((Expr_MemberAccessOp)IndEx.IndexValExpr).MemberName);
+			}
 
 			throw new NotImplementedException();
 		}
@@ -477,11 +487,33 @@ namespace CTilde.Langs
 			EmitRaw("# END EmitTestBranch for condition: {0}, Inverted {1}, JumpLabel '{2}'", Cond.ToSourceStr(), Inverted ? 1u : 0u, JumpLabel);
 		}
 
+		void EmitStoreToIdent(string SourceStr, Expression ValueExpr, Expr_Identifier Ident)
+		{
+			EmitRaw("# AssignValue Identifier");
+
+			Compile(ValueExpr);
+
+			Expr_TypeDef td = State.GetVarType(Ident.Identifier);
+			int sz = Expr_TypeDef.GetRawTypeSize(State.Types, td);
+
+			EmitRaw("# Expr_AssignVariable '{0}' BEGIN", SourceStr);
+			EmitRaw("# Assign to '{0}'", Ident.Identifier);
+			Indent();
+
+			bool storeaddress = !State.IsVarGlobal(Ident.Identifier);
+
+			StoreIdentifier(Ident.Identifier, sz, td.IsPointer, Reg.EAX, Expr_TypeDef.IsUnsigned(td.Type), storeaddress);
+
+			Unindent();
+			EmitRaw("# Expr_AssignVariable '{0}' END", SourceStr);
+		}
+
 
 		// Emits a single function call argument onto the stack in right-to-left order context.
 		// - Identifiers of array-like storage (globals declared as static string[N] or actual arrays) decay to address.
 		// - Pointer variables (locals/params) push their pointer value.
 		// - Indexing into array-like lvalues passes the element address when appropriate.
+		// - Structs larger than 4 bytes are passed by reference (address).
 		// - All others evaluate to value in EAX and are pushed.
 		void EmitCallArg(Expression arg)
 		{
@@ -495,6 +527,17 @@ namespace CTilde.Langs
 				if (isArrayLike)
 				{
 					// Array-to-pointer decay: push address
+					FetchIdentifier(id.Identifier, 0, /*ispointer*/ false, Reg.EAX, /*isunsigned*/ true, /*sumEBX*/ false);
+					EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
+					return;
+				}
+
+				// Check if this is a struct larger than 4 bytes
+				int sz = Expr_TypeDef.GetRawTypeSize(State.Types, t);
+				if (sz > 4 && !t.IsPointer)
+				{
+					EmitRaw("#: Struct argument '{0}' size={1}, passing by reference", id.Identifier, sz);
+					// Struct: push address (pass by reference)
 					FetchIdentifier(id.Identifier, 0, /*ispointer*/ false, Reg.EAX, /*isunsigned*/ true, /*sumEBX*/ false);
 					EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
 					return;

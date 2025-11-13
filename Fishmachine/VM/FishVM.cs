@@ -175,7 +175,7 @@ namespace Fishmachine.VM
 			Regs.Write(CodeGeneration.Reg.ESP, Addr);
 			Regs.Write(CodeGeneration.Reg.EBP, Addr);
 
-			ProtectMemory(Addr - Size, Addr, new FishMemProt(FishMemPriv.Stack | FishMemPriv.Supervisor, "stack"));
+			ProtectMemory(Addr - Size, Size, new FishMemProt(FishMemPriv.Stack | FishMemPriv.Supervisor, "stack"));
 		}
 
 		public void SetMemMgrPointer(uint Addr)
@@ -643,6 +643,11 @@ namespace Fishmachine.VM
 
 			if (FInt == FishSyscall.StopMachine)
 				Halted = true;
+		}
+
+		public bool IsHalted()
+		{
+			return Halted;
 		}
 
 		bool CallLong(uint Addr, ref FishStackTrace E)
