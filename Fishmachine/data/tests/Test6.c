@@ -32,11 +32,14 @@ void printvec(vec2 pos) {
 	print("\n");
 }
 
-vec2 vec2_add(vec2 a, vec2 b) {
-	vec2 result;
+void vec2_add(vec2 a, vec2 b, vec2* result) {
 	result.x = a.x + b.x;
 	result.y = a.y + b.y;
-	return result;
+}
+
+void vec2_mul(vec2 a, int ml, vec2* result) {
+	result.x = a.x * ml;
+	result.y = a.y * ml;
 }
 
 void kmain() {
@@ -48,8 +51,10 @@ void kmain() {
 	add.x = 3;
 	add.y = 4;
 
-	pos = vec2_add(pos, add);
+	vec2_add(pos, add, addrof pos);
+	printvec(pos);
 
+	vec2_mul(pos, 2, addrof pos);
 	printvec(pos);
 
 	print("Hello Unit Test World!\n");

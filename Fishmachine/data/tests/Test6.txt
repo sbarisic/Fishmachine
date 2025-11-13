@@ -1,9 +1,3 @@
-true && true - True
-true && false - False
-false && true - False
-false && false - False
-true || true - True
-true || false - True
-false || true - True
-false || false - False
+13, 24
+26, 48
 Hello Unit Test World!
