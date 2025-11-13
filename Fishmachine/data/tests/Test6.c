@@ -44,18 +44,11 @@ void test2(int vr, int br) {
 
 void kmain() {
 	vec2 pos;
-	//int* a;
-
-	//a[0] = 5;
 
 	pos.a = 1;
-	//pos.c = 3;
-	//pos.d = 4;
-	//test(pos);
+	pos.b = pos.a;
 
-	//pos.a = pos.c;
-
-	//test(addrof pos);
+	printnum(pos.b);
 
 	print("Hello Unit Test World!\n");
 	__asm("SYSCALL $0");

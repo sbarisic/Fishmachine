@@ -624,13 +624,14 @@ namespace Fishmachine.VM
 							return true;
 
 						Console.PrintInst(Inst, Offset, R1, R2);
-						E.SetParams(Offset, R1, R2);
+					 E.SetParams(Offset, R1, R2);
+
+						uint Addr = (uint)(Regs.Read(R1) + Offset);
 
 						if (Inst == FishInst.MOVEZ_OFFSET_REG_REG)
 						{
-							uint Addr = (uint)(Regs.Read(R1) + Offset);
 							// Zero extend word from memory
-							byte[] wordBytes = ReadBytes(Addr, 2, FishMemProt.GetPriv(R1, true), ref E);
+							byte[] wordBytes = ReadBytes(Addr, 2, FishMemProt.GetPriv(Addr, StackAddr, StackSize, true), ref E);
 							if (!E.Is(FishExcept.None))
 								return true;
 
@@ -648,10 +649,7 @@ namespace Fishmachine.VM
 						}
 						else if (Inst == FishInst.MOVEBYTE_OFFSET_REG_REG)
 						{
-							uint R1Val = Regs.Read(R1);
-							uint ReadAddr = (uint)(R1Val + Offset);
-
-							byte B = ReadByte(ReadAddr, FishMemProt.GetPriv(R1, true), ref E);
+							byte B = ReadByte(Addr, FishMemProt.GetPriv(Addr, StackAddr, StackSize, true), ref E);
 							if (!E.Is(FishExcept.None))
 								return true;
 
@@ -660,7 +658,7 @@ namespace Fishmachine.VM
 							if (FishSettings.DebugPrint)
 							{
 								Console.ForegroundColor = ConsoleColor.Yellow;
-								Console.WriteLine("Read byte 0x{0:X} from 0x{1:X4}", B, ReadAddr);
+								Console.WriteLine("Read byte 0x{0:X} from 0x{1:X4}", B, Addr);
 								Console.ResetColor();
 							}
 						}
@@ -722,7 +720,7 @@ namespace Fishmachine.VM
 
 						uint Addr = (uint)(Regs.Read(R1) + Offset);
 						// Regular 32-bit read
-						uint R1Val = ReadUInt32(Addr, FishMemProt.GetPriv(R1, true), ref E);
+						uint R1Val = ReadUInt32(Addr, FishMemProt.GetPriv(Addr, StackAddr, StackSize, true), ref E);
 						if (!E.Is(FishExcept.None))
 							return true;
 
@@ -848,7 +846,7 @@ namespace Fishmachine.VM
 						if (FishSettings.DebugPrint)
 						{
 							Console.ForegroundColor = ConsoleColor.Magenta;
-							Console.WriteLine("Sub ({0}) {1}, ({2}) {3} = {4}", R1, R1Val, R2, R2Val, R2Val * R1Val);
+							Console.WriteLine("Mul ({0}) {1}, ({2}) {3} = {4}", R1, R1Val, R2, R2Val, R2Val * R1Val);
 							Console.ResetColor();
 						}
 
@@ -875,7 +873,7 @@ namespace Fishmachine.VM
 						if (FishSettings.DebugPrint)
 						{
 							Console.ForegroundColor = ConsoleColor.Magenta;
-							Console.WriteLine("Sub ({0}) {1}, ({2}) {3} = {4}", R1, R1Val, R2, R2Val, R2Val / R1Val);
+							Console.WriteLine("Div ({0}) {1}, ({2}) {3} = {4}", R1, R1Val, R2, R2Val, R2Val / R1Val);
 							Console.ResetColor();
 						}
 

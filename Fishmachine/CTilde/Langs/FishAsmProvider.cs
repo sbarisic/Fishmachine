@@ -423,6 +423,13 @@ namespace CTilde.Langs
 				TD.Type = "uint";
 				return TD;
 			}
+			else if (E is Expr_IndexOp IndEx)
+			{
+				Expr_TypeDef td = State.GetVarType((IndEx.LExpr as Expr_Identifier).Identifier);
+				if (State.Types.TryGetType(td.Type, out FishTypeDef FT))
+					if (FT is FishStructDef FST)
+						return FST.GetFieldType(((Expr_MemberAccessOp)IndEx.IndexValExpr).MemberName);
+			}
 
 			throw new NotImplementedException();
 		}
