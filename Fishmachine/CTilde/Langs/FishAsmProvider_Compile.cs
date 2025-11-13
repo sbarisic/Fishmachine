@@ -221,7 +221,27 @@ namespace CTilde.Langs
 						{
 							ParamDefData ParamDef = ParamsDef.Definitions[i];
 							int Size = Expr_TypeDef.GetRawTypeSize(State.Types, ParamDef.ParamType);
-							State.DefineVar(ParamDef.Name, Size, true, ParamDef.ParamType, false, true);
+							
+							// Check if this is a struct larger than 4 bytes - these are passed by reference
+							Expr_TypeDef ActualParamType = ParamDef.ParamType;
+							if (Size > 4 && !Expr_TypeDef.IsPointerType(ParamDef.ParamType))
+							{
+								// Create a pointer version of the type for internal use
+								ActualParamType = new Expr_TypeDef();
+								ActualParamType.Type = ParamDef.ParamType.Type;
+								ActualParamType.IsPointer = true;
+								ActualParamType.IsArray = false;
+								ActualParamType.ArraySize = 0;
+								
+								EmitRaw("#: Param '{0}' is struct size={1}, treating as pointer internally", ParamDef.Name, Size);
+								// Register as 4-byte pointer parameter
+								State.DefineVar(ParamDef.Name, 4, true, ActualParamType, false, true);
+							}
+							else
+							{
+								// Normal parameter
+								State.DefineVar(ParamDef.Name, Size, true, ParamDef.ParamType, false, true);
+							}
 						}
 
 						break;
@@ -455,10 +475,19 @@ namespace CTilde.Langs
 
 						int sz = Expr_TypeDef.GetRawTypeSize(State.Types, t);
 
-						//if (State.IsVarGlobal(id.Identifier))
-						//	sz = 0;
-						//awd
-						FetchIdentifier(id.Identifier, sz, isPointer, Reg.EAX, true, false);
+						// For structs larger than 4 bytes, we pass by address, not by value
+						// So when referencing a struct variable, we get its address
+						if (sz > 4 && !isPointer)
+						{
+							EmitRaw("#: Struct '{0}' size={1}, loading address instead of value", id.Identifier, sz);
+							// Load address of struct instead of its value
+							FetchIdentifier(id.Identifier, 0, isPointer, Reg.EAX, true, false);
+						}
+						else
+						{
+							// Normal value loading for primitives and pointers
+							FetchIdentifier(id.Identifier, sz, isPointer, Reg.EAX, true, false);
+						}
 
 						Unindent();
 						EmitRaw("# Expr_Identifier '{0}' END", id.Identifier);
@@ -682,7 +711,7 @@ namespace CTilde.Langs
 							//EmitInstruction(FishInst.FLOAT_STORE_OFFSET_REG, Reg.ST0, Reg.EAX);
 							//EmitInstruction(FishInst.MOVE_REG_REG, Reg.ST0, Reg.EAX);
 							EmitInstruction(FishInst.FLOAT_POP_REG, Reg.EAX);
-
+	
 
 
 							//throw new NotImplementedException();

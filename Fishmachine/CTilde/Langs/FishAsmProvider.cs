@@ -523,6 +523,7 @@ namespace CTilde.Langs
 		// - Identifiers of array-like storage (globals declared as static string[N] or actual arrays) decay to address.
 		// - Pointer variables (locals/params) push their pointer value.
 		// - Indexing into array-like lvalues passes the element address when appropriate.
+		// - Structs larger than 4 bytes are passed by reference (address).
 		// - All others evaluate to value in EAX and are pushed.
 		void EmitCallArg(Expression arg)
 		{
@@ -536,6 +537,17 @@ namespace CTilde.Langs
 				if (isArrayLike)
 				{
 					// Array-to-pointer decay: push address
+					FetchIdentifier(id.Identifier, 0, /*ispointer*/ false, Reg.EAX, /*isunsigned*/ true, /*sumEBX*/ false);
+					EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
+					return;
+				}
+
+				// Check if this is a struct larger than 4 bytes
+				int sz = Expr_TypeDef.GetRawTypeSize(State.Types, t);
+				if (sz > 4 && !t.IsPointer)
+				{
+					EmitRaw("#: Struct argument '{0}' size={1}, passing by reference", id.Identifier, sz);
+					// Struct: push address (pass by reference)
 					FetchIdentifier(id.Identifier, 0, /*ispointer*/ false, Reg.EAX, /*isunsigned*/ true, /*sumEBX*/ false);
 					EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
 					return;
