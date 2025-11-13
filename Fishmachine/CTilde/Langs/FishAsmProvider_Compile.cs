@@ -1,4 +1,4 @@
-﻿using CodeGeneration;
+using CodeGeneration;
 using CTilde.Expr;
 using CTilde.FishAsm;
 using Fishmachine.CTilde.FishAsm;
@@ -384,6 +384,7 @@ namespace CTilde.Langs
 						}
 						else if (AssValue.LExpr is Expr_MemberAccessOp FieldOp)
 						{
+							//EmitStoreToIdent(FieldOp.ToSourceStr(), AssValue.ValueExpr, FieldOp.InstanceName + "." + FieldOp.MemberName);
 							throw new NotImplementedException();
 						}
 						else
@@ -395,6 +396,13 @@ namespace CTilde.Langs
 						break;
 					}
 
+				case Expr_MemberAccessOp FieldOp:
+					{
+						//EmitReadFromIdent(FieldOp.ToSourceStr(), FieldOp.InstanceName + "." + FieldOp.MemberName);
+						throw new NotImplementedException();
+						break;
+					}
+
 				case Expr_AssignVariable AssVariable:
 					{
 						EmitStoreToIdent(AssVariable.ToSourceStr(), AssVariable.AssignmentValue, AssVariable.Variable);
@@ -403,6 +411,8 @@ namespace CTilde.Langs
 
 				case Expr_Identifier id:
 					{
+						//EmitReadFromIdent(id.ToSourceStr(), id);
+
 						EmitRaw("# Expr_Identifier '{0}' BEGIN", id.Identifier);
 						Indent();
 
@@ -416,8 +426,8 @@ namespace CTilde.Langs
 
 						int sz = Expr_TypeDef.GetRawTypeSize(State.Types, t);
 
-						/*if (State.IsVarGlobal(id.Identifier))
-							sz = 0;*/
+						//if (State.IsVarGlobal(id.Identifier))
+						//	sz = 0;
 						//awd
 						FetchIdentifier(id.Identifier, sz, isPointer, Reg.EAX, true, false);
 

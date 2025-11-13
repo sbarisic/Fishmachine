@@ -1,6 +1,7 @@
-﻿using CodeGeneration;
+using CodeGeneration;
 using CTilde.Expr;
 using CTilde.FishAsm;
+using Fishmachine.CTilde.FishAsm;
 using Fishmachine.VM;
 using System;
 using System.CodeDom;
