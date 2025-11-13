@@ -32,10 +32,23 @@ void printvec(vec2 pos) {
 	print("\n");
 }
 
+vec2 vec2_add(vec2 a, vec2 b) {
+	vec2 result;
+	result.x = a.x + b.x;
+	result.y = a.y + b.y;
+	return result;
+}
+
 void kmain() {
 	vec2 pos;
 	pos.x = 10;
 	pos.y = 20;
+
+	vec2 add;
+	add.x = 3;
+	add.y = 4;
+
+	pos = vec2_add(pos, add);
 
 	printvec(pos);
 
