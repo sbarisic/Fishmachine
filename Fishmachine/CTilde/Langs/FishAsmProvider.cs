@@ -484,7 +484,7 @@ namespace CTilde.Langs
 			Compile(ValueExpr);
 
 			Expr_TypeDef td = State.GetVarType(Ident.Identifier);
-			int sz = Expr_TypeDef.GetRawTypeSize(td);
+			int sz = Expr_TypeDef.GetRawTypeSize(State.Types, td);
 
 			EmitRaw("# Expr_AssignVariable '{0}' BEGIN", SourceStr);
 			EmitRaw("# Assign to '{0}'", Ident.Identifier);

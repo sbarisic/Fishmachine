@@ -1,4 +1,5 @@
 ﻿using CTilde.Expr;
+using Fishmachine.CTilde.FishAsm;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.SymbolStore;
@@ -78,6 +79,8 @@ namespace CTilde.FishAsm
 		int ArgOffset;
 
 		List<FishLabel> Labels = new List<FishLabel>();
+
+		public TypeSystem Types = new TypeSystem();
 
 		public string DefineFreeLabel(string LabelName, Expr_TypeDef FuncReturnType, bool IsFunc, bool Global)
 		{

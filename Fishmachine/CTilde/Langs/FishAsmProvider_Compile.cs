@@ -1,6 +1,7 @@
 ﻿using CodeGeneration;
 using CTilde.Expr;
 using CTilde.FishAsm;
+using Fishmachine.CTilde.FishAsm;
 using Fishmachine.VM;
 using System;
 using System.CodeDom;
@@ -34,7 +35,7 @@ namespace CTilde.Langs
 						break;
 					}
 
-				case Expr_ClassDef ClassDef:
+				/*case Expr_ClassDef ClassDef:
 					{
 						AppendLine("typedef struct {");
 
@@ -49,6 +50,35 @@ namespace CTilde.Langs
 						{
 							Compile(F);
 						}
+						break;
+					}*/
+
+				case Expr_ClassDef ClassDef:
+					{
+						break;
+					}
+
+				case Expr_EnumDef EnumDef:
+					{
+						break;
+					}
+
+				case Expr_StructDef StructDef:
+					{
+						EmitRaw(".struct {0}", StructDef.Name);
+						FishStructDef Struc = State.Types.DefineStruct(StructDef.Name);
+						Indent();
+
+						foreach (Expr_VariableDef V in StructDef.Variables)
+						{
+							int Size = Expr_TypeDef.GetRawTypeSize(State.Types, V.Type);
+							Struc.Field(V.Ident.Identifier, Size, V.Type);
+
+							EmitRaw(".field {0} {1}", V.Ident.Identifier, Size);
+						}
+
+						Unindent();
+						EmitRaw(".endstruct");
 						break;
 					}
 
@@ -190,7 +220,7 @@ namespace CTilde.Langs
 						for (int i = 0; i < ParamsDef.Definitions.Count; i++)
 						{
 							ParamDefData ParamDef = ParamsDef.Definitions[i];
-							int Size = Expr_TypeDef.GetRawTypeSize(ParamDef.ParamType);
+							int Size = Expr_TypeDef.GetRawTypeSize(State.Types, ParamDef.ParamType);
 							State.DefineVar(ParamDef.Name, Size, true, ParamDef.ParamType, false, true);
 						}
 
@@ -229,7 +259,7 @@ namespace CTilde.Langs
 
 						if (Expr_TypeDef.IsPointerType(StaticValueExpr.TypeDefExpr))
 						{
-							int ElementSize = Expr_TypeDef.GetDerefTypeSize(StaticValueExpr.TypeDefExpr);
+							int ElementSize = Expr_TypeDef.GetDerefTypeSize(State.Types, StaticValueExpr.TypeDefExpr);
 							EmitRaw(".Raw {0}, {1}", StaticValueExpr.TypeDefExpr.ArraySize * ElementSize, 0);
 						}
 
@@ -249,12 +279,12 @@ namespace CTilde.Langs
 							State.DefineLabel(VariableDef.Ident.Identifier, VariableDef.Type, false, true);
 							EmitRaw(".globlvar {0}", VariableDef.Ident.Identifier);
 
-							int Size = Expr_TypeDef.GetRawTypeSize(VariableDef.Type);
+							int Size = Expr_TypeDef.GetRawTypeSize(State.Types, VariableDef.Type);
 							State.DefineVar(VariableDef.Ident.Identifier, Size, false, VariableDef.Type, true, false);
 						}
 						else
 						{
-							int Size = Expr_TypeDef.GetRawTypeSize(VariableDef.Type);
+							int Size = Expr_TypeDef.GetRawTypeSize(State.Types, VariableDef.Type);
 							State.DefineVar(VariableDef.Ident.Identifier, Size, false, VariableDef.Type, false, false);
 
 							EmitInstruction(FishInst.SUB_LONG_REG, (uint)Size, Reg.ESP);
@@ -270,7 +300,7 @@ namespace CTilde.Langs
 						EmitRaw("# Expr_AssignedVariableDef BEGIN - {0}", AssVariableDef.VariableDef.Ident.Identifier);
 						Indent();
 
-						int Size = Expr_TypeDef.GetRawTypeSize(AssVariableDef.VariableDef.Type);
+						int Size = Expr_TypeDef.GetRawTypeSize(State.Types, AssVariableDef.VariableDef.Type);
 						bool Global = State.IsInsideFunctionBody ? false : true;
 
 						// IMPORTANT: If assigned a static value, use the static array type instead of the variable's declared type
@@ -340,7 +370,7 @@ namespace CTilde.Langs
 							if (IndexOp.LExpr is Expr_Identifier Id)
 							{
 								Expr_TypeDef VarType = State.GetVarType(Id.Identifier);
-								int CopyBytes = Expr_TypeDef.GetDerefTypeSize(VarType);
+								int CopyBytes = Expr_TypeDef.GetDerefTypeSize(State.Types, VarType);
 
 								// EBX already contains the correct address, just write to it
 								EmitStoreToAddress(CopyBytes, 0, Reg.EAX, Reg.EBX, Expr_TypeDef.IsUnsigned(VarType.Type), false);
@@ -351,6 +381,10 @@ namespace CTilde.Langs
 						else if (AssValue.LExpr is Expr_Identifier IdentOp)
 						{
 							EmitStoreToIdent(AssValue.ToSourceStr(), AssValue.ValueExpr, IdentOp);
+						}
+						else if (AssValue.LExpr is Expr_MemberAccessOp FieldOp)
+						{
+							throw new NotImplementedException();
 						}
 						else
 							throw new NotImplementedException();
@@ -380,7 +414,7 @@ namespace CTilde.Langs
 						//bool isGlobal = State.IsVarGlobal(id.Identifier);
 						bool isPointer = Expr_TypeDef.IsPointerType(t);
 
-						int sz = Expr_TypeDef.GetRawTypeSize(t);
+						int sz = Expr_TypeDef.GetRawTypeSize(State.Types, t);
 
 						/*if (State.IsVarGlobal(id.Identifier))
 							sz = 0;*/
@@ -875,7 +909,7 @@ namespace CTilde.Langs
 						if (IndexExpr.LExpr is Expr_Identifier id)
 						{
 							Expr_TypeDef idType = State.GetVarType(id.Identifier);
-							int elemSize = Expr_TypeDef.GetDerefTypeSize(idType);
+							int elemSize = Expr_TypeDef.GetDerefTypeSize(State.Types, idType);
 
 							EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.EBX); // EBX = index (scaled below)
 
@@ -944,9 +978,9 @@ namespace CTilde.Langs
 							bool ispointer = Expr_TypeDef.IsPointerType(nameType);
 
 							if (ispointer)
-								sz = Expr_TypeDef.GetDerefTypeSize(nameType);
+								sz = Expr_TypeDef.GetDerefTypeSize(State.Types, nameType);
 							else
-								sz = Expr_TypeDef.GetRawTypeSize(nameType);
+								sz = Expr_TypeDef.GetRawTypeSize(State.Types, nameType);
 
 							FetchIdentifier(name, sz, ispointer, Reg.EAX, false, false);
 

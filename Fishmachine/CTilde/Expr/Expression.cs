@@ -141,6 +141,16 @@ namespace CTilde.Expr
 				// Class definition
 				return new Expr_ClassDef().Parse(Tok);
 			}
+			else if (Tok.Peek().Is(Keyword.@struct))
+			{
+				// Class definition
+				return new Expr_StructDef().Parse(Tok);
+			}
+			else if (Tok.Peek().Is(Keyword.@enum))
+			{
+				// Class definition
+				return new Expr_EnumDef().Parse(Tok);
+			}
 			else if ((Tok.Peek().Is(TokenType.Identifier) && Tok.Peek(2).Is(TokenType.Identifier) && Tok.Peek(3).Is(Symbol.Semicolon)) || (Tok.Peek().Is(TokenType.Identifier) && Tok.Peek(2).Is(Symbol.Star) && Tok.Peek(3).Is(TokenType.Identifier) && Tok.Peek(4).Is(Symbol.Semicolon)))
 			{
 				// Variable definition
@@ -293,6 +303,10 @@ namespace CTilde.Expr
 				else if (Tok.Peek().Is(TokenType.Identifier) && Tok.Peek(2).Is(Symbol.LParen))
 				{
 					LeftExpr = new Expr_FuncCall().Parse<Expr_FuncCall>(Tok);
+				}
+				else if (Tok.Peek().Is(TokenType.Identifier) && Tok.Peek(2).Is(Symbol.Dot))
+				{
+					LeftExpr = new Expr_MemberAccessOp().Parse<Expr_MemberAccessOp>(Tok);
 				}
 				else if (Tok.Peek().Is(TokenType.Identifier))
 				{

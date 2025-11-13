@@ -29,4 +29,12 @@ b == 9 - False
 (a - 1) == 9 - False
 (a * 1) == 9 - False
 (b / 2) == 9 - False
+true && true - True
+true && false - False
+false && true - False
+false && false - False
+true || true - True
+true || false - True
+false || true - True
+false || false - False
 Hello Unit Test World!

@@ -10,6 +10,8 @@ namespace CTilde
 	public enum Keyword : int
 	{
 		@class,
+		@struct,
+		@enum,
 		__ctor,
 		__dtor,
 		@null,
@@ -58,7 +60,8 @@ namespace CTilde
 		BinaryOr,
 		BitwiseAnd,
 		BitwiseOr,
-		BitwiseXor
+		BitwiseXor,
+		Dot
 	}
 
 	public class Tokenizer
@@ -107,6 +110,7 @@ namespace CTilde
 				{ "-", (int)Symbol.Subtraction },
 				{ "*", (int)Symbol.Star },
 				{ "/", (int)Symbol.Division },
+				{ ".", (int)Symbol.Dot },
 			};
 
 			L = new Lexer(Reader, Settings);

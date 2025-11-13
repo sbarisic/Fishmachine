@@ -82,6 +82,16 @@ naked void kmain() {
 	test_print(((a * 1) == 9), "(a * 1) == 9");
 	test_print(((b / 2) == 9), "(b / 2) == 9");
 
+	test_print((true && true), "true && true");
+	test_print((true && false), "true && false");
+	test_print((false && true), "false && true");
+	test_print((false && false), "false && false");
+
+
+	test_print((true || true), "true || true");
+	test_print((true || false), "true || false");
+	test_print((false || true), "false || true");
+	test_print((false || false), "false || false");
 
 	print("Hello Unit Test World!\n");
 

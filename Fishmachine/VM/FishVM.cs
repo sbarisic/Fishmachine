@@ -645,6 +645,11 @@ namespace Fishmachine.VM
 				Halted = true;
 		}
 
+		public bool IsHalted()
+		{
+			return Halted;
+		}
+
 		bool CallLong(uint Addr, ref FishStackTrace E)
 		{
 			uint RetAddr = Regs.IP;
