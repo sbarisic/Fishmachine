@@ -46,7 +46,7 @@ void kmain() {
 	vec2 pos;
 
 	pos.a = 1;
-	pos.b = pos.a;
+	pos.b = pos.a + 1;
 
 	printnum(pos.b);
 
