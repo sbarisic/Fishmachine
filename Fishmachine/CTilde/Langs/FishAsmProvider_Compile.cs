@@ -370,10 +370,21 @@ namespace CTilde.Langs
 							if (IndexOp.LExpr is Expr_Identifier Id)
 							{
 								Expr_TypeDef VarType = State.GetVarType(Id.Identifier);
+								int Offset = 0;
+
+								if (IndexOp.IndexValExpr is Expr_MemberAccessOp MemAcc)
+									if (State.Types.TryGetType(VarType.Type, out FishTypeDef FT))
+										if (FT is FishStructDef FST)
+										{
+											VarType = new Expr_TypeDef(FST.GetFieldType(MemAcc.MemberName));
+											VarType.IsPointer = true;
+											Offset = FST.GetFieldOffset(MemAcc.MemberName);
+										}
+
 								int CopyBytes = Expr_TypeDef.GetDerefTypeSize(State.Types, VarType);
 
 								// EBX already contains the correct address, just write to it
-								EmitStoreToAddress(CopyBytes, 0, Reg.EAX, Reg.EBX, Expr_TypeDef.IsUnsigned(VarType.Type), false);
+								EmitStoreToAddress(CopyBytes, Offset, Reg.EAX, Reg.EBX, Expr_TypeDef.IsUnsigned(VarType.Type), false);
 							}
 							else
 								throw new NotImplementedException();
@@ -382,11 +393,11 @@ namespace CTilde.Langs
 						{
 							EmitStoreToIdent(AssValue.ToSourceStr(), AssValue.ValueExpr, IdentOp);
 						}
-						else if (AssValue.LExpr is Expr_MemberAccessOp FieldOp)
+						/*else if (AssValue.LExpr is Expr_MemberAccessOp FieldOp)
 						{
 							//EmitStoreToIdent(FieldOp.ToSourceStr(), AssValue.ValueExpr, FieldOp.InstanceName + "." + FieldOp.MemberName);
 							throw new NotImplementedException();
-						}
+						}*/
 						else
 							throw new NotImplementedException();
 
@@ -396,12 +407,12 @@ namespace CTilde.Langs
 						break;
 					}
 
-				case Expr_MemberAccessOp FieldOp:
+				/*case Expr_MemberAccessOp FieldOp:
 					{
 						//EmitReadFromIdent(FieldOp.ToSourceStr(), FieldOp.InstanceName + "." + FieldOp.MemberName);
 						throw new NotImplementedException();
 						break;
-					}
+					}*/
 
 				case Expr_AssignVariable AssVariable:
 					{
@@ -433,6 +444,38 @@ namespace CTilde.Langs
 
 						Unindent();
 						EmitRaw("# Expr_Identifier '{0}' END", id.Identifier);
+						break;
+					}
+
+				case Expr_MemberAccessOp FieldOp:
+					{
+						EmitRaw("# Expr_MemberAccessOp '{0}.{1}' BEGIN", FieldOp.VariableName, FieldOp.MemberName);
+						Indent();
+
+						Expr_TypeDef t = State.GetVarType(FieldOp.VariableName);
+
+						if (t == null)
+							throw new NotImplementedException();
+
+						if (State.Types.TryGetType(t.Type, out FishTypeDef FT))
+							if (FT is FishStructDef FST)
+							{
+								int Offset = FST.GetFieldOffset(FieldOp.MemberName);
+								EmitInstruction(FishInst.MOVE_LONG_REG, (uint)Offset, Reg.EAX);
+							}
+
+						//bool isGlobal = State.IsVarGlobal(id.Identifier);
+						//bool isPointer = Expr_TypeDef.IsPointerType(t);
+
+						//int sz = Expr_TypeDef.GetRawTypeSize(State.Types, t);
+
+						//if (State.IsVarGlobal(id.Identifier))
+						//	sz = 0;
+						//awd
+						//FetchIdentifier(id.Identifier, sz, isPointer, Reg.EAX, true, false);
+
+						Unindent();
+						EmitRaw("# Expr_MemberAccessOp '{0}.{1}' END", FieldOp.VariableName, FieldOp.MemberName);
 						break;
 					}
 
@@ -906,6 +949,7 @@ namespace CTilde.Langs
 					{
 						EmitRaw("# IndexOp BEGIN");
 						Indent();
+						EmitInstruction(FishInst.PUSH_REG, Reg.EBX);
 
 						// DIAGNOSTIC: Print the flag value immediately
 						EmitRaw("#: DIAGNOSTIC - IndexEmitOnlyAddress = {0}", State.IndexEmitOnlyAddress ? 1 : 0);
@@ -919,7 +963,12 @@ namespace CTilde.Langs
 						if (IndexExpr.LExpr is Expr_Identifier id)
 						{
 							Expr_TypeDef idType = State.GetVarType(id.Identifier);
-							int elemSize = Expr_TypeDef.GetDerefTypeSize(State.Types, idType);
+							int elemSize = 1;
+
+							if (!(IndexExpr.IndexValExpr is Expr_MemberAccessOp))
+								elemSize = Expr_TypeDef.GetDerefTypeSize(State.Types, idType);
+							//else
+							//	Debugger.Break();
 
 							EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.EBX); // EBX = index (scaled below)
 
@@ -970,6 +1019,8 @@ namespace CTilde.Langs
 							EmitInstruction(FishInst.ADD_REG_REG, Reg.EBX, Reg.EAX);
 						}
 
+
+						EmitInstruction(FishInst.POP_REG, Reg.EBX);
 						Unindent();
 						EmitRaw("# IndexOp END");
 						break;

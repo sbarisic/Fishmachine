@@ -18,6 +18,18 @@ namespace CTilde.Expr
 		public bool IsPointer = false;
 		public int ArraySize = 0;
 
+		public Expr_TypeDef()
+		{
+		}
+
+		public Expr_TypeDef(Expr_TypeDef Clone)
+		{
+			Type = Clone.Type;
+			IsArray = Clone.IsArray;
+			IsPointer = Clone.IsPointer;
+			ArraySize = Clone.ArraySize;
+		}
+
 		public override Expression Parse(Tokenizer Tok)
 		{
 			Type = Tok.NextToken().Assert(TokenType.Identifier).Text;

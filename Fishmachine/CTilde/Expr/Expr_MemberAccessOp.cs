@@ -9,8 +9,8 @@ namespace CTilde.Expr
 {
 	public class Expr_MemberAccessOp : Expression
 	{
-		public string InstanceName;
 		public string MemberName;
+		public string VariableName;
 
 		public Expr_MemberAccessOp()
 		{
@@ -21,8 +21,6 @@ namespace CTilde.Expr
 			Token PT = Tok.Peek();
 			//throw new NotImplementedException();
 
-			InstanceName = Tok.NextToken().Text;
-			Tok.NextToken().Assert(Symbol.Dot);
 			MemberName = Tok.NextToken().Text;
 
 
@@ -31,7 +29,7 @@ namespace CTilde.Expr
 
 		public override string ToSourceStr()
 		{
-			return $"{InstanceName}.{MemberName}";
+			return $"{MemberName}";
 		}
 	}
 }

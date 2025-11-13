@@ -306,7 +306,17 @@ namespace CTilde.Expr
 				}
 				else if (Tok.Peek().Is(TokenType.Identifier) && Tok.Peek(2).Is(Symbol.Dot))
 				{
-					LeftExpr = new Expr_MemberAccessOp().Parse<Expr_MemberAccessOp>(Tok);
+					Expr_Identifier IndID = new Expr_Identifier().Parse<Expr_Identifier>(Tok);
+					Expr_IndexOp Ind = new Expr_IndexOp(IndID);
+					Tok.NextToken().Assert(Symbol.Dot);
+
+					Expr_MemberAccessOp Memb = new Expr_MemberAccessOp().Parse<Expr_MemberAccessOp>(Tok);
+					Memb.VariableName = IndID.Identifier;
+
+					Ind.IndexValExpr = Memb;
+
+					//LeftExpr = new Expr_MemberAccessOp().Parse<Expr_MemberAccessOp>(Tok);
+					LeftExpr = Ind;
 				}
 				else if (Tok.Peek().Is(TokenType.Identifier))
 				{
