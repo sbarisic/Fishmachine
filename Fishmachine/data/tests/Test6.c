@@ -8,10 +8,8 @@ define SYS_SoftwareInterrupt = 3;
 define SYS_Alloc = 4;
 
 struct vec2 {
-	byte a;
-	byte b;
-	byte c;
-	byte d;
+	int x;
+	int y;
 }
 
 void print(string str) {
@@ -25,30 +23,21 @@ void print(string str) {
 
 void printnum(uint num) {
 	syscall_2(SYS_PrintNum, num);
+}
+
+void printvec(vec2 pos) {
+	printnum(pos.x);
+	print(", ");
+	printnum(pos.y);
 	print("\n");
 }
 
-void test2(int vr, int br) {
-	printnum(vr);
-	printnum(br);
-}
-
-/*void test(vec2* pos) {
-	printnum(pos.a);
-	printnum(pos.b);
-	printnum(pos.c);
-	printnum(pos.d);
-
-	print("Hai\n");
-}*/
-
 void kmain() {
 	vec2 pos;
+	pos.x = 10;
+	pos.y = 20;
 
-	pos.a = 1;
-	pos.b = pos.a + 1;
-
-	printnum(pos.b);
+	printvec(pos);
 
 	print("Hello Unit Test World!\n");
 	__asm("SYSCALL $0");
