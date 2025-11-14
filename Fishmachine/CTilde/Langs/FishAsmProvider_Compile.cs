@@ -1102,7 +1102,7 @@ namespace CTilde.Langs
 							if (ispointer)
 								sz = Expr_TypeDef.GetDerefTypeSize(State.Types, nameType);
 							else
-								sz = Expr_TypeDef.GetRawTypeSize(State.Types, nameType);
+							 sz = Expr_TypeDef.GetRawTypeSize(State.Types, nameType);
 
 							FetchIdentifier(name, sz, ispointer, Reg.EAX, false, false);
 
@@ -1131,10 +1131,15 @@ namespace CTilde.Langs
 						{
 							Compile(ReturnExp.RetValExpr);
 
+							// Check if we're returning a large struct
 							if (State.Types.TryGetType(ReturnExp.RetTypeDef.Type, out FishTypeDef FTD))
 							{
-								EmitRaw("# RETURN STRUCT STATEMENT");
+								EmitRaw("# RETURN STRUCT STATEMENT - size={0}", FTD.Size);
+								// EAX contains address of local struct
+								// Hidden parameter at 8(%EBP) contains address of return buffer
+								EmitInstruction(FishInst.MOVE_OFFSET_REG_REG, 8, Reg.EBP, Reg.EDX);
 								EmitCopyBytes(FTD.Size, Reg.EAX, Reg.EDX);
+								// Leave EAX pointing to the return buffer (though caller already has this)
 								EmitInstruction(FishInst.MOVE_REG_REG, Reg.EDX, Reg.EAX);
 							}
 						}
@@ -1197,6 +1202,21 @@ namespace CTilde.Langs
 							//if (FuncCallExp.Function.Identifier == "printfloat")
 							//	Debugger.Break();
 
+							// Check if function returns a large struct - if so, allocate buffer and pass as hidden param
+							bool returnsLargeStruct = false;
+							int returnBufferSize = 0;
+							if (State.Types.TryGetType(FuncType.Type, out FishTypeDef FT))
+							{
+								returnsLargeStruct = true;
+								returnBufferSize = FT.Size;
+								EmitRaw("#: Function returns large struct size={0}, allocating return buffer", FT.Size);
+								
+								// Allocate space on stack for return value
+								EmitInstruction(FishInst.SUB_LONG_REG, (uint)FT.Size, Reg.ESP);
+								// Push address of return buffer as hidden first parameter
+								EmitInstruction(FishInst.PUSH_REG, Reg.ESP);
+							}
+
 							// was: for (int i = 0; i < FuncCallExp.Arguments.Count; i++)
 							for (int i = FuncCallExp.Arguments.Count - 1; i >= 0; i--)
 							{
@@ -1205,11 +1225,10 @@ namespace CTilde.Langs
 							}
 
 							int CleanupSize = FuncCallExp.Arguments.Count * 4;
-							if (State.Types.TryGetType(FuncType.Type, out FishTypeDef FT))
+							if (returnsLargeStruct)
 							{
-								EmitInstruction(FishInst.SUB_LONG_REG, (uint)FT.Size, Reg.ESP);
-								EmitInstruction(FishInst.MOVE_REG_REG, Reg.ESP, Reg.EDX);
-								CleanupSize += FT.Size;
+								// Add hidden return buffer parameter to cleanup
+								CleanupSize += 4;
 							}
 
 							if (FuncType.Type == "funcptr")
@@ -1224,6 +1243,14 @@ namespace CTilde.Langs
 
 							EmitInstruction(FishInst.CALL_REG, Reg.EAX);
 							EmitInstruction(FishInst.ADD_LONG_REG, (uint)(CleanupSize), Reg.ESP);
+
+							// If returning large struct, the result is now on the stack
+							// Pop it into EAX (actually just get the address)
+							if (returnsLargeStruct)
+							{
+								EmitRaw("#: Return buffer is on stack, leaving address in EAX");
+								EmitInstruction(FishInst.MOVE_REG_REG, Reg.ESP, Reg.EAX);
+							}
 
 							Unindent();
 							EmitRaw("# FuncCall END - '{0}'", FuncCallExp.Function.ToSourceStr());

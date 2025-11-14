@@ -71,8 +71,15 @@ void kmain() {
 	vec2 a;
 	vec2 b;
 	vec2 tst;
+
+	a.x = 1;
+	b.x = 2;
+
+	a.y = 5;
+	b.y = 4;
 	
 	tst = vec2_add2(a, b);
+	printvec(tst);
 
 	/*int result = 0;
 	funcptr f2 = addrof func2;
