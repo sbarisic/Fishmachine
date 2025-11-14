@@ -10,7 +10,7 @@ namespace CTilde.Expr
 {
 	public class Expr_TypeDef : Expression
 	{
-		static string[] PtrTypes = new string[] { "string", "voidptr" };
+		static string[] PtrTypes = new string[] { "string", "voidptr", "funcptr" };
 		static string[] FloatTypes = new string[] { "float", "double" };
 
 		public string Type;

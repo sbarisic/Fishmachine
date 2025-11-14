@@ -139,6 +139,19 @@ namespace CTilde.Langs
 			EmitInstruction(FishInst.RET);
 		}
 
+		void EmitCopyBytes(int Size, Reg SrcAddr, Reg DstAddr)
+		{
+			EmitInstruction(FishInst.PUSH_REG, Reg.ECX);
+
+			for (int i = 0; i < Size; i++)
+			{
+				EmitInstruction(FishInst.MOVEBYTE_OFFSET_REG_REG, i, SrcAddr, Reg.ECX);
+				EmitInstruction(FishInst.MOVEBYTE_REG_OFFSET_REG, Reg.ECX, i, DstAddr);
+			}
+
+			EmitInstruction(FishInst.POP_REG, Reg.ECX);
+		}
+
 		void EmitLoadFromAddress(int size, int offset, Reg SrcAddr, Reg DstReg, bool isunsigned)
 		{
 			if (size == 0)
@@ -494,6 +507,7 @@ namespace CTilde.Langs
 			Compile(ValueExpr);
 
 			Expr_TypeDef td = State.GetVarType(Ident.Identifier);
+			State.Types.TryGetType(td.Type, out FishTypeDef FTD);
 			int sz = Expr_TypeDef.GetRawTypeSize(State.Types, td);
 
 			EmitRaw("# Expr_AssignVariable '{0}' BEGIN", SourceStr);
@@ -502,7 +516,25 @@ namespace CTilde.Langs
 
 			bool storeaddress = !State.IsVarGlobal(Ident.Identifier);
 
-			StoreIdentifier(Ident.Identifier, sz, td.IsPointer, Reg.EAX, Expr_TypeDef.IsUnsigned(td.Type), storeaddress);
+			if (FTD != null)
+			{
+				if (ValueExpr is Expr_FuncCall FC)
+				{
+					int StoreOffset = State.GetVarOffset(Ident.Identifier);
+					//EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
+					//EmitInstruction(FishInst.LEA_OFFSET_REG_REG, StoreOffset, Reg.EBP, Reg.EAX);
+
+					EmitCopyBytes(sz, Reg.EDX, Reg.EAX);
+
+					//EmitInstruction(FishInst.POP_REG, Reg.EAX);
+				}
+
+				//throw new NotImplementedException();
+			}
+			else
+			{
+				StoreIdentifier(Ident.Identifier, sz, td.IsPointer, Reg.EAX, Expr_TypeDef.IsUnsigned(td.Type), storeaddress);
+			}
 
 			Unindent();
 			EmitRaw("# Expr_AssignVariable '{0}' END", SourceStr);

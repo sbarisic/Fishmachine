@@ -66,6 +66,12 @@ namespace CTilde.Expr
 					Console.WriteLine(">> {0}", P);
 
 				FuncBody = new Expr_Block().Parse<Expr_Block>(Tok);
+
+				FuncBody.Expressions.Where(E => E is Expr_ReturnStatement).Select(S =>
+				{
+					((Expr_ReturnStatement)S).RetTypeDef = FuncReturnTypeDef; return S;
+				}).ToArray();
+
 				IsFunctionCall = false;
 			}
 			else

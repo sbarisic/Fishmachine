@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -221,7 +222,7 @@ namespace CTilde.Langs
 						{
 							ParamDefData ParamDef = ParamsDef.Definitions[i];
 							int Size = Expr_TypeDef.GetRawTypeSize(State.Types, ParamDef.ParamType);
-							
+
 							// Check if this is a struct larger than 4 bytes - these are passed by reference
 							Expr_TypeDef ActualParamType = ParamDef.ParamType;
 							if (Size > 4 && !Expr_TypeDef.IsPointerType(ParamDef.ParamType))
@@ -232,7 +233,7 @@ namespace CTilde.Langs
 								ActualParamType.IsPointer = true;
 								ActualParamType.IsArray = false;
 								ActualParamType.ArraySize = 0;
-								
+
 								EmitRaw("#: Param '{0}' is struct size={1}, treating as pointer internally", ParamDef.Name, Size);
 								// Register as 4-byte pointer parameter
 								State.DefineVar(ParamDef.Name, 4, true, ActualParamType, false, true);
@@ -402,7 +403,7 @@ namespace CTilde.Langs
 										{
 											Expr_TypeDef fieldType = FST.GetFieldType(MemAcc.MemberName);
 											CopyBytes = Expr_TypeDef.GetRawTypeSize(State.Types, fieldType);
-											
+
 											EmitRaw("#: Struct field '{0}.{1}' size={2}", Id.Identifier, MemAcc.MemberName, CopyBytes);
 										}
 										else
@@ -711,7 +712,7 @@ namespace CTilde.Langs
 							//EmitInstruction(FishInst.FLOAT_STORE_OFFSET_REG, Reg.ST0, Reg.EAX);
 							//EmitInstruction(FishInst.MOVE_REG_REG, Reg.ST0, Reg.EAX);
 							EmitInstruction(FishInst.FLOAT_POP_REG, Reg.EAX);
-	
+
 
 
 							//throw new NotImplementedException();
@@ -1101,7 +1102,7 @@ namespace CTilde.Langs
 							if (ispointer)
 								sz = Expr_TypeDef.GetDerefTypeSize(State.Types, nameType);
 							else
-							 sz = Expr_TypeDef.GetRawTypeSize(State.Types, nameType);
+								sz = Expr_TypeDef.GetRawTypeSize(State.Types, nameType);
 
 							FetchIdentifier(name, sz, ispointer, Reg.EAX, false, false);
 
@@ -1129,6 +1130,13 @@ namespace CTilde.Langs
 						if (ReturnExp.RetValExpr != null)
 						{
 							Compile(ReturnExp.RetValExpr);
+
+							if (State.Types.TryGetType(ReturnExp.RetTypeDef.Type, out FishTypeDef FTD))
+							{
+								EmitRaw("# RETURN STRUCT STATEMENT");
+								EmitCopyBytes(FTD.Size, Reg.EAX, Reg.EDX);
+								EmitInstruction(FishInst.MOVE_REG_REG, Reg.EDX, Reg.EAX);
+							}
 						}
 
 						EmitReturn();
@@ -1183,6 +1191,9 @@ namespace CTilde.Langs
 							EmitRaw("# FuncCall BEGIN - '{0}'", FuncCallExp.Function.ToSourceStr());
 							Indent();
 
+							Expr_TypeDef FuncType = State.GetVarType(FuncCallExp.Function.Identifier);
+
+
 							//if (FuncCallExp.Function.Identifier == "printfloat")
 							//	Debugger.Break();
 
@@ -1193,10 +1204,26 @@ namespace CTilde.Langs
 								EmitCallArg(arg);
 							}
 
-							EmitInstruction(FishInst.MOVE_LONG_REG, FuncCallExp.Function.Identifier, Reg.EAX);
-							EmitInstruction(FishInst.CALL_REG, Reg.EAX);
+							int CleanupSize = FuncCallExp.Arguments.Count * 4;
+							if (State.Types.TryGetType(FuncType.Type, out FishTypeDef FT))
+							{
+								EmitInstruction(FishInst.SUB_LONG_REG, (uint)FT.Size, Reg.ESP);
+								EmitInstruction(FishInst.MOVE_REG_REG, Reg.ESP, Reg.EDX);
+								CleanupSize += FT.Size;
+							}
 
-							EmitInstruction(FishInst.ADD_LONG_REG, (uint)(FuncCallExp.Arguments.Count * 4), Reg.ESP);
+							if (FuncType.Type == "funcptr")
+							{
+								// load function pointer into EAX
+								Compile(FuncCallExp.Function);
+							}
+							else
+							{
+								EmitInstruction(FishInst.MOVE_LONG_REG, FuncCallExp.Function.Identifier, Reg.EAX);
+							}
+
+							EmitInstruction(FishInst.CALL_REG, Reg.EAX);
+							EmitInstruction(FishInst.ADD_LONG_REG, (uint)(CleanupSize), Reg.ESP);
 
 							Unindent();
 							EmitRaw("# FuncCall END - '{0}'", FuncCallExp.Function.ToSourceStr());
