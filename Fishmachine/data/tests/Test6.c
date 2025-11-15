@@ -44,7 +44,7 @@ vec2 vec2_add2(vec2 a, vec2 b) {
 	return result;
 }
 
-/*void vec2_mul(vec2 a, int ml, vec2* result) {
+void vec2_mul(vec2 a, int ml, vec2* result) {
 	result.x = a.x * ml;
 	result.y = a.y * ml;
 }
@@ -65,7 +65,7 @@ void func3(int num) {
 
 int addf(int a, int b) {
 	return (a + b);
-}*/
+}
 
 void kmain() {
 	vec2 a;
@@ -77,11 +77,8 @@ void kmain() {
 
 	a.y = 5;
 	b.y = 4;
-	
-	tst = vec2_add2(a, b);
-	printvec(tst);
 
-	/*int result = 0;
+	int result = 0;
 	funcptr f2 = addrof func2;
 
 	f2();
@@ -120,8 +117,7 @@ void kmain() {
 	print("f2 addr: ");
 	int f2_addr = addrof func2;
 	printnum(f2_addr);
-	print("\n");*/
-
+	print("\n");
 
 
 
