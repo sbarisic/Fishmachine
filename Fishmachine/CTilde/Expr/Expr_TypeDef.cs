@@ -160,6 +160,11 @@ namespace CTilde.Expr
 			return false;
 		}
 
+		public static bool IsUnsigned(Expr_TypeDef TypeDef)
+		{
+			return IsUnsigned(TypeDef.Type);
+		}
+
 		/*public static bool IsPointerType(string TypeName)
 		{
 			if (TypeName == "string" || TypeName == "voidptr")

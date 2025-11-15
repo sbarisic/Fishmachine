@@ -177,7 +177,7 @@ namespace CTilde.Langs
 						{
 							State.ClearVarOffsets();
 							State.ClearArgOffset();
-							
+
 							// Store function context for use in return statements
 							State.CurrentFunctionReturnType = FuncDef.FuncReturnTypeDef;
 							State.CurrentFunctionParamCount = FuncDef.FuncParams != null ? FuncDef.FuncParams.Definitions.Count : 0;
@@ -205,11 +205,11 @@ namespace CTilde.Langs
 								EmitReturn();
 							}
 							State.IsInsideFunctionBody = false;
-							
+
 							// Clear function context
 							State.CurrentFunctionReturnType = null;
 							State.CurrentFunctionParamCount = 0;
-							
+
 							Unindent();
 						}
 						break;
@@ -367,7 +367,38 @@ namespace CTilde.Langs
 						if (State.IsInsideFunctionBody)
 						{
 							int VarID = State.GetVarOffset(AssVariableDef.VariableDef.Ident.Identifier);
-							EmitInstruction(FishInst.MOVE_REG_OFFSET_REG, Reg.EAX, VarID, Reg.EBP);
+							Expr_TypeDef TypeDef = AssVariableDef.VariableDef.Type;
+
+							bool Unsigned = Expr_TypeDef.IsUnsigned(TypeDef);
+							int VarSize = Expr_TypeDef.GetRawTypeSize(State.Types, TypeDef);
+							int ValueSize = 0;
+							uint? ConstStructValue = null;
+
+							if (AssVariableDef.AssignmentValue is Expr_ConstNumber)
+							{
+								ValueSize = VarSize;
+							}
+							else if (AssVariableDef.AssignmentValue is Expr_ConstString)
+							{
+								ValueSize = VarSize;
+							}
+							else if (AssVariableDef.AssignmentValue is Expr_AddressOfOp)
+							{
+								ValueSize = VarSize;
+							}
+							else if (AssVariableDef.AssignmentValue is Expr_ConstNull)
+							{
+								ConstStructValue = 0;
+								ValueSize = VarSize;
+							}
+							else
+							{
+								throw new NotImplementedException();
+							}
+
+							EmitStoreToAddress(ValueSize, VarID, Reg.EAX, Reg.EBP, Unsigned, false, ConstStructValue);
+
+							//EmitInstruction(FishInst.MOVE_REG_OFFSET_REG, Reg.EAX, VarID, Reg.EBP);
 						}
 
 						Unindent();
@@ -1111,7 +1142,7 @@ namespace CTilde.Langs
 							if (ispointer)
 								sz = Expr_TypeDef.GetDerefTypeSize(State.Types, nameType);
 							else
-							 sz = Expr_TypeDef.GetRawTypeSize(State.Types, nameType);
+								sz = Expr_TypeDef.GetRawTypeSize(State.Types, nameType);
 
 							FetchIdentifier(name, sz, ispointer, Reg.EAX, false, false);
 
@@ -1218,7 +1249,7 @@ namespace CTilde.Langs
 								returnsLargeStruct = true;
 								returnBufferSize = FT.Size;
 								EmitRaw("#: Function returns large struct size={0}, allocating return buffer", FT.Size);
-								
+
 								// Allocate space on stack for return value
 								EmitInstruction(FishInst.SUB_LONG_REG, (uint)FT.Size, Reg.ESP);
 								// Push address of return buffer as hidden first parameter

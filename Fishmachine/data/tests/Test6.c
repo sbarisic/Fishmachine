@@ -12,6 +12,12 @@ struct vec2 {
 	int y;
 }
 
+struct vecs {
+	int x;
+	int y;
+	string str;
+}
+
 void print(string str) {
 	uint i = 0;
 
@@ -26,9 +32,27 @@ void printnum(uint num) {
 }
 
 void printvec(vec2 pos) {
+	print("vec2: ");
 	printnum(pos.x);
 	print(", ");
 	printnum(pos.y);
+	print("\n");
+}
+
+void printvecs(vecs vv) {
+	print("vecs: ");
+	printnum(vv.x);
+	print(", ");
+	printnum(vv.y);
+	print(", ");
+
+	if (vv.str != null) {
+		print(vv.str);
+	}
+	else {
+		print("null");
+	}
+
 	print("\n");
 }
 
@@ -71,6 +95,7 @@ void kmain() {
 	vec2 a;
 	vec2 b;
 	vec2 tst;
+	string teststring = "Hello test string";
 
 	a.x = 1;
 	b.x = 2;
@@ -80,6 +105,13 @@ void kmain() {
 
 	int result = 0;
 	funcptr f2 = addrof func2;
+
+	vecs vv = null;
+	vv.x = 10;
+	vv.y = 20;
+	vv.str = teststring;
+
+	printvecs(vv);
 
 	f2();
 	f2 = addrof func3;
