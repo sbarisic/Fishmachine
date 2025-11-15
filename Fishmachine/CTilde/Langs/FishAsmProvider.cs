@@ -521,12 +521,18 @@ namespace CTilde.Langs
 				if (ValueExpr is Expr_FuncCall FC)
 				{
 					int StoreOffset = State.GetVarOffset(Ident.Identifier);
-					//EmitInstruction(FishInst.PUSH_REG, Reg.EAX);
-					//EmitInstruction(FishInst.LEA_OFFSET_REG_REG, StoreOffset, Reg.EBP, Reg.EAX);
+					// EAX contains the address of the return buffer (on stack at ESP)
+					// Save it to EDX (source for copy)
+					EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.EDX);
+					// Compute destination address in EAX
+					EmitInstruction(FishInst.LEA_OFFSET_REG_REG, StoreOffset, Reg.EBP, Reg.EAX);
 
+					// Copy bytes from return buffer (EDX) to destination (EAX)
 					EmitCopyBytes(sz, Reg.EDX, Reg.EAX);
-
-					//EmitInstruction(FishInst.POP_REG, Reg.EAX);
+					
+					// Clean up the return buffer from the stack
+					EmitRaw("#: Cleaning up return buffer size={0}", sz);
+					EmitInstruction(FishInst.ADD_LONG_REG, (uint)sz, Reg.ESP);
 				}
 
 				//throw new NotImplementedException();

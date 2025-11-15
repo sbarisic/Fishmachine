@@ -82,6 +82,10 @@ namespace CTilde.FishAsm
 		List<FishLabel> Labels = new List<FishLabel>();
 
 		public TypeSystem Types = new TypeSystem();
+		
+		// Track current function being compiled
+		public Expr_TypeDef CurrentFunctionReturnType = null;
+		public int CurrentFunctionParamCount = 0;
 
 		public string DefineFreeLabel(string LabelName, Expr_TypeDef FuncReturnType, bool IsFunc, bool Global)
 		{
@@ -170,6 +174,10 @@ namespace CTilde.FishAsm
 			ArgOffset = 0;
 		}
 
+		public void SetParamOffset(int offset)
+		{
+			ParamOffset = offset;
+		}
 		bool ContainsKey(string Key)
 		{
 			for (int i = 0; i < VarOffsets.Count; i++)
@@ -221,7 +229,9 @@ namespace CTilde.FishAsm
 				throw new Exception(string.Format("Variable '{0}' is already defined", VarName));
 
 			SetKeyValue(VarName, EBPOffset, Size, TypeStr, Global, Param);
-			StackSize += Size;
+			// Don't increment StackSize for parameters or globals
+			if (!Param && !Global)
+				StackSize += Size;
 		}
 
 		public void DefineVar(string VarName, int Size, bool IsParam, Expr_TypeDef TypeStr, bool Global, bool Param)
@@ -233,8 +243,9 @@ namespace CTilde.FishAsm
 			}
 			else
 			{
-				// Local variables live at [EBP-4 - ArgOffset]
-				DefineVar(VarName, -4 - (ArgOffset), Size, TypeStr, Global, Param);
+				// Local variables are allocated downward from EBP
+				// After SUB_LONG_REG $Size, %esp, the variable starts at [EBP - (ArgOffset + Size)]
+				DefineVar(VarName, -(ArgOffset + Size), Size, TypeStr, Global, Param);
 			}
 
 			if (!Global)

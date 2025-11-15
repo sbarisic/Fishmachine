@@ -104,6 +104,11 @@ namespace CTilde.Langs
 
 								if (!FuncDef.Naked)
 								{
+									if (State.Types.TryGetType(FuncDef.FuncReturnTypeDef.Type, out FishTypeDef FTD))
+									{
+										EmitInstruction(FishInst.POP_REG, Reg.ECX);
+									}
+
 									EmitInstruction(FishInst.PUSH_REG, Reg.EBP);
 									EmitInstruction(FishInst.MOVE_REG_REG, Reg.ESP, Reg.EBP);
 								}
@@ -137,10 +142,8 @@ namespace CTilde.Langs
 							foreach (var r in saveRegs)
 								EmitInstruction(FishInst.PUSH_REG, r);
 
-							//int argCount = FuncDef.FuncParams != null ? FuncDef.FuncParams.Definitions.Count : 0;
 							int argCount = FuncDef.FuncParams != null ? FuncDef.FuncParams.Definitions.Count : 0;
 
-							// was: for (int i = 0; i < argCount; i++)
 							for (int i = argCount - 1; i >= 0; i--)
 							{
 								EmitInstruction(FishInst.MOVE_OFFSET_REG_REG, (8 + i * 4), Reg.EBP, Reg.EAX);
@@ -174,12 +177,14 @@ namespace CTilde.Langs
 						{
 							State.ClearVarOffsets();
 							State.ClearArgOffset();
+							
+							// Store function context for use in return statements
+							State.CurrentFunctionReturnType = FuncDef.FuncReturnTypeDef;
+							State.CurrentFunctionParamCount = FuncDef.FuncParams != null ? FuncDef.FuncParams.Definitions.Count : 0;
 
 							EmitRaw("{0}:", FuncDef.FuncName);
 							Indent();
 							State.IsInsideFunctionDef = true;
-
-							//EmitInstruction(FishInst.SOFTINT_DISABLE);
 
 							if (!FuncDef.Naked)
 							{
@@ -194,14 +199,17 @@ namespace CTilde.Langs
 
 							Compile(FuncDef.FuncBody);
 
-							//EmitInstruction(FishInst.SOFTINT_ENABLE);
-
 							if (!FuncDef.Naked)
 							{
 								EmitRaw("# EmitReturn for function {0}", FuncDef.FuncName);
 								EmitReturn();
 							}
 							State.IsInsideFunctionBody = false;
+							
+							// Clear function context
+							State.CurrentFunctionReturnType = null;
+							State.CurrentFunctionParamCount = 0;
+							
 							Unindent();
 						}
 						break;
@@ -998,6 +1006,7 @@ namespace CTilde.Langs
 						EmitRaw("# IndexOp BEGIN");
 						Indent();
 						EmitInstruction(FishInst.PUSH_REG, Reg.EBX);
+						EmitInstruction(FishInst.PUSH_REG, Reg.ECX);
 
 						// DIAGNOSTIC: Print the flag value immediately
 						EmitRaw("#: DIAGNOSTIC - IndexEmitOnlyAddress = {0}", State.IndexEmitOnlyAddress ? 1 : 0);
@@ -1080,7 +1089,7 @@ namespace CTilde.Langs
 							EmitInstruction(FishInst.ADD_REG_REG, Reg.EBX, Reg.EAX);
 						}
 
-
+						EmitInstruction(FishInst.POP_REG, Reg.ECX);
 						EmitInstruction(FishInst.POP_REG, Reg.EBX);
 						Unindent();
 						EmitRaw("# IndexOp END");
@@ -1136,8 +1145,10 @@ namespace CTilde.Langs
 							{
 								EmitRaw("# RETURN STRUCT STATEMENT - size={0}", FTD.Size);
 								// EAX contains address of local struct
-								// Hidden parameter at 8(%EBP) contains address of return buffer
-								EmitInstruction(FishInst.MOVE_OFFSET_REG_REG, 8, Reg.EBP, Reg.EDX);
+								// Hidden parameter is at [EBP + 8 + (param_count * 4)]
+								int hiddenParamOffset = 8 + (State.CurrentFunctionParamCount * 4);
+								EmitRaw("#: Hidden return buffer pointer at offset {0} from EBP", hiddenParamOffset);
+								EmitInstruction(FishInst.MOVE_OFFSET_REG_REG, hiddenParamOffset, Reg.EBP, Reg.EDX);
 								EmitCopyBytes(FTD.Size, Reg.EAX, Reg.EDX);
 								// Leave EAX pointing to the return buffer (though caller already has this)
 								EmitInstruction(FishInst.MOVE_REG_REG, Reg.EDX, Reg.EAX);
@@ -1199,9 +1210,6 @@ namespace CTilde.Langs
 							Expr_TypeDef FuncType = State.GetVarType(FuncCallExp.Function.Identifier);
 
 
-							//if (FuncCallExp.Function.Identifier == "printfloat")
-							//	Debugger.Break();
-
 							// Check if function returns a large struct - if so, allocate buffer and pass as hidden param
 							bool returnsLargeStruct = false;
 							int returnBufferSize = 0;
@@ -1214,9 +1222,11 @@ namespace CTilde.Langs
 								// Allocate space on stack for return value
 								EmitInstruction(FishInst.SUB_LONG_REG, (uint)FT.Size, Reg.ESP);
 								// Push address of return buffer as hidden first parameter
+								// This MUST be pushed BEFORE the regular arguments
 								EmitInstruction(FishInst.PUSH_REG, Reg.ESP);
 							}
 
+							// Push arguments in reverse order (right-to-left)
 							// was: for (int i = 0; i < FuncCallExp.Arguments.Count; i++)
 							for (int i = FuncCallExp.Arguments.Count - 1; i >= 0; i--)
 							{
@@ -1224,11 +1234,14 @@ namespace CTilde.Langs
 								EmitCallArg(arg);
 							}
 
+							// Calculate cleanup size - only the pushed arguments and hidden param pointer, 
+							// NOT the return buffer space itself
 							int CleanupSize = FuncCallExp.Arguments.Count * 4;
 							if (returnsLargeStruct)
 							{
-								// Add hidden return buffer parameter to cleanup
+								// Add hidden return buffer parameter (the pointer) to cleanup
 								CleanupSize += 4;
+								// Note: we do NOT add the buffer size itself to cleanup!
 							}
 
 							if (FuncType.Type == "funcptr")
@@ -1245,11 +1258,13 @@ namespace CTilde.Langs
 							EmitInstruction(FishInst.ADD_LONG_REG, (uint)(CleanupSize), Reg.ESP);
 
 							// If returning large struct, the result is now on the stack
-							// Pop it into EAX (actually just get the address)
+							// ESP points to the return buffer
 							if (returnsLargeStruct)
 							{
-								EmitRaw("#: Return buffer is on stack, leaving address in EAX");
+								EmitRaw("#: Return buffer is on stack at ESP, leaving address in EAX");
 								EmitInstruction(FishInst.MOVE_REG_REG, Reg.ESP, Reg.EAX);
+								// NOTE: The return buffer space is still allocated on the stack
+								// The caller is responsible for cleaning it up after using the value
 							}
 
 							Unindent();
