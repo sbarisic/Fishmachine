@@ -99,8 +99,6 @@ int addf(int a, int b) {
 }
 
 void test_switch(int i) {
-	string str = "hello";
-
 	switch (i) {
 
 	case 0:
@@ -116,6 +114,24 @@ void test_switch(int i) {
 		print("case default\n");
 		break;
 	}
+}
+
+void kmain() {
+	vec2 a;
+	vec2 b;
+	vec2 tst;
+	string teststring = "Hello test string";
+
+	a.x = 1;
+	b.x = 2;
+
+	a.y = 5;
+	b.y = 4;
+
+	int result = 0;
+	funcptr f2 = addrof func2;
+
+	string str = "hello";
 
 	switch (str) {
 	case "hello":
@@ -130,38 +146,6 @@ void test_switch(int i) {
 		print("string case default\n");
 		break;
 	}
-}
-
-void kmain() {
-	string str = "hello";
-
-	switch (str) {
-	case "hello":
-		print("-hello\n");
-		break;
-
-	case "world":
-		print("-world\n");
-		break;
-
-	default:
-		print("-default\n");
-		break;
-	}
-
-	/*vec2 a;
-	vec2 b;
-	vec2 tst;
-	string teststring = "Hello test string";
-
-	a.x = 1;
-	b.x = 2;
-
-	a.y = 5;
-	b.y = 4;
-
-	int result = 0;
-	funcptr f2 = addrof func2;
 
 	test_switch(0);
 	test_switch(1);
@@ -212,7 +196,7 @@ void kmain() {
 
 	func1();
 
-	print("f2 addr: ");
+	/*print("f2 addr: ");
 	int f2_addr = addrof func2;
 	printnum(f2_addr);
 	print("\n");*/

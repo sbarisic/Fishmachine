@@ -392,15 +392,11 @@ namespace CTilde.Langs
 							uint? ConstStructValue = null;
 							bool SkipEmitStore = false;
 
-							if (AssVariableDef.AssignmentValue is Expr_ConstNumber)
+							if (AssVariableDef.AssignmentValue is Expr_ConstNumber || AssVariableDef.AssignmentValue is Expr_Identifier || AssVariableDef.AssignmentValue is Expr_ConstDecimal)
 							{
 								ValueSize = VarSize;
 							}
-							else if (AssVariableDef.AssignmentValue is Expr_ConstString)
-							{
-								ValueSize = VarSize;
-							}
-							else if (AssVariableDef.AssignmentValue is Expr_AddressOfOp)
+							else if (AssVariableDef.AssignmentValue is Expr_ConstString || AssVariableDef.AssignmentValue is Expr_AddressOfOp)
 							{
 								ValueSize = VarSize;
 							}
@@ -1012,84 +1008,77 @@ namespace CTilde.Langs
 								Compile(caseValue);
 								// Compare switch value (ECX) with case value (EAX)
 								EmitInstruction(FishInst.CMP_REG_REG, Reg.ECX, Reg.EAX);
+								EmitInstruction(FishInst.JUMP_IF_ZERO_LONG, caseLabel);
 							}
 							else if (caseValue is Expr_ConstString)
 							{
 								EmitRaw("# String comparison for case: {0}", caseValue.ToSourceStr());
 								Compile(caseValue); // EAX = string literal address
 
-								// Inline string comparison: ECX = switch string, EAX = case string
+								// Inline string comparison: ECX = switch string, EAX = case string  
 								string strCmpLoopLabel = State.DefineFreeLabel("STRCMP_LOOP", null, false, false);
 								string strCmpMismatchLabel = State.DefineFreeLabel("STRCMP_MISMATCH", null, false, false);
 								string strCmpMatchLabel = State.DefineFreeLabel("STRCMP_MATCH", null, false, false);
 								string nextCaseLabel = State.DefineFreeLabel("STRCMP_NEXT", null, false, false);
-								
-								// IMPORTANT: Save ECX (switch value) before we corrupt it in the loop
-								EmitInstruction(FishInst.PUSH_REG, Reg.ECX);
-								
+
 								EmitInstruction(FishInst.PUSH_REG, Reg.EDI); // Save EDI
 								EmitInstruction(FishInst.PUSH_REG, Reg.ESI); // Save ESI
-								
 								EmitInstruction(FishInst.MOVE_REG_REG, Reg.ECX, Reg.ESI); // ESI = switch string
 								EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.EDI); // EDI = case string
 								EmitInstruction(FishInst.MOVE_LONG_REG, (uint)0, Reg.EDX); // EDX = index = 0
-								
-								// Loop: compare byte by byte
+
+								// Loop: compare byte by byte (don't use ECX - we need to preserve it!)
 								EmitRaw("{0}:", strCmpLoopLabel);
-								
-								// Load byte from switch string into AL: ESI[EDX]
+
+								// Load byte from switch string into AL, then save to stack: ESI[EDX]
 								EmitInstruction(FishInst.PUSH_REG, Reg.EBX);
 								EmitInstruction(FishInst.MOVE_REG_REG, Reg.EDX, Reg.EBX);
 								EmitInstruction(FishInst.ADD_REG_REG, Reg.ESI, Reg.EBX);
 								EmitInstruction(FishInst.MOVEBYTE_OFFSET_REG_REG, 0, Reg.EBX, Reg.AL);
-								EmitInstruction(FishInst.POP_REG, Reg.EBX);
-								EmitInstruction(FishInst.PUSH_REG, Reg.EAX); // Save switch byte
-								
+								EmitInstruction(FishInst.POP_REG, Reg.EBX); // Restore original EBX
+								EmitInstruction(FishInst.PUSH_REG, Reg.EAX); // Save switch byte (in AL/EAX) to stack
+
 								// Load byte from case string into AL: EDI[EDX]
 								EmitInstruction(FishInst.PUSH_REG, Reg.EBX);
 								EmitInstruction(FishInst.MOVE_REG_REG, Reg.EDX, Reg.EBX);
 								EmitInstruction(FishInst.ADD_REG_REG, Reg.EDI, Reg.EBX);
 								EmitInstruction(FishInst.MOVEBYTE_OFFSET_REG_REG, 0, Reg.EBX, Reg.AL);
-								EmitInstruction(FishInst.POP_REG, Reg.EBX);
-								
-								EmitInstruction(FishInst.POP_REG, Reg.ECX); // Restore switch byte to ECX
-								
-								// Compare the two bytes: ECX (byte from switch) vs EAX (byte from case)
-								EmitInstruction(FishInst.CMP_REG_REG, Reg.ECX, Reg.EAX);
+								EmitInstruction(FishInst.POP_REG, Reg.EBX); // Restore original EBX
+
+								EmitInstruction(FishInst.POP_REG, Reg.EBX); // Get saved switch byte from stack into EBX
+
+								// Compare the two bytes: EBX (byte from switch) vs EAX (byte from case)
+								EmitInstruction(FishInst.CMP_REG_REG, Reg.EBX, Reg.EAX);
 								EmitInstruction(FishInst.JUMP_IF_NOT_ZERO_LONG, strCmpMismatchLabel); // Not equal
-								
-								// Check if we reached null terminator (both strings ended)
+
+								// Bytes are equal - check if BOTH are null terminator (we can check just EAX since they're equal)
 								EmitInstruction(FishInst.CMP_LONG_REG, (uint)0, Reg.EAX);
 								EmitInstruction(FishInst.JUMP_IF_ZERO_LONG, strCmpMatchLabel); // Both are 0, strings match
-								
-								// Increment index and continue
+
+								// Bytes match but not null yet - continue to next character
 								EmitInstruction(FishInst.ADD_LONG_REG, (uint)1, Reg.EDX);
 								EmitInstruction(FishInst.JUMP_LONG, strCmpLoopLabel);
-								
+
 								// String mismatch - restore registers and continue to next case
 								EmitRaw("{0}:", strCmpMismatchLabel);
 								EmitInstruction(FishInst.POP_REG, Reg.ESI);
 								EmitInstruction(FishInst.POP_REG, Reg.EDI);
-								EmitInstruction(FishInst.POP_REG, Reg.ECX); // Restore original switch value
 								EmitInstruction(FishInst.JUMP_LONG, nextCaseLabel);
-								
+
 								// String match - restore registers and jump to this case
 								EmitRaw("{0}:", strCmpMatchLabel);
 								EmitInstruction(FishInst.POP_REG, Reg.ESI);
 								EmitInstruction(FishInst.POP_REG, Reg.EDI);
-								EmitInstruction(FishInst.POP_REG, Reg.ECX); // Restore original switch value
 								EmitInstruction(FishInst.JUMP_LONG, caseLabel);
-								
+
 								// Label to continue to next case comparison
 								EmitRaw("{0}:", nextCaseLabel);
+								// ECX still contains the original switch value for next comparison
 								// Continue with next case comparison or default/end
 								continue; // Skip the JUMP_IF_ZERO_LONG below
 							}
 							else
 								throw new NotImplementedException();
-
-
-							EmitInstruction(FishInst.JUMP_IF_ZERO_LONG, caseLabel);
 						}
 
 						// If no case matched, jump to default or end
@@ -1346,7 +1335,7 @@ namespace CTilde.Langs
 							if (ispointer)
 								sz = Expr_TypeDef.GetDerefTypeSize(State.Types, nameType);
 							else
-							 sz = Expr_TypeDef.GetRawTypeSize(State.Types, nameType);
+								sz = Expr_TypeDef.GetRawTypeSize(State.Types, nameType);
 
 							FetchIdentifier(name, sz, ispointer, Reg.EAX, false, false);
 

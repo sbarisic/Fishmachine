@@ -30,6 +30,13 @@ namespace CTilde.Expr
 			return this;
 		}
 
+		public Expr_ReturnStatement Parse2(Tokenizer Tok, Expr_TypeDef RetTypeDef)
+		{
+			Expr_ReturnStatement Ret = (Expr_ReturnStatement)Parse(Tok);
+			Ret.RetTypeDef = RetTypeDef;
+			return Ret;
+		}
+
 		public override string ToSourceStr()
 		{
 			if (RetValExpr != null)

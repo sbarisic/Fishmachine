@@ -60,7 +60,8 @@ namespace Fishmachine.VM
 							break;
 
 						default:
-							throw new NotImplementedException();
+							E.SetException(this, FishExcept.InterruptArgumentException);
+							return true;
 					}
 
 					CallLong(IntAddr, ref E);
@@ -89,7 +90,8 @@ namespace Fishmachine.VM
 						break;
 
 					default:
-						throw new NotImplementedException();
+						E.SetException(this, FishExcept.InterruptArgumentException);
+						return true;
 				}
 
 				if (PopReg(Reg.RFLAGS, ref E))
@@ -477,7 +479,8 @@ namespace Fishmachine.VM
 								break;
 
 							default:
-								throw new NotImplementedException();
+								E.SetException(this, FishExcept.InvalidSubInstruction);
+								return true;
 						}
 
 
@@ -507,15 +510,12 @@ namespace Fishmachine.VM
 						uint R2Val = Regs.Read(R2);
 
 						int Result = (int)R1Val - (int)R2Val;
-						//Regs.Write(R2, (uint)Result);
 
 						Regs.LessThan = R1Val < R2Val;
 						Regs.Equal = R1Val == R2Val;
 						Regs.IsZero = Result == 0;
 						Regs.GreaterThan = R1Val > R2Val;
 						Regs.Sign = Result < 0;
-
-						Regs.Write(R2, Regs.Equal ? 1u : 0u);
 
 						if (FishSettings.DebugPrint)
 						{
@@ -602,7 +602,11 @@ namespace Fishmachine.VM
 								Console.ResetColor();
 							}
 						}
-						else throw new NotImplementedException();
+						else
+						{
+							E.SetException(this, FishExcept.InvalidSubInstruction);
+							return true;
+						}
 
 						//Regs.Write(R2, R1Val);
 						break;
@@ -624,7 +628,7 @@ namespace Fishmachine.VM
 							return true;
 
 						Console.PrintInst(Inst, Offset, R1, R2);
-					 E.SetParams(Offset, R1, R2);
+						E.SetParams(Offset, R1, R2);
 
 						uint Addr = (uint)(Regs.Read(R1) + Offset);
 

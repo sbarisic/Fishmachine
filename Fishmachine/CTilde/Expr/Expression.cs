@@ -1,6 +1,7 @@
 using Fishmachine;
 using Fishmachine.CTilde;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -10,8 +11,18 @@ using Console = Fishmachine.Console;
 
 namespace CTilde.Expr
 {
-	public abstract class Expression
+	public abstract class Expression : IEnumerable<Expression>
 	{
+		public virtual IEnumerator<Expression> GetEnumerator()
+		{
+			throw new NotImplementedException();
+		}
+
+		IEnumerator IEnumerable.GetEnumerator()
+		{
+			return GetEnumerator();
+		}
+
 		public virtual Expression Parse(Tokenizer Tok)
 		{
 			throw new NotImplementedException();

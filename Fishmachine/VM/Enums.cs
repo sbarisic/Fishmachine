@@ -10,6 +10,7 @@ namespace Fishmachine.VM
 	{
 		None = 0,
 		InvalidInstruction,
+		InvalidSubInstruction,
 		DivisionByZero,
 		AccessViolation,
 		StackOverflow,
@@ -24,6 +25,8 @@ namespace Fishmachine.VM
 		AccessViolationExecute,
 		AccessViolationStack,
 		AccessViolationUnknown,
+
+		InterruptArgumentException,
 	}
 
 	public enum FishMemPriv : byte

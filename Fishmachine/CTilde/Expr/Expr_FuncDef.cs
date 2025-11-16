@@ -69,7 +69,8 @@ namespace CTilde.Expr
 
 				FuncBody.Expressions.Where(E => E is Expr_ReturnStatement).Select(S =>
 				{
-					((Expr_ReturnStatement)S).RetTypeDef = FuncReturnTypeDef; return S;
+					((Expr_ReturnStatement)S).RetTypeDef = FuncReturnTypeDef;
+					return S;
 				}).ToArray();
 
 				IsFunctionCall = false;
