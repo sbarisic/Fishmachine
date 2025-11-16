@@ -125,11 +125,31 @@ void test_switch(int i) {
 	case "world":
 		print("string case world\n");
 		break;
+
+	default:
+		print("string case default\n");
+		break;
 	}
 }
 
 void kmain() {
-	vec2 a;
+	string str = "hello";
+
+	switch (str) {
+	case "hello":
+		print("-hello\n");
+		break;
+
+	case "world":
+		print("-world\n");
+		break;
+
+	default:
+		print("-default\n");
+		break;
+	}
+
+	/*vec2 a;
 	vec2 b;
 	vec2 tst;
 	string teststring = "Hello test string";
@@ -195,7 +215,7 @@ void kmain() {
 	print("f2 addr: ");
 	int f2_addr = addrof func2;
 	printnum(f2_addr);
-	print("\n");
+	print("\n");*/
 
 
 

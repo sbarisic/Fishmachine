@@ -1022,6 +1022,10 @@ namespace CTilde.Langs
 								string strCmpLoopLabel = State.DefineFreeLabel("STRCMP_LOOP", null, false, false);
 								string strCmpMismatchLabel = State.DefineFreeLabel("STRCMP_MISMATCH", null, false, false);
 								string strCmpMatchLabel = State.DefineFreeLabel("STRCMP_MATCH", null, false, false);
+								string nextCaseLabel = State.DefineFreeLabel("STRCMP_NEXT", null, false, false);
+								
+								// IMPORTANT: Save ECX (switch value) before we corrupt it in the loop
+								EmitInstruction(FishInst.PUSH_REG, Reg.ECX);
 								
 								EmitInstruction(FishInst.PUSH_REG, Reg.EDI); // Save EDI
 								EmitInstruction(FishInst.PUSH_REG, Reg.ESI); // Save ESI
@@ -1033,20 +1037,22 @@ namespace CTilde.Langs
 								// Loop: compare byte by byte
 								EmitRaw("{0}:", strCmpLoopLabel);
 								
-								// Load byte from switch string into EAX: ESI[EDX]
+								// Load byte from switch string into AL: ESI[EDX]
 								EmitInstruction(FishInst.PUSH_REG, Reg.EBX);
 								EmitInstruction(FishInst.MOVE_REG_REG, Reg.EDX, Reg.EBX);
 								EmitInstruction(FishInst.ADD_REG_REG, Reg.ESI, Reg.EBX);
 								EmitInstruction(FishInst.MOVEBYTE_OFFSET_REG_REG, 0, Reg.EBX, Reg.AL);
-								EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.ECX); // Save to ECX temporarily
 								EmitInstruction(FishInst.POP_REG, Reg.EBX);
+								EmitInstruction(FishInst.PUSH_REG, Reg.EAX); // Save switch byte
 								
-								// Load byte from case string into EAX: EDI[EDX]
+								// Load byte from case string into AL: EDI[EDX]
 								EmitInstruction(FishInst.PUSH_REG, Reg.EBX);
 								EmitInstruction(FishInst.MOVE_REG_REG, Reg.EDX, Reg.EBX);
 								EmitInstruction(FishInst.ADD_REG_REG, Reg.EDI, Reg.EBX);
 								EmitInstruction(FishInst.MOVEBYTE_OFFSET_REG_REG, 0, Reg.EBX, Reg.AL);
 								EmitInstruction(FishInst.POP_REG, Reg.EBX);
+								
+								EmitInstruction(FishInst.POP_REG, Reg.ECX); // Restore switch byte to ECX
 								
 								// Compare the two bytes: ECX (byte from switch) vs EAX (byte from case)
 								EmitInstruction(FishInst.CMP_REG_REG, Reg.ECX, Reg.EAX);
@@ -1060,23 +1066,24 @@ namespace CTilde.Langs
 								EmitInstruction(FishInst.ADD_LONG_REG, (uint)1, Reg.EDX);
 								EmitInstruction(FishInst.JUMP_LONG, strCmpLoopLabel);
 								
-								// String mismatch
+								// String mismatch - restore registers and continue to next case
 								EmitRaw("{0}:", strCmpMismatchLabel);
 								EmitInstruction(FishInst.POP_REG, Reg.ESI);
 								EmitInstruction(FishInst.POP_REG, Reg.EDI);
-								// Set flags for not equal (ZF=0)
-								EmitInstruction(FishInst.MOVE_LONG_REG, (uint)0, Reg.EAX);
-								EmitInstruction(FishInst.CMP_LONG_REG, (uint)1, Reg.EAX);
-								EmitInstruction(FishInst.JUMP_IF_ZERO_LONG, caseLabel); // This will not match (ZF=0), so skip to next case
+								EmitInstruction(FishInst.POP_REG, Reg.ECX); // Restore original switch value
+								EmitInstruction(FishInst.JUMP_LONG, nextCaseLabel);
 								
-								// String match
+								// String match - restore registers and jump to this case
 								EmitRaw("{0}:", strCmpMatchLabel);
 								EmitInstruction(FishInst.POP_REG, Reg.ESI);
 								EmitInstruction(FishInst.POP_REG, Reg.EDI);
-								// Set flags for equal (ZF=1)
-								EmitInstruction(FishInst.MOVE_LONG_REG, (uint)0, Reg.EAX);
-								EmitInstruction(FishInst.CMP_LONG_REG, (uint)0, Reg.EAX);
-								// Fall through to the JUMP_IF_ZERO_LONG below which will match
+								EmitInstruction(FishInst.POP_REG, Reg.ECX); // Restore original switch value
+								EmitInstruction(FishInst.JUMP_LONG, caseLabel);
+								
+								// Label to continue to next case comparison
+								EmitRaw("{0}:", nextCaseLabel);
+								// Continue with next case comparison or default/end
+								continue; // Skip the JUMP_IF_ZERO_LONG below
 							}
 							else
 								throw new NotImplementedException();
