@@ -977,7 +977,13 @@ namespace CTilde.Langs
 
 						Compile(SwitchExpr.Exp1); // initialization
 
+
 						// TODO: Implement switch statement code generation
+						foreach (Expr_CaseBlock caseBlock in SwitchExpr.Body.Expressions)
+						{
+							
+						}
+
 
 						Unindent();
 						EmitRaw("# Switch END");
