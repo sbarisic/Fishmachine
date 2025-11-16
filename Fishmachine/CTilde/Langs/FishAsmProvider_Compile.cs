@@ -988,7 +988,7 @@ namespace CTilde.Langs
 						foreach (Expr_CaseBlock caseBlock in SwitchExpr.Body.Expressions)
 						{
 							string caseLabel = State.DefineFreeLabel("CASE", null, false, false);
-							
+
 							if (caseBlock.CaseExpression == null)
 							{
 								// This is the default case
@@ -1005,12 +1005,24 @@ namespace CTilde.Langs
 						for (int i = 0; i < caseLabels.Count; i++)
 						{
 							var (caseLabel, caseValue) = caseLabels[i];
-							
-							// Compile the case constant value
-							Compile(caseValue);
-							
-							// Compare switch value (ECX) with case value (EAX)
-							EmitInstruction(FishInst.CMP_REG_REG, Reg.ECX, Reg.EAX);
+
+							if (caseValue is Expr_ConstNumber)
+							{
+								// Compile the case constant value
+								Compile(caseValue);
+								// Compare switch value (ECX) with case value (EAX)
+								EmitInstruction(FishInst.CMP_REG_REG, Reg.ECX, Reg.EAX);
+							}
+							else if (caseValue is Expr_ConstString)
+							{
+								Compile(caseValue);
+
+								// TODO Compare string pointed in ECX to string pointed in EAX, like strcmp, until it hits 0
+							}
+							else
+								throw new NotImplementedException();
+
+
 							EmitInstruction(FishInst.JUMP_IF_ZERO_LONG, caseLabel);
 						}
 
@@ -1026,7 +1038,7 @@ namespace CTilde.Langs
 
 						// Generate case bodies
 						State.PushBreakLabel(EndSwitchLabel);
-						
+
 						int caseIndex = 0;
 						foreach (Expr_CaseBlock caseBlock in SwitchExpr.Body.Expressions)
 						{
@@ -1042,16 +1054,16 @@ namespace CTilde.Langs
 								EmitRaw("# Case {0}", caseBlock.CaseExpression.ToSourceStr());
 								caseIndex++;
 							}
-							
+
 							EmitRaw("{0}:", caseLabel);
 							Indent();
-							
+
 							// Compile case body statements
 							foreach (Expression stmt in caseBlock.Body)
 							{
 								Compile(stmt);
 							}
-							
+
 							Unindent();
 						}
 

@@ -99,6 +99,8 @@ int addf(int a, int b) {
 }
 
 void test_switch(int i) {
+	string str = "hello";
+
 	switch (i) {
 
 	case 0:
@@ -112,6 +114,16 @@ void test_switch(int i) {
 
 	default:
 		print("case default\n");
+		break;
+	}
+
+	switch (str) {
+	case "hello":
+		print("string case hello\n");
+		break;
+
+	case "world":
+		print("string case world\n");
 		break;
 	}
 }
