@@ -1,3 +1,10 @@
+Func2 called!
+Func3 called with num: 9
+5
+Structs
 13, 24
 26, 48
-Hello Unit Test World!
+4, 5
+Function pointers
+Func1 called!
+f2 addr: 5337

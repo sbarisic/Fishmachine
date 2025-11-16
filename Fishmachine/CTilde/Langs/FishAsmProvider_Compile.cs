@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -79,6 +80,15 @@ namespace CTilde.Langs
 
 						Unindent();
 						EmitRaw(".endstruct");
+						EmitRaw("");
+
+						foreach (Expr_FuncDef F in StructDef.Functions)
+						{
+							// Add 'this' param
+							F.FuncParams.Prepend(new ParamDefData(Expr_TypeDef.MakeClassRef(StructDef.Name), "this"));
+							Compile(F);
+						}
+
 						break;
 					}
 
@@ -103,6 +113,11 @@ namespace CTilde.Langs
 
 								if (!FuncDef.Naked)
 								{
+									if (State.Types.TryGetType(FuncDef.FuncReturnTypeDef.Type, out FishTypeDef FTD))
+									{
+										EmitInstruction(FishInst.POP_REG, Reg.ECX);
+									}
+
 									EmitInstruction(FishInst.PUSH_REG, Reg.EBP);
 									EmitInstruction(FishInst.MOVE_REG_REG, Reg.ESP, Reg.EBP);
 								}
@@ -136,10 +151,8 @@ namespace CTilde.Langs
 							foreach (var r in saveRegs)
 								EmitInstruction(FishInst.PUSH_REG, r);
 
-							//int argCount = FuncDef.FuncParams != null ? FuncDef.FuncParams.Definitions.Count : 0;
 							int argCount = FuncDef.FuncParams != null ? FuncDef.FuncParams.Definitions.Count : 0;
 
-							// was: for (int i = 0; i < argCount; i++)
 							for (int i = argCount - 1; i >= 0; i--)
 							{
 								EmitInstruction(FishInst.MOVE_OFFSET_REG_REG, (8 + i * 4), Reg.EBP, Reg.EAX);
@@ -174,11 +187,13 @@ namespace CTilde.Langs
 							State.ClearVarOffsets();
 							State.ClearArgOffset();
 
+							// Store function context for use in return statements
+							State.CurrentFunctionReturnType = FuncDef.FuncReturnTypeDef;
+							State.CurrentFunctionParamCount = FuncDef.FuncParams != null ? FuncDef.FuncParams.Definitions.Count : 0;
+
 							EmitRaw("{0}:", FuncDef.FuncName);
 							Indent();
 							State.IsInsideFunctionDef = true;
-
-							//EmitInstruction(FishInst.SOFTINT_DISABLE);
 
 							if (!FuncDef.Naked)
 							{
@@ -193,14 +208,17 @@ namespace CTilde.Langs
 
 							Compile(FuncDef.FuncBody);
 
-							//EmitInstruction(FishInst.SOFTINT_ENABLE);
-
 							if (!FuncDef.Naked)
 							{
 								EmitRaw("# EmitReturn for function {0}", FuncDef.FuncName);
 								EmitReturn();
 							}
 							State.IsInsideFunctionBody = false;
+
+							// Clear function context
+							State.CurrentFunctionReturnType = null;
+							State.CurrentFunctionParamCount = 0;
+
 							Unindent();
 						}
 						break;
@@ -221,7 +239,7 @@ namespace CTilde.Langs
 						{
 							ParamDefData ParamDef = ParamsDef.Definitions[i];
 							int Size = Expr_TypeDef.GetRawTypeSize(State.Types, ParamDef.ParamType);
-							
+
 							// Check if this is a struct larger than 4 bytes - these are passed by reference
 							Expr_TypeDef ActualParamType = ParamDef.ParamType;
 							if (Size > 4 && !Expr_TypeDef.IsPointerType(ParamDef.ParamType))
@@ -232,7 +250,7 @@ namespace CTilde.Langs
 								ActualParamType.IsPointer = true;
 								ActualParamType.IsArray = false;
 								ActualParamType.ArraySize = 0;
-								
+
 								EmitRaw("#: Param '{0}' is struct size={1}, treating as pointer internally", ParamDef.Name, Size);
 								// Register as 4-byte pointer parameter
 								State.DefineVar(ParamDef.Name, 4, true, ActualParamType, false, true);
@@ -319,6 +337,7 @@ namespace CTilde.Langs
 					{
 						EmitRaw("# Expr_AssignedVariableDef BEGIN - {0}", AssVariableDef.VariableDef.Ident.Identifier);
 						Indent();
+						State.IsInsideAssignment = true;
 
 						int Size = Expr_TypeDef.GetRawTypeSize(State.Types, AssVariableDef.VariableDef.Type);
 						bool Global = State.IsInsideFunctionBody ? false : true;
@@ -353,14 +372,66 @@ namespace CTilde.Langs
 						EmitRaw("# VariableAssign '{0}' BEGIN", AssVariableDef.VariableDef.Ident.Identifier);
 						Indent();
 
+
+						int VarID = State.GetVarOffset(AssVariableDef.VariableDef.Ident.Identifier);
+						Expr_TypeDef TypeDef = AssVariableDef.VariableDef.Type;
+						bool Unsigned = Expr_TypeDef.IsUnsigned(TypeDef);
+						int VarSize = Expr_TypeDef.GetRawTypeSize(State.Types, TypeDef);
+
+						State.AssignVarID = VarID;
+						State.AssignVarType = TypeDef;
+						State.AssignVarUnsigned = Unsigned;
+						State.AssignVarSize = VarSize;
+						State.AssignVarName = AssVariableDef.VariableDef.Ident.Identifier;
+
 						Compile(AssVariableDef.AssignmentValue);
 
 						if (State.IsInsideFunctionBody)
 						{
-							int VarID = State.GetVarOffset(AssVariableDef.VariableDef.Ident.Identifier);
-							EmitInstruction(FishInst.MOVE_REG_OFFSET_REG, Reg.EAX, VarID, Reg.EBP);
+							int ValueSize = 0;
+							uint? ConstStructValue = null;
+							bool SkipEmitStore = false;
+
+							if (AssVariableDef.AssignmentValue is Expr_ConstNumber)
+							{
+								ValueSize = VarSize;
+							}
+							else if (AssVariableDef.AssignmentValue is Expr_ConstString)
+							{
+								ValueSize = VarSize;
+							}
+							else if (AssVariableDef.AssignmentValue is Expr_AddressOfOp)
+							{
+								ValueSize = VarSize;
+							}
+							else if (AssVariableDef.AssignmentValue is Expr_ConstNull)
+							{
+								ConstStructValue = 0;
+								ValueSize = VarSize;
+							}
+							else if (AssVariableDef.AssignmentValue is Expr_NewExpr NewExpr)
+							{
+								ConstStructValue = 0;
+								ValueSize = VarSize;
+								SkipEmitStore = true;
+							}
+							else
+							{
+								throw new NotImplementedException($"Not implemented for {AssVariableDef.AssignmentValue.GetType().Name}");
+							}
+
+							if (!SkipEmitStore)
+								EmitStoreToAddress(ValueSize, VarID, Reg.EAX, Reg.EBP, Unsigned, false, ConstStructValue);
+
+							//EmitInstruction(FishInst.MOVE_REG_OFFSET_REG, Reg.EAX, VarID, Reg.EBP);
 						}
 
+						State.AssignVarName = "";
+						State.AssignVarID = 0;
+						State.AssignVarType = null;
+						State.AssignVarUnsigned = false;
+						State.AssignVarSize = 0;
+						State.IsInsideAssignment = false;
 						Unindent();
 						EmitRaw("# VariableAssign '{0}' END", AssVariableDef.VariableDef.Ident.Identifier);
 						break;
@@ -370,6 +441,7 @@ namespace CTilde.Langs
 					{
 						EmitRaw("# Expr_AssignValue '{0} = {1}' BEGIN", AssValue.LExpr.ToSourceStr(), AssValue.ValueExpr.ToSourceStr());
 						Indent();
+						State.IsInsideAssignment = true;
 
 						if (AssValue.LExpr is Expr_IndexOp IndexOp)
 						{
@@ -402,7 +474,7 @@ namespace CTilde.Langs
 										{
 											Expr_TypeDef fieldType = FST.GetFieldType(MemAcc.MemberName);
 											CopyBytes = Expr_TypeDef.GetRawTypeSize(State.Types, fieldType);
-											
+
 											EmitRaw("#: Struct field '{0}.{1}' size={2}", Id.Identifier, MemAcc.MemberName, CopyBytes);
 										}
 										else
@@ -439,7 +511,7 @@ namespace CTilde.Langs
 						else
 							throw new NotImplementedException();
 
-
+						State.IsInsideAssignment = false;
 						Unindent();
 						EmitRaw("# Expr_AssignValue '{0} = {1}' END", AssValue.LExpr.ToSourceStr(), AssValue.ValueExpr.ToSourceStr());
 						break;
@@ -711,7 +783,7 @@ namespace CTilde.Langs
 							//EmitInstruction(FishInst.FLOAT_STORE_OFFSET_REG, Reg.ST0, Reg.EAX);
 							//EmitInstruction(FishInst.MOVE_REG_REG, Reg.ST0, Reg.EAX);
 							EmitInstruction(FishInst.FLOAT_POP_REG, Reg.EAX);
-	
+
 
 
 							//throw new NotImplementedException();
@@ -997,6 +1069,7 @@ namespace CTilde.Langs
 						EmitRaw("# IndexOp BEGIN");
 						Indent();
 						EmitInstruction(FishInst.PUSH_REG, Reg.EBX);
+						EmitInstruction(FishInst.PUSH_REG, Reg.ECX);
 
 						// DIAGNOSTIC: Print the flag value immediately
 						EmitRaw("#: DIAGNOSTIC - IndexEmitOnlyAddress = {0}", State.IndexEmitOnlyAddress ? 1 : 0);
@@ -1079,7 +1152,7 @@ namespace CTilde.Langs
 							EmitInstruction(FishInst.ADD_REG_REG, Reg.EBX, Reg.EAX);
 						}
 
-
+						EmitInstruction(FishInst.POP_REG, Reg.ECX);
 						EmitInstruction(FishInst.POP_REG, Reg.EBX);
 						Unindent();
 						EmitRaw("# IndexOp END");
@@ -1101,7 +1174,7 @@ namespace CTilde.Langs
 							if (ispointer)
 								sz = Expr_TypeDef.GetDerefTypeSize(State.Types, nameType);
 							else
-							 sz = Expr_TypeDef.GetRawTypeSize(State.Types, nameType);
+								sz = Expr_TypeDef.GetRawTypeSize(State.Types, nameType);
 
 							FetchIdentifier(name, sz, ispointer, Reg.EAX, false, false);
 
@@ -1121,6 +1194,52 @@ namespace CTilde.Langs
 						break;
 					}
 
+				case Expr_NewExpr NewExpr:
+					{
+						if (!State.IsInsideFunctionBody)
+							throw new Exception("Cannot use new outside function body");
+
+						EmitRaw("# Expr_NewExpr BEGIN");
+						Indent();
+
+						int Size = 0;
+						string StructName = "";
+
+						if (NewExpr.NewExpr is Expr_Identifier ExprId)
+						{
+							if (State.Types.TryGetType(ExprId.Identifier, out FishTypeDef FTD))
+							{
+								Size = FTD.Size;
+								StructName = FTD.Name;
+							}
+						}
+						else
+							throw new NotImplementedException();
+
+						if (State.IsInsideAssignment)
+						{
+							//int VarSize = State.AssignVarSize;
+							int VarOffset = State.AssignVarID;
+							bool Unsigned = State.AssignVarUnsigned;
+							string VarName = State.AssignVarName;
+
+							EmitStoreToAddress(Size, VarOffset, Reg.EAX, Reg.EBP, Unsigned, false, 0);
+
+							string CtorName = StructName + "__ctor";
+							if (State.LabelExists(CtorName))
+							{
+								Expr_FuncCall CtorCall = new Expr_FuncCall();
+								CtorCall.Function = new Expr_Identifier(CtorName);
+								CtorCall.Arguments.Add(new Expr_Identifier(VarName)); // pass pointer to new struct as first arg
+								Compile(CtorCall);
+							}
+						}
+
+						Unindent();
+						EmitRaw("# Expr_NewExpr END");
+						break;
+					}
+
 				case Expr_ReturnStatement ReturnExp:
 					{
 						EmitRaw("# Expr_ReturnStatement BEGIN");
@@ -1129,6 +1248,20 @@ namespace CTilde.Langs
 						if (ReturnExp.RetValExpr != null)
 						{
 							Compile(ReturnExp.RetValExpr);
+
+							// Check if we're returning a large struct
+							if (State.Types.TryGetType(ReturnExp.RetTypeDef.Type, out FishTypeDef FTD))
+							{
+								EmitRaw("# RETURN STRUCT STATEMENT - size={0}", FTD.Size);
+								// EAX contains address of local struct
+								// Hidden parameter is at [EBP + 8 + (param_count * 4)]
+								int hiddenParamOffset = 8 + (State.CurrentFunctionParamCount * 4);
+								EmitRaw("#: Hidden return buffer pointer at offset {0} from EBP", hiddenParamOffset);
+								EmitInstruction(FishInst.MOVE_OFFSET_REG_REG, hiddenParamOffset, Reg.EBP, Reg.EDX);
+								EmitCopyBytes(FTD.Size, Reg.EAX, Reg.EDX);
+								// Leave EAX pointing to the return buffer (though caller already has this)
+								EmitInstruction(FishInst.MOVE_REG_REG, Reg.EDX, Reg.EAX);
+							}
 						}
 
 						EmitReturn();
@@ -1183,9 +1316,26 @@ namespace CTilde.Langs
 							EmitRaw("# FuncCall BEGIN - '{0}'", FuncCallExp.Function.ToSourceStr());
 							Indent();
 
-							//if (FuncCallExp.Function.Identifier == "printfloat")
-							//	Debugger.Break();
+							Expr_TypeDef FuncType = State.GetVarType(FuncCallExp.Function.Identifier);
 
+
+							// Check if function returns a large struct - if so, allocate buffer and pass as hidden param
+							bool returnsLargeStruct = false;
+							int returnBufferSize = 0;
+							if (State.Types.TryGetType(FuncType.Type, out FishTypeDef FT))
+							{
+								returnsLargeStruct = true;
+								returnBufferSize = FT.Size;
+								EmitRaw("#: Function returns large struct size={0}, allocating return buffer", FT.Size);
+
+								// Allocate space on stack for return value
+								EmitInstruction(FishInst.SUB_LONG_REG, (uint)FT.Size, Reg.ESP);
+								// Push address of return buffer as hidden first parameter
+								// This MUST be pushed BEFORE the regular arguments
+								EmitInstruction(FishInst.PUSH_REG, Reg.ESP);
+							}
+
+							// Push arguments in reverse order (right-to-left)
 							// was: for (int i = 0; i < FuncCallExp.Arguments.Count; i++)
 							for (int i = FuncCallExp.Arguments.Count - 1; i >= 0; i--)
 							{
@@ -1193,10 +1343,38 @@ namespace CTilde.Langs
 								EmitCallArg(arg);
 							}
 
-							EmitInstruction(FishInst.MOVE_LONG_REG, FuncCallExp.Function.Identifier, Reg.EAX);
-							EmitInstruction(FishInst.CALL_REG, Reg.EAX);
+							// Calculate cleanup size - only the pushed arguments and hidden param pointer, 
+							// NOT the return buffer space itself
+							int CleanupSize = FuncCallExp.Arguments.Count * 4;
+							if (returnsLargeStruct)
+							{
+								// Add hidden return buffer parameter (the pointer) to cleanup
+								CleanupSize += 4;
+								// Note: we do NOT add the buffer size itself to cleanup!
+							}
 
-							EmitInstruction(FishInst.ADD_LONG_REG, (uint)(FuncCallExp.Arguments.Count * 4), Reg.ESP);
+							if (FuncType.Type == "funcptr")
+							{
+								// load function pointer into EAX
+								Compile(FuncCallExp.Function);
+							}
+							else
+							{
+								EmitInstruction(FishInst.MOVE_LONG_REG, FuncCallExp.Function.Identifier, Reg.EAX);
+							}
+
+							EmitInstruction(FishInst.CALL_REG, Reg.EAX);
+							EmitInstruction(FishInst.ADD_LONG_REG, (uint)(CleanupSize), Reg.ESP);
+
+							// If returning large struct, the result is now on the stack
+							// ESP points to the return buffer
+							if (returnsLargeStruct)
+							{
+								EmitRaw("#: Return buffer is on stack at ESP, leaving address in EAX");
+								EmitInstruction(FishInst.MOVE_REG_REG, Reg.ESP, Reg.EAX);
+								// NOTE: The return buffer space is still allocated on the stack
+								// The caller is responsible for cleaning it up after using the value
+							}
 
 							Unindent();
 							EmitRaw("# FuncCall END - '{0}'", FuncCallExp.Function.ToSourceStr());

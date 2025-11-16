@@ -12,6 +12,7 @@ namespace Fishmachine
 	internal class Program
 	{
 		const bool PrintSrcAndAsm = false;
+		public static Exception Exception;
 
 		static void HookOutput()
 		{
@@ -231,6 +232,15 @@ namespace Fishmachine
 				Console.Silent = false;
 				string ProgOut = CompileAndRun(SrcFile, "ct.asm", false, false);
 
+				if (Exception != null)
+				{
+					string Src = File.ReadAllText(SrcFile);
+					string Asm = File.ReadAllText("ct.asm");
+					string Ex = Exception.ToString();
+
+					File.WriteAllText("data/error_src.txt", $"```\n{Src}\n```\n\n```\n{Asm}\n```\n\n```\n{Ex}\n```\n\n");
+				}
+
 				Console.WriteLine("Done!");
 				Console.ReadLine();
 				return;
@@ -382,9 +392,9 @@ namespace Fishmachine
 			//OutStr = CompileAndRun("data/FishAsm.c", "FishAsm.asm");
 
 			//RunProgram("data/FishAsm.c", false);
-			//RunProgram("data/tests/Test6.c", false);
+			RunProgram("data/tests/Test6.c", false);
 
-			//*
+			/*
 			RunProgram("data/tests/Test1.c", true);
 			RunProgram("data/tests/Test2.c", true);
 			RunProgram("data/tests/Test3.c", true);

@@ -12,10 +12,12 @@ namespace CTilde.Expr
 
 		public string Name;
 		public List<Expr_VariableDef> Variables;
+		public List<Expr_FuncDef> Functions;
 
 		public Expr_StructDef()
 		{
 			Variables = new List<Expr_VariableDef>();
+			Functions = new List<Expr_FuncDef>();
 		}
 
 		public override Expression Parse(Tokenizer Tok)
@@ -32,15 +34,16 @@ namespace CTilde.Expr
 				Token PT = Tok.Peek();
 				Expression E = Expression.ParseStatement(Tok);
 
-				if (E is Expr_VariableDef)
+				if (E is Expr_VariableDef Var)
 				{
-
-					Expr_VariableDef Var = (Expr_VariableDef)E;
 					Variables.Add(Var);
-
+				}
+				else if (E is Expr_FuncDef FD)
+				{
+					Functions.Add(FD);
 				}
 				else
-					throw new Exception("Unexpected expression type " + E.GetType());
+					throw new Exception("Could not parse expression type in struct " + E.GetType());
 			}
 
 			Tok.NextToken().Assert(Symbol.RBrace);

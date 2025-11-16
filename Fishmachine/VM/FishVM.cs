@@ -222,8 +222,8 @@ namespace Fishmachine.VM
 			{
 				E.SetException(this, FishExcept.AccessViolation);
 
-				if (Debugger.IsAttached && true)
-					Debugger.Break();
+				//if (Debugger.IsAttached && true)
+				//	Debugger.Break();
 
 				return null;
 			}
@@ -949,27 +949,35 @@ namespace Fishmachine.VM
 			{
 				FishStackTrace Ex = new FishStackTrace();
 
-				while (Run(ref Ex))
+				try
 				{
-					bool Interrupted = false;
-					while (!Interrupted)
+					while (Run(ref Ex))
 					{
-						if (FishIntQueue.Count > 0)
+						bool Interrupted = false;
+						while (!Interrupted)
 						{
-							Interrupted = true;
-							FishIntQueueItem Item = FishIntQueue.Dequeue();
-							Interrupt(Item.Int, Item.Args, ref Ex);
+							if (FishIntQueue.Count > 0)
+							{
+								Interrupted = true;
+								FishIntQueueItem Item = FishIntQueue.Dequeue();
+								Interrupt(Item.Int, Item.Args, ref Ex);
+							}
+
+							if (!Ex.Is(FishExcept.RequestWait))
+								break;
+
+							Thread.Sleep(1);
 						}
 
-						if (!Ex.Is(FishExcept.RequestWait))
-							break;
-						
-						Thread.Sleep(1);
+						if (!Silent)
+							if (FishSettings.FormatPrint)
+								Program.FormatPrint(this);
 					}
-
-					if (!Silent)
-						if (FishSettings.FormatPrint)
-							Program.FormatPrint(this);
+				}
+				catch (Exception E)
+				{
+					Program.Exception = E;
+					//throw;
 				}
 			});
 			BgThread.IsBackground = true;

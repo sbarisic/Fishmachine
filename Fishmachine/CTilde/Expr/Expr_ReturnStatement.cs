@@ -9,6 +9,7 @@ namespace CTilde.Expr
 	public class Expr_ReturnStatement : Expression
 	{
 		public Expression RetValExpr;
+		public Expr_TypeDef RetTypeDef;
 
 		public Expr_ReturnStatement()
 		{

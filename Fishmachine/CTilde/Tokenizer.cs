@@ -21,6 +21,7 @@ namespace CTilde
 		@for,
 		@true,
 		@false,
+		@new,
 		naked,
 		@break,
 		@static,
@@ -70,8 +71,13 @@ namespace CTilde
 		Token[] Tokens;
 		int Pos;
 
-		public Tokenizer(TextReader Reader)
+		string[] Lines;
+
+		public Tokenizer(string SrcText, bool IsText)
 		{
+			Lines = SrcText.Split(new string[] { "\r\n", "\n" }, StringSplitOptions.None);
+
+			StringReader Reader = new StringReader(SrcText);
 			LexerSettings Settings = LexerSettings.Default;
 
 			string[] KeywordNames = Enum.GetNames(typeof(Keyword));
@@ -116,10 +122,16 @@ namespace CTilde
 			L = new Lexer(Reader, Settings);
 			Tokens = GetTokenArray();
 			Pos = 0;
+
 		}
 
-		public Tokenizer(string Filename) : this(new StringReader(File.ReadAllText(Filename)))
+		public Tokenizer(string Filename) : this(File.ReadAllText(Filename), true)
 		{
+		}
+
+		public string GetLine(int Line)
+		{
+			return Lines[Line];
 		}
 
 		IEnumerable<Token> GetTokens()

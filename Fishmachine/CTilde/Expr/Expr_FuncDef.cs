@@ -41,7 +41,7 @@ namespace CTilde.Expr
 				Tok.NextToken();
 
 				FuncReturnTypeDef = Expr_TypeDef.MakeVoid();
-				FuncName = Expr_ClassDef.CurrentClass.Name;
+				FuncName = Expr_ClassDef.CurrentClass?.Name ?? Expr_StructDef.CurrentStruct.Name;
 
 				if (IsCtor)
 					FuncName += "__ctor";
@@ -66,6 +66,12 @@ namespace CTilde.Expr
 					Console.WriteLine(">> {0}", P);
 
 				FuncBody = new Expr_Block().Parse<Expr_Block>(Tok);
+
+				FuncBody.Expressions.Where(E => E is Expr_ReturnStatement).Select(S =>
+				{
+					((Expr_ReturnStatement)S).RetTypeDef = FuncReturnTypeDef; return S;
+				}).ToArray();
+
 				IsFunctionCall = false;
 			}
 			else

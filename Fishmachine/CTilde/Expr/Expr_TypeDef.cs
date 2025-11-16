@@ -10,7 +10,7 @@ namespace CTilde.Expr
 {
 	public class Expr_TypeDef : Expression
 	{
-		static string[] PtrTypes = new string[] { "string", "voidptr" };
+		static string[] PtrTypes = new string[] { "string", "voidptr", "funcptr" };
 		static string[] FloatTypes = new string[] { "float", "double" };
 
 		public string Type;
@@ -158,6 +158,11 @@ namespace CTilde.Expr
 			if (TypeName == "byte" || TypeName == "uint" || TypeName == "bool")
 				return true;
 			return false;
+		}
+
+		public static bool IsUnsigned(Expr_TypeDef TypeDef)
+		{
+			return IsUnsigned(TypeDef.Type);
 		}
 
 		/*public static bool IsPointerType(string TypeName)

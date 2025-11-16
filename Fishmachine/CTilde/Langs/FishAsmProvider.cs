@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
+using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -139,6 +140,31 @@ namespace CTilde.Langs
 			EmitInstruction(FishInst.RET);
 		}
 
+		void EmitCopyBytes(int Size, Reg SrcAddr, Reg DstAddr, uint? constStructValue = null)
+		{
+			EmitInstruction(FishInst.PUSH_REG, Reg.ECX);
+
+			if (constStructValue != null)
+			{
+				EmitInstruction(FishInst.MOVE_LONG_REG, constStructValue.Value, Reg.ECX);
+
+				for (int i = 0; i < Size; i++)
+				{
+					EmitInstruction(FishInst.MOVEBYTE_REG_OFFSET_REG, Reg.ECX, i, DstAddr);
+				}
+			}
+			else
+			{
+				for (int i = 0; i < Size; i++)
+				{
+					EmitInstruction(FishInst.MOVEBYTE_OFFSET_REG_REG, i, SrcAddr, Reg.ECX);
+					EmitInstruction(FishInst.MOVEBYTE_REG_OFFSET_REG, Reg.ECX, i, DstAddr);
+				}
+			}
+
+			EmitInstruction(FishInst.POP_REG, Reg.ECX);
+		}
+
 		void EmitLoadFromAddress(int size, int offset, Reg SrcAddr, Reg DstReg, bool isunsigned)
 		{
 			if (size == 0)
@@ -176,7 +202,7 @@ namespace CTilde.Langs
 				throw new NotImplementedException();
 		}
 
-		void EmitStoreToAddress(int size, int offset, Reg SrcReg, Reg DstAddr, bool isunsigned, bool useEBX)
+		void EmitStoreToAddress(int size, int offset, Reg SrcReg, Reg DstAddr, bool isunsigned, bool useEBX, uint? constStructValue = null)
 		{
 			if (useEBX)
 				DstAddr = Reg.EBX;
@@ -204,10 +230,21 @@ namespace CTilde.Langs
 			{
 				EmitInstruction(FishInst.MOVEBYTE_REG_OFFSET_REG, SrcReg, offset, DstAddr);
 			}
+			else if (constStructValue != null && size > 4)
+			{
+				EmitInstruction(FishInst.PUSH_REG, DstAddr);
+				EmitInstruction(FishInst.LEA_OFFSET_REG_REG, offset, DstAddr, DstAddr);
+
+				EmitCopyBytes(size, SrcReg, DstAddr, constStructValue);
+
+				EmitInstruction(FishInst.POP_REG, DstAddr);
+			}
 			else
+			{
 				throw new NotImplementedException(string.Format("EmitStoreToAddress does not support size={0}. " +
 					"For structs >4 bytes, consider passing/returning by reference or implementing a calling convention " +
 					"where the caller provides a return buffer address.", size));
+			}
 		}
 
 		void FetchIdentifier(string name, int size, bool ispointer, Reg DestReg, bool isunsigned, bool sumEBX/*, bool fetchaddress*/)
@@ -494,6 +531,7 @@ namespace CTilde.Langs
 			Compile(ValueExpr);
 
 			Expr_TypeDef td = State.GetVarType(Ident.Identifier);
+			State.Types.TryGetType(td.Type, out FishTypeDef FTD);
 			int sz = Expr_TypeDef.GetRawTypeSize(State.Types, td);
 
 			EmitRaw("# Expr_AssignVariable '{0}' BEGIN", SourceStr);
@@ -502,7 +540,31 @@ namespace CTilde.Langs
 
 			bool storeaddress = !State.IsVarGlobal(Ident.Identifier);
 
-			StoreIdentifier(Ident.Identifier, sz, td.IsPointer, Reg.EAX, Expr_TypeDef.IsUnsigned(td.Type), storeaddress);
+			if (FTD != null)
+			{
+				if (ValueExpr is Expr_FuncCall FC)
+				{
+					int StoreOffset = State.GetVarOffset(Ident.Identifier);
+					// EAX contains the address of the return buffer (on stack at ESP)
+					// Save it to EDX (source for copy)
+					EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.EDX);
+					// Compute destination address in EAX
+					EmitInstruction(FishInst.LEA_OFFSET_REG_REG, StoreOffset, Reg.EBP, Reg.EAX);
+
+					// Copy bytes from return buffer (EDX) to destination (EAX)
+					EmitCopyBytes(sz, Reg.EDX, Reg.EAX);
+
+					// Clean up the return buffer from the stack
+					EmitRaw("#: Cleaning up return buffer size={0}", sz);
+					EmitInstruction(FishInst.ADD_LONG_REG, (uint)sz, Reg.ESP);
+				}
+
+				//throw new NotImplementedException();
+			}
+			else
+			{
+				StoreIdentifier(Ident.Identifier, sz, td.IsPointer, Reg.EAX, Expr_TypeDef.IsUnsigned(td.Type), storeaddress);
+			}
 
 			Unindent();
 			EmitRaw("# Expr_AssignVariable '{0}' END", SourceStr);
