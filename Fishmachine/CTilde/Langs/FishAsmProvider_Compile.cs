@@ -972,18 +972,92 @@ namespace CTilde.Langs
 
 				case Expr_SwitchStatement SwitchExpr:
 					{
-						EmitRaw("# Switch BEGIN '{0}'", SwitchExpr.ToSourceStr());
+						EmitRaw("# Switch BEGIN '{0}'", SwitchExpr.Exp1.ToSourceStr());
 						Indent();
 
-						Compile(SwitchExpr.Exp1); // initialization
+						// Compile the switch expression (value to compare)
+						Compile(SwitchExpr.Exp1);
+						EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.ECX); // ECX = switch value
 
+						// Create labels for each case and default
+						string EndSwitchLabel = State.DefineFreeLabel("ENDSWITCH", null, false, false);
+						string DefaultLabel = null;
+						List<(string caseLabel, Expression caseValue)> caseLabels = new List<(string, Expression)>();
 
-						// TODO: Implement switch statement code generation
+						// Generate labels for all cases
 						foreach (Expr_CaseBlock caseBlock in SwitchExpr.Body.Expressions)
 						{
+							string caseLabel = State.DefineFreeLabel("CASE", null, false, false);
 							
+							if (caseBlock.CaseExpression == null)
+							{
+								// This is the default case
+								DefaultLabel = caseLabel;
+							}
+							else
+							{
+								caseLabels.Add((caseLabel, caseBlock.CaseExpression));
+							}
 						}
 
+						// Generate comparison chain for each case
+						EmitRaw("# Switch comparison chain");
+						for (int i = 0; i < caseLabels.Count; i++)
+						{
+							var (caseLabel, caseValue) = caseLabels[i];
+							
+							// Compile the case constant value
+							Compile(caseValue);
+							
+							// Compare switch value (ECX) with case value (EAX)
+							EmitInstruction(FishInst.CMP_REG_REG, Reg.ECX, Reg.EAX);
+							EmitInstruction(FishInst.JUMP_IF_ZERO_LONG, caseLabel);
+						}
+
+						// If no case matched, jump to default or end
+						if (DefaultLabel != null)
+						{
+							EmitInstruction(FishInst.JUMP_LONG, DefaultLabel);
+						}
+						else
+						{
+							EmitInstruction(FishInst.JUMP_LONG, EndSwitchLabel);
+						}
+
+						// Generate case bodies
+						State.PushBreakLabel(EndSwitchLabel);
+						
+						int caseIndex = 0;
+						foreach (Expr_CaseBlock caseBlock in SwitchExpr.Body.Expressions)
+						{
+							string caseLabel;
+							if (caseBlock.CaseExpression == null)
+							{
+								caseLabel = DefaultLabel;
+								EmitRaw("# Default case");
+							}
+							else
+							{
+								caseLabel = caseLabels[caseIndex].caseLabel;
+								EmitRaw("# Case {0}", caseBlock.CaseExpression.ToSourceStr());
+								caseIndex++;
+							}
+							
+							EmitRaw("{0}:", caseLabel);
+							Indent();
+							
+							// Compile case body statements
+							foreach (Expression stmt in caseBlock.Body)
+							{
+								Compile(stmt);
+							}
+							
+							Unindent();
+						}
+
+						State.PopBreakLabel();
+
+						EmitRaw("{0}:", EndSwitchLabel);
 
 						Unindent();
 						EmitRaw("# Switch END");
