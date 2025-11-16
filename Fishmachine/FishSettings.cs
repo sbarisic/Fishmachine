@@ -34,7 +34,7 @@ namespace Fishmachine
 		public static bool DebugPrintIP = false;
 		public static bool DebugExceptions = false;
 
-		public static bool TokenizerSilent = false;
+		public static bool TokenizerSilent = true;
 	}
 
 }
