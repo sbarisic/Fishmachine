@@ -98,6 +98,23 @@ int addf(int a, int b) {
 	return (a + b);
 }
 
+void test_switch() {
+	int i = 0;
+
+	switch (i) {
+
+	case 0:
+		break;
+
+	case 1:
+	case 2:
+		break;
+
+	default:
+		break;
+	}
+}
+
 void kmain() {
 	vec2 a;
 	vec2 b;

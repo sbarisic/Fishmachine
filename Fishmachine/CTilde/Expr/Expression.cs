@@ -131,6 +131,12 @@ namespace CTilde.Expr
 
 				return new Expr_ForStatement().Parse(Tok);
 			}
+			else if (Tok.Peek().Is(Keyword.@switch))
+			{
+				Tok.NextToken().Assert(Keyword.@switch);
+
+				return new Expr_SwitchStatement().Parse(Tok);
+			}
 			else if (Tok.Peek().Is(Keyword.@return))
 			{
 				return new Expr_ReturnStatement().Parse(Tok);

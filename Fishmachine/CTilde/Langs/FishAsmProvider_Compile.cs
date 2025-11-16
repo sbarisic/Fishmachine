@@ -970,6 +970,20 @@ namespace CTilde.Langs
 						break;
 					}
 
+				case Expr_SwitchStatement SwitchExpr:
+					{
+						EmitRaw("# Switch BEGIN '{0}'", SwitchExpr.ToSourceStr());
+						Indent();
+
+						Compile(SwitchExpr.Exp1); // initialization
+
+						// TODO: Implement switch statement code generation
+
+						Unindent();
+						EmitRaw("# Switch END");
+						break;
+					}
+
 				case Expr_ForStatement ForExpr:
 					{
 						EmitRaw("# For BEGIN '{0}'", ForExpr.ToSourceStr());
