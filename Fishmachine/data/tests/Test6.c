@@ -7,6 +7,15 @@ define SYS_PrintNum = 2;
 define SYS_SoftwareInterrupt = 3;
 define SYS_Alloc = 4;
 
+void print(string str) {
+	uint i = 0;
+
+	while (str[i] != 0) {
+		syscall_2(SYS_PrintChar, str[i]);
+		i++;
+	}
+}
+
 struct vec2 {
 	int x;
 	int y;
@@ -16,14 +25,12 @@ struct vecs {
 	int x;
 	int y;
 	string str;
-}
 
-void print(string str) {
-	uint i = 0;
-
-	while (str[i] != 0) {
-		syscall_2(SYS_PrintChar, str[i]);
-		i++;
+	__ctor() {
+		print("vecs constructor called\n");
+		this.x = 100;
+		this.y = 69;
+		this.str = "default string";
 	}
 }
 
@@ -106,7 +113,9 @@ void kmain() {
 	int result = 0;
 	funcptr f2 = addrof func2;
 
-	vecs vv = null;
+	vecs vv = new vecs;
+	printvecs(vv);
+
 	vv.x = 10;
 	vv.y = 20;
 	vv.str = teststring;
@@ -121,7 +130,9 @@ void kmain() {
 	printnum(result);
 	print("\n");
 
-	vec2 pos;
+	vec2 pos = new vec2;
+	printvec(pos);
+
 	pos.x = 10;
 	pos.y = 20;
 

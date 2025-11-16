@@ -80,6 +80,15 @@ namespace CTilde.Langs
 
 						Unindent();
 						EmitRaw(".endstruct");
+						EmitRaw("");
+
+						foreach (Expr_FuncDef F in StructDef.Functions)
+						{
+							// Add 'this' param
+							F.FuncParams.Prepend(new ParamDefData(Expr_TypeDef.MakeClassRef(StructDef.Name), "this"));
+							Compile(F);
+						}
+
 						break;
 					}
 
@@ -328,6 +337,7 @@ namespace CTilde.Langs
 					{
 						EmitRaw("# Expr_AssignedVariableDef BEGIN - {0}", AssVariableDef.VariableDef.Ident.Identifier);
 						Indent();
+						State.IsInsideAssignment = true;
 
 						int Size = Expr_TypeDef.GetRawTypeSize(State.Types, AssVariableDef.VariableDef.Type);
 						bool Global = State.IsInsideFunctionBody ? false : true;
@@ -362,17 +372,25 @@ namespace CTilde.Langs
 						EmitRaw("# VariableAssign '{0}' BEGIN", AssVariableDef.VariableDef.Ident.Identifier);
 						Indent();
 
+
+						int VarID = State.GetVarOffset(AssVariableDef.VariableDef.Ident.Identifier);
+						Expr_TypeDef TypeDef = AssVariableDef.VariableDef.Type;
+						bool Unsigned = Expr_TypeDef.IsUnsigned(TypeDef);
+						int VarSize = Expr_TypeDef.GetRawTypeSize(State.Types, TypeDef);
+
+						State.AssignVarID = VarID;
+						State.AssignVarType = TypeDef;
+						State.AssignVarUnsigned = Unsigned;
+						State.AssignVarSize = VarSize;
+						State.AssignVarName = AssVariableDef.VariableDef.Ident.Identifier;
+
 						Compile(AssVariableDef.AssignmentValue);
 
 						if (State.IsInsideFunctionBody)
 						{
-							int VarID = State.GetVarOffset(AssVariableDef.VariableDef.Ident.Identifier);
-							Expr_TypeDef TypeDef = AssVariableDef.VariableDef.Type;
-
-							bool Unsigned = Expr_TypeDef.IsUnsigned(TypeDef);
-							int VarSize = Expr_TypeDef.GetRawTypeSize(State.Types, TypeDef);
 							int ValueSize = 0;
 							uint? ConstStructValue = null;
+							bool SkipEmitStore = false;
 
 							if (AssVariableDef.AssignmentValue is Expr_ConstNumber)
 							{
@@ -391,16 +409,29 @@ namespace CTilde.Langs
 								ConstStructValue = 0;
 								ValueSize = VarSize;
 							}
+							else if (AssVariableDef.AssignmentValue is Expr_NewExpr NewExpr)
+							{
+								ConstStructValue = 0;
+								ValueSize = VarSize;
+								SkipEmitStore = true;
+							}
 							else
 							{
-								throw new NotImplementedException();
+								throw new NotImplementedException($"Not implemented for {AssVariableDef.AssignmentValue.GetType().Name}");
 							}
 
-							EmitStoreToAddress(ValueSize, VarID, Reg.EAX, Reg.EBP, Unsigned, false, ConstStructValue);
+							if (!SkipEmitStore)
+								EmitStoreToAddress(ValueSize, VarID, Reg.EAX, Reg.EBP, Unsigned, false, ConstStructValue);
 
 							//EmitInstruction(FishInst.MOVE_REG_OFFSET_REG, Reg.EAX, VarID, Reg.EBP);
 						}
 
+						State.AssignVarName = "";
+						State.AssignVarID = 0;
+						State.AssignVarType = null;
+						State.AssignVarUnsigned = false;
+						State.AssignVarSize = 0;
+						State.IsInsideAssignment = false;
 						Unindent();
 						EmitRaw("# VariableAssign '{0}' END", AssVariableDef.VariableDef.Ident.Identifier);
 						break;
@@ -410,6 +441,7 @@ namespace CTilde.Langs
 					{
 						EmitRaw("# Expr_AssignValue '{0} = {1}' BEGIN", AssValue.LExpr.ToSourceStr(), AssValue.ValueExpr.ToSourceStr());
 						Indent();
+						State.IsInsideAssignment = true;
 
 						if (AssValue.LExpr is Expr_IndexOp IndexOp)
 						{
@@ -479,7 +511,7 @@ namespace CTilde.Langs
 						else
 							throw new NotImplementedException();
 
-
+						State.IsInsideAssignment = false;
 						Unindent();
 						EmitRaw("# Expr_AssignValue '{0} = {1}' END", AssValue.LExpr.ToSourceStr(), AssValue.ValueExpr.ToSourceStr());
 						break;
@@ -1159,6 +1191,52 @@ namespace CTilde.Langs
 
 						Unindent();
 						EmitRaw("# Expr_IncDecOp END");
+						break;
+					}
+
+				case Expr_NewExpr NewExpr:
+					{
+						if (!State.IsInsideFunctionBody)
+							throw new Exception("Cannot use new outside function body");
+
+						EmitRaw("# Expr_NewExpr BEGIN");
+						Indent();
+
+						int Size = 0;
+						string StructName = "";
+
+						if (NewExpr.NewExpr is Expr_Identifier ExprId)
+						{
+							if (State.Types.TryGetType(ExprId.Identifier, out FishTypeDef FTD))
+							{
+								Size = FTD.Size;
+								StructName = FTD.Name;
+							}
+						}
+						else
+							throw new NotImplementedException();
+
+						if (State.IsInsideAssignment)
+						{
+							//int VarSize = State.AssignVarSize;
+							int VarOffset = State.AssignVarID;
+							bool Unsigned = State.AssignVarUnsigned;
+							string VarName = State.AssignVarName;
+
+							EmitStoreToAddress(Size, VarOffset, Reg.EAX, Reg.EBP, Unsigned, false, 0);
+
+							string CtorName = StructName + "__ctor";
+							if (State.LabelExists(CtorName))
+							{
+								Expr_FuncCall CtorCall = new Expr_FuncCall();
+								CtorCall.Function = new Expr_Identifier(CtorName);
+								CtorCall.Arguments.Add(new Expr_Identifier(VarName)); // pass pointer to new struct as first arg
+								Compile(CtorCall);
+							}
+						}
+
+						Unindent();
+						EmitRaw("# Expr_NewExpr END");
 						break;
 					}
 

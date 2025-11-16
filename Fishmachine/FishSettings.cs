@@ -32,9 +32,9 @@ namespace Fishmachine
 		public static bool DebugPrintRegisters = false;
 		public static bool DebugRegisterWrite = false;
 		public static bool DebugPrintIP = false;
-		public static bool DebugExceptions = false
-			;
-		public static bool TokenizerSilent = true;
+		public static bool DebugExceptions = false;
+
+		public static bool TokenizerSilent = false;
 	}
 
 }

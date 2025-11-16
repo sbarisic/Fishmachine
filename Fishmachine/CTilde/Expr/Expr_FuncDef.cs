@@ -41,7 +41,7 @@ namespace CTilde.Expr
 				Tok.NextToken();
 
 				FuncReturnTypeDef = Expr_TypeDef.MakeVoid();
-				FuncName = Expr_ClassDef.CurrentClass.Name;
+				FuncName = Expr_ClassDef.CurrentClass?.Name ?? Expr_StructDef.CurrentStruct.Name;
 
 				if (IsCtor)
 					FuncName += "__ctor";

@@ -56,6 +56,21 @@ namespace CTilde.Expr
 			return null;
 		}
 
+		static void ThrowError(Tokenizer T, Token Tok, string Msg)
+		{
+			string ErrorLine = T.GetLine(Tok.LineNumber);
+			int TabCnt = ErrorLine.Where(C => C == '\t').Count();
+			ErrorLine = ErrorLine.Replace("\t", "    ");
+			string ErrorIndicator = new string(' ', Tok.LinePosition) + "^ " + Msg + $" '{Tok.Text}'";
+
+			string ErrorLinePrefix = $"{Tok.LineNumber + 1}:{Tok.LinePosition + 1}: ";
+			ErrorIndicator = new string(' ', ErrorLinePrefix.Length + (TabCnt * 3)) + ErrorIndicator;
+
+			string ExLine = $"{ErrorLinePrefix}{ErrorLine}\n{ErrorIndicator}";
+			Console.WriteLine(ExLine);
+			throw new Exception(ExLine);
+		}
+
 		public static Expression ParseStatement(Tokenizer Tok)
 		{
 			Token[] DebugTokens = GetDebugTokens(Tok);
@@ -202,7 +217,9 @@ namespace CTilde.Expr
 			else if (EE is Expr_ConstNumber ConstNumVal)
 				return ConstNumVal;
 			else
-				throw new ExprException(PT);
+			{
+				ThrowError(Tok, PT, "Could not parse token");
+			}
 
 			// Empty statement
 			/*if (Tok.Peek().Is(Symbol.Semicolon))
@@ -287,6 +304,10 @@ namespace CTilde.Expr
 				{
 					Tok.NextToken().Assert(Keyword.@false);
 					LeftExpr = new Expr_ConstNumber(Tok.Peek(), "0");
+				}
+				else if (Tok.Peek().Is(Keyword.@new))
+				{
+					LeftExpr = new Expr_NewExpr().Parse<Expr_NewExpr>(Tok);
 				}
 				else if (Tok.Peek().Is(TokenType.Identifier) && Tok.Peek(2).Is(Symbol.LBracket))
 				{

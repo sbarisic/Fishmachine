@@ -70,6 +70,15 @@ namespace CTilde.FishAsm
 		public bool IsInsideFunctionBody = false;
 		public bool IsInsideFunctionDef = false;
 		public bool IndexEmitOnlyAddress = false;
+		public bool IsInsideAssignment = false;
+
+
+		public string AssignVarName = "";
+		public int AssignVarID = 0;
+		public Expr_TypeDef AssignVarType = null;
+		public bool AssignVarUnsigned = false;
+		public int AssignVarSize = 0;
+
 		public bool CmpPreserveEAX;
 
 		public int StackSize;
@@ -82,7 +91,7 @@ namespace CTilde.FishAsm
 		List<FishLabel> Labels = new List<FishLabel>();
 
 		public TypeSystem Types = new TypeSystem();
-		
+
 		// Track current function being compiled
 		public Expr_TypeDef CurrentFunctionReturnType = null;
 		public int CurrentFunctionParamCount = 0;
@@ -141,6 +150,16 @@ namespace CTilde.FishAsm
 				throw new Exception(string.Format("Could not find label '{0}'", LabelName));
 
 			return Label;
+		}
+
+		public bool LabelExists(string LabelName)
+		{
+			FishLabel Label = Labels.FirstOrDefault(l => l.Name == LabelName);
+
+			if (Label == null)
+				return false;
+
+			return true;
 		}
 
 		public void ClearVarOffsets()
