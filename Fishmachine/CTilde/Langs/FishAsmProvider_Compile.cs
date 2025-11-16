@@ -1015,9 +1015,70 @@ namespace CTilde.Langs
 							}
 							else if (caseValue is Expr_ConstString)
 							{
-								Compile(caseValue);
+								EmitRaw("# String comparison for case: {0}", caseValue.ToSourceStr());
+								Compile(caseValue); // EAX = string literal address
 
-								// TODO Compare string pointed in ECX to string pointed in EAX, like strcmp, until it hits 0
+								// Inline string comparison: ECX = switch string, EAX = case string
+								string strCmpLoopLabel = State.DefineFreeLabel("STRCMP_LOOP", null, false, false);
+								string strCmpMismatchLabel = State.DefineFreeLabel("STRCMP_MISMATCH", null, false, false);
+								string strCmpMatchLabel = State.DefineFreeLabel("STRCMP_MATCH", null, false, false);
+								string strCmpSkipLabel = State.DefineFreeLabel("STRCMP_SKIP", null, false, false);
+								
+								EmitInstruction(FishInst.PUSH_REG, Reg.EDI); // Save EDI
+								EmitInstruction(FishInst.PUSH_REG, Reg.ESI); // Save ESI
+								
+								EmitInstruction(FishInst.MOVE_REG_REG, Reg.ECX, Reg.ESI); // ESI = switch string
+								EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.EDI); // EDI = case string
+								EmitInstruction(FishInst.MOVE_LONG_REG, (uint)0, Reg.EDX); // EDX = index = 0
+								
+								// Loop: compare byte by byte
+								EmitRaw("{0}:", strCmpLoopLabel);
+								
+								// Load byte from switch string: ESI[EDX]
+								EmitInstruction(FishInst.PUSH_REG, Reg.EBX);
+								EmitInstruction(FishInst.MOVE_REG_REG, Reg.EDX, Reg.EBX);
+								EmitInstruction(FishInst.ADD_REG_REG, Reg.ESI, Reg.EBX);
+								EmitInstruction(FishInst.MOVEBYTE_OFFSET_REG_REG, 0, Reg.EBX, Reg.AL);
+								EmitInstruction(FishInst.POP_REG, Reg.EBX);
+								
+								// Load byte from case string: EDI[EDX]
+								EmitInstruction(FishInst.PUSH_REG, Reg.EBX);
+								EmitInstruction(FishInst.MOVE_REG_REG, Reg.EDX, Reg.EBX);
+								EmitInstruction(FishInst.ADD_REG_REG, Reg.EDI, Reg.EBX);
+								EmitInstruction(FishInst.MOVEBYTE_OFFSET_REG_REG, 0, Reg.EBX, Reg.AH);
+								EmitInstruction(FishInst.POP_REG, Reg.EBX);
+								
+								// Compare the two bytes
+								EmitInstruction(FishInst.MOVEZ_REG_REG, Reg.AL, Reg.EAX);
+								EmitInstruction(FishInst.MOVEZ_REG_REG, Reg.AH, Reg.EBX);
+								EmitInstruction(FishInst.CMP_REG_REG, Reg.EAX, Reg.EBX);
+								EmitInstruction(FishInst.JUMP_IF_NOT_ZERO_LONG, strCmpMismatchLabel); // Not equal
+								
+								// Check if we reached null terminator (both strings ended)
+								EmitInstruction(FishInst.CMP_LONG_REG, (uint)0, Reg.EAX);
+								EmitInstruction(FishInst.JUMP_IF_ZERO_LONG, strCmpMatchLabel); // Both are 0, strings match
+								
+								// Increment index and continue
+								EmitInstruction(FishInst.ADD_LONG_REG, (uint)1, Reg.EDX);
+								EmitInstruction(FishInst.JUMP_LONG, strCmpLoopLabel);
+								
+								// String mismatch
+								EmitRaw("{0}:", strCmpMismatchLabel);
+								EmitInstruction(FishInst.POP_REG, Reg.ESI);
+								EmitInstruction(FishInst.POP_REG, Reg.EDI);
+								EmitInstruction(FishInst.MOVE_LONG_REG, (uint)0, Reg.EAX); // Not equal
+								EmitInstruction(FishInst.CMP_LONG_REG, (uint)1, Reg.EAX); // Set flags for not equal (ZF=0)
+								EmitInstruction(FishInst.JUMP_LONG, strCmpSkipLabel);
+								
+								// String match
+								EmitRaw("{0}:", strCmpMatchLabel);
+								EmitInstruction(FishInst.POP_REG, Reg.ESI);
+								EmitInstruction(FishInst.POP_REG, Reg.EDI);
+								EmitInstruction(FishInst.MOVE_LONG_REG, (uint)0, Reg.EAX); // Equal
+								EmitInstruction(FishInst.CMP_LONG_REG, (uint)0, Reg.EAX); // Set flags for equal (ZF=1)
+								
+								// Skip label
+								EmitRaw("{0}:", strCmpSkipLabel);
 							}
 							else
 								throw new NotImplementedException();
