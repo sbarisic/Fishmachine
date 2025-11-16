@@ -18,6 +18,11 @@ namespace CTilde.Expr
 		public bool IsPointer = false;
 		public int ArraySize = 0;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield break;
+		}
+
 		public Expr_TypeDef()
 		{
 		}

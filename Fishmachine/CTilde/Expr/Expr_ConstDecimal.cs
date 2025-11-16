@@ -12,6 +12,11 @@ namespace CTilde.Expr
 	{
 		public string NumberLiteral;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield break;
+		}
+
 		public Expr_ConstDecimal(Token PeekTok, string NumberLiteral)
 		{
 			if (!(NumberLiteral.Contains(".") || NumberLiteral.EndsWith("f")))

@@ -46,6 +46,12 @@ namespace CTilde.Expr
 			}
 		}
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield return LExpr;
+			yield return RExpr;
+		}
+
 		public Expr_MathOp(Expression LExpr)
 		{
 			this.LExpr = LExpr;

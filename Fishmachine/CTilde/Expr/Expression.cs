@@ -15,6 +15,7 @@ namespace CTilde.Expr
 	{
 		public virtual IEnumerator<Expression> GetEnumerator()
 		{
+			string NotImpType = GetType().Name;
 			throw new NotImplementedException();
 		}
 
@@ -25,6 +26,7 @@ namespace CTilde.Expr
 
 		public virtual Expression Parse(Tokenizer Tok)
 		{
+			string NotImpType = GetType().Name;
 			throw new NotImplementedException();
 		}
 

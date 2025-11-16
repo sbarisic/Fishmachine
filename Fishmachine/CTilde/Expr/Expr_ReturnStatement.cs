@@ -11,6 +11,12 @@ namespace CTilde.Expr
 		public Expression RetValExpr;
 		public Expr_TypeDef RetTypeDef;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield return RetValExpr;
+			yield return RetTypeDef;
+		}
+
 		public Expr_ReturnStatement()
 		{
 		}

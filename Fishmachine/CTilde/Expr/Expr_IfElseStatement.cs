@@ -12,6 +12,15 @@ namespace CTilde.Expr
 		public Expr_Block Body;
 		public Expression ElseBody;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield return ConditionValue;
+			yield return Body;
+
+			if (ElseBody != null)
+				yield return ElseBody;
+		}
+
 		public Expr_IfElseStatement()
 		{
 		}

@@ -14,6 +14,14 @@ namespace CTilde.Expr
 
 		public Expr_Block Body;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield return Exp1;
+			yield return Exp2;
+			yield return Exp3;
+			yield return Body;
+		}
+
 		public Expr_ForStatement()
 		{
 		}

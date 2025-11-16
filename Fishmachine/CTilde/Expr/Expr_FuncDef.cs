@@ -1,9 +1,5 @@
 ﻿using Fishmachine;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Console = Fishmachine.Console;
 
 namespace CTilde.Expr
@@ -67,11 +63,19 @@ namespace CTilde.Expr
 
 				FuncBody = new Expr_Block().Parse<Expr_Block>(Tok);
 
-				FuncBody.Expressions.Where(E => E is Expr_ReturnStatement).Select(S =>
+				/*FuncBody.Expressions.Where(E => E is Expr_ReturnStatement).Select(S =>
 				{
 					((Expr_ReturnStatement)S).RetTypeDef = FuncReturnTypeDef;
 					return S;
-				}).ToArray();
+				}).ToArray();*/
+
+				Expression[] AllExpr = RecursiveSelect(FuncBody).ToArray();
+
+				Expression[] EA = AllExpr.Where(E => E is Expr_ReturnStatement).Select(S =>
+					{
+						((Expr_ReturnStatement)S).RetTypeDef = FuncReturnTypeDef;
+						return S;
+					}).ToArray();
 
 				IsFunctionCall = false;
 			}
@@ -81,6 +85,22 @@ namespace CTilde.Expr
 			}
 
 			return this;
+		}
+
+		IEnumerable<Expression> RecursiveSelect(Expression E)
+		{
+			if (E == null)
+				yield break;
+
+			yield return E;
+
+			foreach (var EE in E)
+			{
+				foreach (var F in RecursiveSelect(EE))
+				{
+					yield return F;
+				}
+			}
 		}
 	}
 }

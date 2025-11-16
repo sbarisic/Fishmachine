@@ -12,6 +12,11 @@ namespace CTilde.Expr
 		public char CharLiteral;
 		public string RawString;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield break;
+		}
+
 		public Expr_ConstChar(char CharLiteral, string RawString)
 		{
 			this.CharLiteral = CharLiteral;

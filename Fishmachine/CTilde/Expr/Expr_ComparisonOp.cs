@@ -23,6 +23,12 @@ namespace CTilde.Expr
 		public ComparisonOp Op;
 		public Expression RExpr;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield return LExpr;
+			yield return RExpr;
+		}
+
 		public Expr_ComparisonOp(Expression LExpr)
 		{
 			this.LExpr = LExpr;

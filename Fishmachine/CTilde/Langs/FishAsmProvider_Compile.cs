@@ -1411,7 +1411,7 @@ namespace CTilde.Langs
 							Compile(ReturnExp.RetValExpr);
 
 							// Check if we're returning a large struct
-							if (State.Types.TryGetType(ReturnExp.RetTypeDef.Type, out FishTypeDef FTD))
+							if (ReturnExp.RetTypeDef != null && State.Types.TryGetType(ReturnExp.RetTypeDef.Type, out FishTypeDef FTD))
 							{
 								EmitRaw("# RETURN STRUCT STATEMENT - size={0}", FTD.Size);
 								// EAX contains address of local struct

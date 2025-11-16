@@ -11,10 +11,20 @@ namespace CTilde.Expr
 		public Expression CaseExpression;
 		public List<Expression> Body;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			if (CaseExpression != null)
+				yield return CaseExpression;
+
+			foreach (var E in Body)
+				yield return E;
+		}
+
 		public Expr_CaseBlock()
 		{
 			Body = new List<Expression>();
 		}
+
 		public override Expression Parse(Tokenizer Tok)
 		{
 			bool IsDefault = false;

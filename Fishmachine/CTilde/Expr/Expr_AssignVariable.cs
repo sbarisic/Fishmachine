@@ -12,6 +12,12 @@ namespace CTilde.Expr
 		public Expr_Identifier Variable;
 		public Expression AssignmentValue;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield return Variable;
+			yield return AssignmentValue;
+		}
+
 		public override Expression Parse(Tokenizer Tok)
 		{
 			Variable = new Expr_Identifier().Parse<Expr_Identifier>(Tok);

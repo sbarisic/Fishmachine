@@ -12,6 +12,16 @@ namespace CTilde.Expr
 		public Expr_Identifier Function;
 		public List<Expression> Arguments = new List<Expression>();
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield return Function;
+
+			foreach (Expression item in Arguments)
+			{
+				yield return item;
+			}
+		}
+
 		public override Expression Parse(Tokenizer Tok)
 		{
 			Function = new Expr_Identifier().Parse<Expr_Identifier>(Tok);

@@ -10,6 +10,12 @@ namespace CTilde.Expr {
 		public Expr_TypeDef Type;
 		public Expr_Identifier Ident;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield return Type;
+			yield return Ident;
+		}
+
 		public override Expression Parse(Tokenizer Tok) {
 			Type = new Expr_TypeDef().Parse<Expr_TypeDef>(Tok);
 			Ident = new Expr_Identifier().Parse<Expr_Identifier>(Tok);

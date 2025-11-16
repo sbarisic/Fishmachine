@@ -12,6 +12,11 @@ namespace CTilde.Expr
 		public string MemberName;
 		public string VariableName;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield break;
+		}
+
 		public Expr_MemberAccessOp()
 		{
 		}

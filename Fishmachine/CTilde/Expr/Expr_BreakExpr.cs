@@ -7,9 +7,13 @@ using System.Xml.Linq;
 
 namespace CTilde.Expr
 {
-
 	public class Expr_BreakExpr : Expression
 	{
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield break;
+		}
+
 		public Expr_BreakExpr()
 		{
 		}
