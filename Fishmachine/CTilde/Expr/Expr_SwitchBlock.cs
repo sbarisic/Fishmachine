@@ -10,6 +10,14 @@ namespace CTilde.Expr
 	{
 		public List<Expr_CaseBlock> Expressions;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			foreach (var Case in Expressions)
+			{
+				yield return Case;
+			}
+		}
+
 		public Expr_SwitchBlock()
 		{
 			Expressions = new List<Expr_CaseBlock>();

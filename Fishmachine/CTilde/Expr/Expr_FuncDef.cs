@@ -19,6 +19,16 @@ namespace CTilde.Expr
 		public bool Interrupt;
 		public bool IsFunctionCall = false;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield return FuncReturnTypeDef;
+			//yield return FuncVariableDef;
+			yield return FuncParams;
+
+			if (FuncBody != null)
+				yield return FuncBody;
+		}
+
 		public Expr_FuncDef()
 		{
 		}

@@ -11,6 +11,12 @@ namespace CTilde.Expr
 		public Expression Exp1;
 		public Expr_SwitchBlock Body;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield return Exp1;
+			yield return Body;
+		}
+
 		public Expr_SwitchStatement()
 		{
 		}
