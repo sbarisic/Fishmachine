@@ -17,6 +17,7 @@ namespace CTilde.Expr
 
 		public bool Naked;
 		public bool Interrupt;
+		public string[] Attributes;
 		public bool IsFunctionCall = false;
 
 		public override IEnumerator<Expression> GetEnumerator()

@@ -104,6 +104,13 @@ namespace CTilde.Langs
 
 							if (FuncDef.FuncBody != null)
 							{
+								if (FuncDef.Attributes.Contains("retaddr"))
+								{
+									// Load return address location into EAX
+									//EmitInstruction(FishInst.LEA_OFFSET_REG_REG, 0, Reg.EBP, Reg.EBX); 
+								}
+								
+
 								State.ClearVarOffsets();
 								State.ClearArgOffset();
 

@@ -31,6 +31,7 @@ namespace CTilde
 		@return,
 		@continue,
 		interrupt,
+		attribute,
 		wait,
 		define,
 		addrof,
