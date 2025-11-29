@@ -19,6 +19,9 @@ namespace CTilde
 		@else,
 		@while,
 		@for,
+		@switch,
+		@case,
+		@default,
 		@true,
 		@false,
 		@new,
@@ -28,6 +31,7 @@ namespace CTilde
 		@return,
 		@continue,
 		interrupt,
+		attribute,
 		wait,
 		define,
 		addrof,
@@ -62,7 +66,8 @@ namespace CTilde
 		BitwiseAnd,
 		BitwiseOr,
 		BitwiseXor,
-		Dot
+		Dot,
+		Colon,
 	}
 
 	public class Tokenizer
@@ -117,6 +122,7 @@ namespace CTilde
 				{ "*", (int)Symbol.Star },
 				{ "/", (int)Symbol.Division },
 				{ ".", (int)Symbol.Dot },
+				{ ":", (int)Symbol.Colon },
 			};
 
 			L = new Lexer(Reader, Settings);

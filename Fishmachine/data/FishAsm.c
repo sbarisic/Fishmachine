@@ -1,4 +1,4 @@
-uint* int_table = static uint[3];
+uint* int_table = static uint[4];
 string tmp_chr = static string[2];
 string temp_buffer = null;
 string temp_buffer2 = null;
@@ -168,6 +168,13 @@ interrupt void handler_int2_keyboardchar(uint key2) {
 	input_add(key2);
 }
 
+interrupt attribute("retaddr") void handler_exception(uint exc) {
+	print("Exception! ");
+	printnum(exc);
+	print("\n");
+	__asm("SYSCALL $0");
+}
+
 naked void kmain() {
 	//int_table = 32;
 	//__asm("DBG_BREAK");
@@ -175,6 +182,7 @@ naked void kmain() {
 	int_table[0] = addrof handler_int0;
 	int_table[1] = addrof handler_int1_keyboardkey;
 	int_table[2] = addrof handler_int2_keyboardchar;
+	int_table[3] = addrof handler_exception;
 	byte* bptr = 0;
 
 	//__asm("SYSCALL $0");

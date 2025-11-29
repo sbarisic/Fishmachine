@@ -1,10 +1,18 @@
+string case hello
+case 0
+case 1 or 2
+case 1 or 2
+case default
+vecs constructor called
+vecs: 100, 69, default string
+vecs: 10, 20, Hello test string
 Func2 called!
 Func3 called with num: 9
 5
+vec2: 0, 0
 Structs
-13, 24
-26, 48
-4, 5
+vec2: 13, 24
+vec2: 26, 48
+vec2: 4, 5
 Function pointers
 Func1 called!
-f2 addr: 5337

@@ -22,6 +22,12 @@ namespace CTilde.Expr
 		public BinaryOp Op;
 		public Expression RExpr;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield return LExpr;
+			yield return RExpr;
+		}
+
 		public Expr_BinaryOp(Expression LExpr)
 		{
 			this.LExpr = LExpr;

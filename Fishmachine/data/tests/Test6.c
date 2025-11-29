@@ -98,6 +98,24 @@ int addf(int a, int b) {
 	return (a + b);
 }
 
+void test_switch(int i) {
+	switch (i) {
+
+	case 0:
+		print("case 0\n");
+		break;
+
+	case 1:
+	case 2:
+		print("case 1 or 2\n");
+		break;
+
+	default:
+		print("case default\n");
+		break;
+	}
+}
+
 void kmain() {
 	vec2 a;
 	vec2 b;
@@ -112,6 +130,27 @@ void kmain() {
 
 	int result = 0;
 	funcptr f2 = addrof func2;
+
+	string str = "hello";
+
+	switch (str) {
+	case "hello":
+		print("string case hello\n");
+		break;
+
+	case "world":
+		print("string case world\n");
+		break;
+
+	default:
+		print("string case default\n");
+		break;
+	}
+
+	test_switch(0);
+	test_switch(1);
+	test_switch(2);
+	test_switch(3);
 
 	vecs vv = new vecs;
 	printvecs(vv);
@@ -157,10 +196,10 @@ void kmain() {
 
 	func1();
 
-	print("f2 addr: ");
+	/*print("f2 addr: ");
 	int f2_addr = addrof func2;
 	printnum(f2_addr);
-	print("\n");
+	print("\n");*/
 
 
 

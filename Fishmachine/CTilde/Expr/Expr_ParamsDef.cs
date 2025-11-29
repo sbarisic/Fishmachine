@@ -18,6 +18,11 @@ namespace CTilde.Expr {
 	public class Expr_ParamsDef : Expression {
 		public List<ParamDefData> Definitions = new List<ParamDefData>();
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield break;
+		}
+
 		public Expr_ParamsDef Append(ParamDefData Dat) {
 			Definitions.Add(Dat);
 			return this;

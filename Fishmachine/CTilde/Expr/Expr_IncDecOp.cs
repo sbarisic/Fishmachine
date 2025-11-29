@@ -12,6 +12,10 @@ namespace CTilde.Expr
 		public Expression LExpr;
 		public bool Inc;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield return LExpr;
+		}
 
 		public Expr_IncDecOp(bool Inc)
 		{

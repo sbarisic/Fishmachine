@@ -104,6 +104,13 @@ namespace CTilde.Langs
 
 							if (FuncDef.FuncBody != null)
 							{
+								if (FuncDef.Attributes.Contains("retaddr"))
+								{
+									// Load return address location into EAX
+									//EmitInstruction(FishInst.LEA_OFFSET_REG_REG, 0, Reg.EBP, Reg.EBX); 
+								}
+								
+
 								State.ClearVarOffsets();
 								State.ClearArgOffset();
 
@@ -392,15 +399,11 @@ namespace CTilde.Langs
 							uint? ConstStructValue = null;
 							bool SkipEmitStore = false;
 
-							if (AssVariableDef.AssignmentValue is Expr_ConstNumber)
+							if (AssVariableDef.AssignmentValue is Expr_ConstNumber || AssVariableDef.AssignmentValue is Expr_Identifier || AssVariableDef.AssignmentValue is Expr_ConstDecimal)
 							{
 								ValueSize = VarSize;
 							}
-							else if (AssVariableDef.AssignmentValue is Expr_ConstString)
-							{
-								ValueSize = VarSize;
-							}
-							else if (AssVariableDef.AssignmentValue is Expr_AddressOfOp)
+							else if (AssVariableDef.AssignmentValue is Expr_ConstString || AssVariableDef.AssignmentValue is Expr_AddressOfOp)
 							{
 								ValueSize = VarSize;
 							}
@@ -970,6 +973,171 @@ namespace CTilde.Langs
 						break;
 					}
 
+				case Expr_SwitchStatement SwitchExpr:
+					{
+						EmitRaw("# Switch BEGIN '{0}'", SwitchExpr.Exp1.ToSourceStr());
+						Indent();
+
+						// Compile the switch expression (value to compare)
+						Compile(SwitchExpr.Exp1);
+						EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.ECX); // ECX = switch value
+
+						// Create labels for each case and default
+						string EndSwitchLabel = State.DefineFreeLabel("ENDSWITCH", null, false, false);
+						string DefaultLabel = null;
+						List<(string caseLabel, Expression caseValue)> caseLabels = new List<(string, Expression)>();
+
+						// Generate labels for all cases
+						foreach (Expr_CaseBlock caseBlock in SwitchExpr.Body.Expressions)
+						{
+							string caseLabel = State.DefineFreeLabel("CASE", null, false, false);
+
+							if (caseBlock.CaseExpression == null)
+							{
+								// This is the default case
+								DefaultLabel = caseLabel;
+							}
+							else
+							{
+								caseLabels.Add((caseLabel, caseBlock.CaseExpression));
+							}
+						}
+
+						// Generate comparison chain for each case
+						EmitRaw("# Switch comparison chain");
+						for (int i = 0; i < caseLabels.Count; i++)
+						{
+							var (caseLabel, caseValue) = caseLabels[i];
+
+							if (caseValue is Expr_ConstNumber)
+							{
+								// Compile the case constant value
+								Compile(caseValue);
+								// Compare switch value (ECX) with case value (EAX)
+								EmitInstruction(FishInst.CMP_REG_REG, Reg.ECX, Reg.EAX);
+								EmitInstruction(FishInst.JUMP_IF_ZERO_LONG, caseLabel);
+							}
+							else if (caseValue is Expr_ConstString)
+							{
+								EmitRaw("# String comparison for case: {0}", caseValue.ToSourceStr());
+								Compile(caseValue); // EAX = string literal address
+
+								// Inline string comparison: ECX = switch string, EAX = case string  
+								string strCmpLoopLabel = State.DefineFreeLabel("STRCMP_LOOP", null, false, false);
+								string strCmpMismatchLabel = State.DefineFreeLabel("STRCMP_MISMATCH", null, false, false);
+								string strCmpMatchLabel = State.DefineFreeLabel("STRCMP_MATCH", null, false, false);
+								string nextCaseLabel = State.DefineFreeLabel("STRCMP_NEXT", null, false, false);
+
+								EmitInstruction(FishInst.PUSH_REG, Reg.EDI); // Save EDI
+								EmitInstruction(FishInst.PUSH_REG, Reg.ESI); // Save ESI
+								EmitInstruction(FishInst.MOVE_REG_REG, Reg.ECX, Reg.ESI); // ESI = switch string
+								EmitInstruction(FishInst.MOVE_REG_REG, Reg.EAX, Reg.EDI); // EDI = case string
+								EmitInstruction(FishInst.MOVE_LONG_REG, (uint)0, Reg.EDX); // EDX = index = 0
+
+								// Loop: compare byte by byte (don't use ECX - we need to preserve it!)
+								EmitRaw("{0}:", strCmpLoopLabel);
+
+								// Load byte from switch string into AL, then save to stack: ESI[EDX]
+								EmitInstruction(FishInst.PUSH_REG, Reg.EBX);
+								EmitInstruction(FishInst.MOVE_REG_REG, Reg.EDX, Reg.EBX);
+								EmitInstruction(FishInst.ADD_REG_REG, Reg.ESI, Reg.EBX);
+								EmitInstruction(FishInst.MOVEBYTE_OFFSET_REG_REG, 0, Reg.EBX, Reg.AL);
+								EmitInstruction(FishInst.POP_REG, Reg.EBX); // Restore original EBX
+								EmitInstruction(FishInst.PUSH_REG, Reg.EAX); // Save switch byte (in AL/EAX) to stack
+
+								// Load byte from case string into AL: EDI[EDX]
+								EmitInstruction(FishInst.PUSH_REG, Reg.EBX);
+								EmitInstruction(FishInst.MOVE_REG_REG, Reg.EDX, Reg.EBX);
+								EmitInstruction(FishInst.ADD_REG_REG, Reg.EDI, Reg.EBX);
+								EmitInstruction(FishInst.MOVEBYTE_OFFSET_REG_REG, 0, Reg.EBX, Reg.AL);
+								EmitInstruction(FishInst.POP_REG, Reg.EBX); // Restore original EBX
+
+								EmitInstruction(FishInst.POP_REG, Reg.EBX); // Get saved switch byte from stack into EBX
+
+								// Compare the two bytes: EBX (byte from switch) vs EAX (byte from case)
+								EmitInstruction(FishInst.CMP_REG_REG, Reg.EBX, Reg.EAX);
+								EmitInstruction(FishInst.JUMP_IF_NOT_ZERO_LONG, strCmpMismatchLabel); // Not equal
+
+								// Bytes are equal - check if BOTH are null terminator (we can check just EAX since they're equal)
+								EmitInstruction(FishInst.CMP_LONG_REG, (uint)0, Reg.EAX);
+								EmitInstruction(FishInst.JUMP_IF_ZERO_LONG, strCmpMatchLabel); // Both are 0, strings match
+
+								// Bytes match but not null yet - continue to next character
+								EmitInstruction(FishInst.ADD_LONG_REG, (uint)1, Reg.EDX);
+								EmitInstruction(FishInst.JUMP_LONG, strCmpLoopLabel);
+
+								// String mismatch - restore registers and continue to next case
+								EmitRaw("{0}:", strCmpMismatchLabel);
+								EmitInstruction(FishInst.POP_REG, Reg.ESI);
+								EmitInstruction(FishInst.POP_REG, Reg.EDI);
+								EmitInstruction(FishInst.JUMP_LONG, nextCaseLabel);
+
+								// String match - restore registers and jump to this case
+								EmitRaw("{0}:", strCmpMatchLabel);
+								EmitInstruction(FishInst.POP_REG, Reg.ESI);
+								EmitInstruction(FishInst.POP_REG, Reg.EDI);
+								EmitInstruction(FishInst.JUMP_LONG, caseLabel);
+
+								// Label to continue to next case comparison
+								EmitRaw("{0}:", nextCaseLabel);
+								// ECX still contains the original switch value for next comparison
+								// Continue with next case comparison or default/end
+								continue; // Skip the JUMP_IF_ZERO_LONG below
+							}
+							else
+								throw new NotImplementedException();
+						}
+
+						// If no case matched, jump to default or end
+						if (DefaultLabel != null)
+						{
+							EmitInstruction(FishInst.JUMP_LONG, DefaultLabel);
+						}
+						else
+						{
+							EmitInstruction(FishInst.JUMP_LONG, EndSwitchLabel);
+						}
+
+						// Generate case bodies
+						State.PushBreakLabel(EndSwitchLabel);
+
+						int caseIndex = 0;
+						foreach (Expr_CaseBlock caseBlock in SwitchExpr.Body.Expressions)
+						{
+							string caseLabel;
+							if (caseBlock.CaseExpression == null)
+							{
+								caseLabel = DefaultLabel;
+								EmitRaw("# Default case");
+							}
+							else
+							{
+								caseLabel = caseLabels[caseIndex].caseLabel;
+								EmitRaw("# Case {0}", caseBlock.CaseExpression.ToSourceStr());
+								caseIndex++;
+							}
+
+							EmitRaw("{0}:", caseLabel);
+							Indent();
+
+							// Compile case body statements
+							foreach (Expression stmt in caseBlock.Body)
+							{
+								Compile(stmt);
+							}
+
+							Unindent();
+						}
+
+						State.PopBreakLabel();
+
+						EmitRaw("{0}:", EndSwitchLabel);
+
+						Unindent();
+						EmitRaw("# Switch END");
+						break;
+					}
+
 				case Expr_ForStatement ForExpr:
 					{
 						EmitRaw("# For BEGIN '{0}'", ForExpr.ToSourceStr());
@@ -1250,7 +1418,7 @@ namespace CTilde.Langs
 							Compile(ReturnExp.RetValExpr);
 
 							// Check if we're returning a large struct
-							if (State.Types.TryGetType(ReturnExp.RetTypeDef.Type, out FishTypeDef FTD))
+							if (ReturnExp.RetTypeDef != null && State.Types.TryGetType(ReturnExp.RetTypeDef.Type, out FishTypeDef FTD))
 							{
 								EmitRaw("# RETURN STRUCT STATEMENT - size={0}", FTD.Size);
 								// EAX contains address of local struct

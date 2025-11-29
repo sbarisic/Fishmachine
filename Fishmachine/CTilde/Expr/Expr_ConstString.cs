@@ -10,6 +10,11 @@ namespace CTilde.Expr {
 		public string StringLiteral;
 		public string RawString;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield break;
+		}
+
 		public Expr_ConstString(string StringLiteral) {
 			this.StringLiteral = StringLiteral;
 			RawString = StringLiteral.Substring(1, StringLiteral.Length - 2).Replace("\\n", "\n").Replace("\\t", "\t").Replace("\\\"", "\"").Replace("\\\\", "\\");

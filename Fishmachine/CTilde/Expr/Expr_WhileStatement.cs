@@ -11,6 +11,12 @@ namespace CTilde.Expr
 		public Expression ConditionValue;
 		public Expr_Block Body;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield return ConditionValue;
+			yield return Body;
+		}
+
 		public Expr_WhileStatement()
 		{
 		}

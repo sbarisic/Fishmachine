@@ -9,6 +9,11 @@ namespace CTilde.Expr
 {
 	public class Expr_WaitExpr : Expression
 	{
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield break;
+		}
+
 		public Expr_WaitExpr()
 		{
 		}

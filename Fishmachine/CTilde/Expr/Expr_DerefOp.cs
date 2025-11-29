@@ -12,6 +12,11 @@ namespace CTilde.Expr
 	{
 		public Expression ValExpr;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield return ValExpr;
+		}
+
 		public Expr_DerefOp()
 		{
 		}

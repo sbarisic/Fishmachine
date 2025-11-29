@@ -12,6 +12,11 @@ namespace CTilde.Expr
 		//public string NumberLiteral;
 		public Expr_TypeDef TypeDefExpr;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield return TypeDefExpr;
+		}
+
 		public Expr_StaticValue()
 		{
 		}

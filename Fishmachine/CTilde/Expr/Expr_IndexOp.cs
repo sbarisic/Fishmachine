@@ -13,6 +13,12 @@ namespace CTilde.Expr
 		public Expression LExpr;
 		public Expression IndexValExpr;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield return LExpr;
+			yield return IndexValExpr;
+		}
+
 		public Expr_IndexOp(Expression LExpr)
 		{
 			this.LExpr = LExpr;

@@ -5,12 +5,21 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
-namespace CTilde.Expr {
-	public class Expr_AssignedVariableDef : Expression {
+namespace CTilde.Expr
+{
+	public class Expr_AssignedVariableDef : Expression
+	{
 		public Expr_VariableDef VariableDef;
 		public Expression AssignmentValue;
 
-		public override Expression Parse(Tokenizer Tok) {
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield return VariableDef;
+			yield return AssignmentValue;
+		}
+
+		public override Expression Parse(Tokenizer Tok)
+		{
 			VariableDef = new Expr_VariableDef().Parse<Expr_VariableDef>(Tok);
 
 			Tok.NextToken().Assert(Symbol.Assignment);

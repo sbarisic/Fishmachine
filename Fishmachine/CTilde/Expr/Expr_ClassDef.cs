@@ -12,6 +12,18 @@ namespace CTilde.Expr {
 		public List<Expr_VariableDef> Variables;
 		public List<Expr_FuncDef> Functions;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			foreach (var V in Variables)
+			{
+				yield return V;
+			}
+			foreach (var F in Functions)
+			{
+				yield return F;
+			}
+		}
+
 		public Expr_ClassDef() {
 			Functions = new List<Expr_FuncDef>();
 			Variables = new List<Expr_VariableDef>();

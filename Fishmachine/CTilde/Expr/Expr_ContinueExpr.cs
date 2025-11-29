@@ -13,6 +13,11 @@ namespace CTilde.Expr
 		{
 		}
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield break;
+		}
+
 		public override Expression Parse(Tokenizer Tok)
 		{
 			Tok.NextToken().Assert(Keyword.@continue);

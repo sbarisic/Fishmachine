@@ -10,6 +10,11 @@ namespace CTilde.Expr
 	{
 		public List<Expression> Expressions;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			return Expressions.GetEnumerator();
+		}
+
 		public Expr_Block()
 		{
 			Expressions = new List<Expression>();

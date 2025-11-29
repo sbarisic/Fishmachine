@@ -11,6 +11,12 @@ namespace CTilde.Expr
 	{
 		public Expression NewExpr;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			if (NewExpr != null)
+				yield return NewExpr;
+		}
+
 		public Expr_NewExpr()
 		{
 		}

@@ -907,7 +907,11 @@ namespace Fishmachine.VM
 					Console.WriteLine(ExStr);
 					Console.ResetColor();
 
-					throw new Exception(string.Format("VM {0}", ExStr));
+					//throw new Exception(string.Format("VM {0}", ExStr));
+					uint Ex = (uint)E.Exception;
+					E.SetException(this, FishExcept.None);
+					Interrupt(FishInterrupt.Int3, Ex, ref E);
+					continue;
 				}
 
 				if (!E.Is(FishExcept.None) && !LastException.Is(FishExcept.None))
@@ -977,7 +981,7 @@ namespace Fishmachine.VM
 				catch (Exception E)
 				{
 					Program.Exception = E;
-					//throw;
+					throw;
 				}
 			});
 			BgThread.IsBackground = true;

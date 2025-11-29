@@ -1,6 +1,7 @@
 using Fishmachine;
 using Fishmachine.CTilde;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -10,10 +11,22 @@ using Console = Fishmachine.Console;
 
 namespace CTilde.Expr
 {
-	public abstract class Expression
+	public abstract class Expression : IEnumerable<Expression>
 	{
+		public virtual IEnumerator<Expression> GetEnumerator()
+		{
+			string NotImpType = GetType().Name;
+			throw new NotImplementedException();
+		}
+
+		IEnumerator IEnumerable.GetEnumerator()
+		{
+			return GetEnumerator();
+		}
+
 		public virtual Expression Parse(Tokenizer Tok)
 		{
+			string NotImpType = GetType().Name;
 			throw new NotImplementedException();
 		}
 
@@ -90,12 +103,26 @@ namespace CTilde.Expr
 			else if (Tok.Peek().Is(Keyword.interrupt))
 			{
 				Tok.NextToken().Assert(Keyword.interrupt);
+				string Attr = "";
+
+				if (Tok.Peek().Is(Keyword.attribute))
+				{
+					Tok.NextToken().Assert(Keyword.attribute);
+					Expression AttrArg = ParseExpression(Tok, Symbol.RParen);
+
+					if (AttrArg is Expr_ConstString CStr)
+						Attr = CStr.RawString;
+					else
+						throw new ExprException(PT, "Attribute argument must be a string literal");
+				}
 
 				Expression FDef = ParseStatement(Tok);
 				if (FDef is not Expr_FuncDef)
 					throw new ExprException(PT, "Function definition expected after 'interrupt'");
 
-				((Expr_FuncDef)FDef).Interrupt = true;
+				Expr_FuncDef FFDef = (Expr_FuncDef)FDef;
+				FFDef.Interrupt = true;
+				FFDef.Attributes = Attr.Split(" ", StringSplitOptions.RemoveEmptyEntries);
 				return FDef;
 			}
 			else if (Tok.Peek().Is(Keyword.@break))
@@ -130,6 +157,12 @@ namespace CTilde.Expr
 				Tok.NextToken().Assert(Keyword.@for);
 
 				return new Expr_ForStatement().Parse(Tok);
+			}
+			else if (Tok.Peek().Is(Keyword.@switch))
+			{
+				Tok.NextToken().Assert(Keyword.@switch);
+
+				return new Expr_SwitchStatement().Parse(Tok);
 			}
 			else if (Tok.Peek().Is(Keyword.@return))
 			{

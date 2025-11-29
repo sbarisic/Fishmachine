@@ -9,6 +9,11 @@ namespace CTilde.Expr
 {
 	public class Expr_ConstNull : Expression
 	{
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield break;
+		}
+
 		public override string ToSourceStr()
 		{
 			return "null";

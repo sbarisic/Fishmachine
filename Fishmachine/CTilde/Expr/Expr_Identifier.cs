@@ -12,6 +12,11 @@ namespace CTilde.Expr
 		public string Identifier;
 		bool Assigned = false;
 
+		public override IEnumerator<Expression> GetEnumerator()
+		{
+			yield break;
+		}
+
 		public Expr_Identifier()
 		{
 			Assigned = false;
