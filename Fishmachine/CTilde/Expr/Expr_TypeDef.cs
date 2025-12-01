@@ -1,5 +1,4 @@
 ﻿using Fishmachine.CTilde.FishAsm;
-using NUnit.Framework.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;

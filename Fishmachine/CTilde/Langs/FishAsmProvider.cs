@@ -49,7 +49,7 @@ namespace CTilde.Langs
 			{
 				if (args[i] is Reg R)
 				{
-					argsStr[i] = FishUtils.RegToString(R);
+					argsStr[i] = CodeGenUtils.RegToString(R);
 				}
 				else if (args[i] is uint UI)
 				{
