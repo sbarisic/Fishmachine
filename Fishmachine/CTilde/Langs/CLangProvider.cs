@@ -122,12 +122,27 @@ namespace CTilde.Langs
 
                 case Expr_AssignedVariableDef AssVariableDef:
                     {
+                        bool isStatic = AssVariableDef.AssignmentValue is Expr_StaticValue;
+
+                        if (isStatic)
+                        {
+                            Append("static ");
+                        }
+
                         Compile(AssVariableDef.VariableDef.Type);
                         Append(" ");
                         Compile(AssVariableDef.VariableDef.Ident);
                         Append(" = ");
 
-                        Compile(AssVariableDef.AssignmentValue);
+                        if (AssVariableDef.AssignmentValue is Expr_StaticValue StaticAssignmentVal)
+                        {
+
+                            throw new NotImplementedException();
+                        }
+                        else
+                            Compile(AssVariableDef.AssignmentValue);
+
+
 
                         AppendLine(";");
                         break;
