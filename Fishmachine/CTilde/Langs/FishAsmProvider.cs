@@ -86,16 +86,6 @@ namespace CTilde.Langs
 			AppendLine("{0} {1}", inst, FormatArgs(args));
 		}
 
-		void EmitRaw(string raw)
-		{
-			AppendLine(raw);
-		}
-
-		void EmitRaw(string fmt, params object[] args)
-		{
-			EmitRaw(string.Format(fmt, args));
-		}
-
 		void EmitRawUnindented(string fmt, params object[] args)
 		{
 			bool Unindented = false;

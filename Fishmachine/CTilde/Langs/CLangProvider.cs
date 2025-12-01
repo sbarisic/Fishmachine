@@ -10,153 +10,180 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
-namespace CTilde.Langs {
-	public class CLangProvider : LangProvider {
-		//bool OmmitSemicolon = false;
+namespace CTilde.Langs
+{
+    public class CLangProvider : LangProvider
+    {
+        //bool OmmitSemicolon = false;
 
-		public override void Compile(Expression Ex) {
-			if (Ex == null)
-				throw new ArgumentNullException(nameof(Ex));
+        public override void Compile(Expression Ex)
+        {
+            if (Ex == null)
+                throw new ArgumentNullException(nameof(Ex));
 
-			switch (Ex) {
-				case Expr_Block Block: {
-					AppendLine("{");
+            switch (Ex)
+            {
+                case Expr_Block Block:
+                    {
+                        AppendLine("{");
 
-					foreach (var E in Block.Expressions) {
-						Compile(E);
-					}
+                        foreach (var E in Block.Expressions)
+                        {
+                            Compile(E);
+                        }
 
-					AppendLine("}");
-					break;
-				}
+                        AppendLine("}");
+                        break;
+                    }
 
-				case Expr_ClassDef ClassDef: {
-					AppendLine("typedef struct {");
+                case Expr_ClassDef ClassDef:
+                    {
+                        AppendLine("typedef struct {");
 
-					foreach (var E in ClassDef.Variables) {
-						Compile(E);
-					}
+                        foreach (var E in ClassDef.Variables)
+                        {
+                            Compile(E);
+                        }
 
-					AppendLine("}} {0};", ClassDef.Name);
+                        AppendLine("}} {0};", ClassDef.Name);
 
-					foreach (var F in ClassDef.Functions) {
-						Compile(F);
-					}
-					break;
-				}
+                        foreach (var F in ClassDef.Functions)
+                        {
+                            Compile(F);
+                        }
+                        break;
+                    }
 
-				case Expr_FuncDef FuncDef: {
-					//OmmitSemicolon = true;
-					Compile(FuncDef.FuncReturnTypeDef);
-					Append(" {0}(", FuncDef.FuncName);
+                case Expr_FuncDef FuncDef:
+                    {
+                        //OmmitSemicolon = true;
+                        Compile(FuncDef.FuncReturnTypeDef);
+                        Append(" {0}(", FuncDef.FuncName);
 
-					Compile(FuncDef.FuncParams);
+                        Compile(FuncDef.FuncParams);
 
-					Append(")");
-					//OmmitSemicolon = false;
+                        Append(")");
+                        //OmmitSemicolon = false;
 
-					Compile(FuncDef.FuncBody);
-					break;
-				}
+                        Compile(FuncDef.FuncBody);
+                        break;
+                    }
 
-				case Expr_Module Module: {
-					foreach (var E in Module.Expressions)
-						Compile(E);
+                case Expr_Module Module:
+                    {
+                        foreach (var E in Module.Expressions)
+                            Compile(E);
 
-					break;
-				}
+                        break;
+                    }
 
-				case Expr_ParamsDef ParamsDef: {
-					for (int i = 0; i < ParamsDef.Definitions.Count; i++) {
-						ParamDefData ParamDef = ParamsDef.Definitions[i];
-						//Compile(ParamDef);
+                case Expr_ParamsDef ParamsDef:
+                    {
+                        for (int i = 0; i < ParamsDef.Definitions.Count; i++)
+                        {
+                            ParamDefData ParamDef = ParamsDef.Definitions[i];
+                            //Compile(ParamDef);
 
-						Compile(ParamDef.ParamType);
-						Append(" {0}", ParamDef.Name);
+                            Compile(ParamDef.ParamType);
+                            Append(" {0}", ParamDef.Name);
 
-						if (i + 1 < ParamsDef.Definitions.Count)
-							Append(", ");
-					}
+                            if (i + 1 < ParamsDef.Definitions.Count)
+                                Append(", ");
+                        }
 
-					break;
-				}
+                        break;
+                    }
 
-				case Expr_TypeDef TypeDef: {
-					string T = TypeDef.Type;
+                case Expr_TypeDef TypeDef:
+                    {
+                        string T = TypeDef.Type;
 
-					if (TypeDef.IsPointer)
-						T += "*";
-					else if (TypeDef.IsArray)
-						T += "[]";
+                        if (TypeDef.IsPointer)
+                            T += "*";
+                        else if (TypeDef.IsArray)
+                            T += "[]";
 
-					Append(T);
-					break;
-				}
+                        Append(T);
+                        break;
+                    }
 
-				case Expr_VariableDef VariableDef: {
-					Compile(VariableDef.Type);
-					Append(" ");
-					Compile(VariableDef.Ident);
-					AppendLine(";");
+                case Expr_VariableDef VariableDef:
+                    {
+                        Compile(VariableDef.Type);
+                        Append(" ");
+                        Compile(VariableDef.Ident);
+                        AppendLine(";");
 
-					/*if (!OmmitSemicolon)
-						AppendLine(";");*/
+                        /*if (!OmmitSemicolon)
+							AppendLine(";");*/
 
-					break;
-				}
+                        break;
+                    }
 
-				case Expr_AssignedVariableDef AssVariableDef: {
-					Compile(AssVariableDef.VariableDef.Type);
-					Append(" ");
-					Compile(AssVariableDef.VariableDef.Ident);
-					Append(" = ");
+                case Expr_AssignedVariableDef AssVariableDef:
+                    {
+                        Compile(AssVariableDef.VariableDef.Type);
+                        Append(" ");
+                        Compile(AssVariableDef.VariableDef.Ident);
+                        Append(" = ");
 
-					Compile(AssVariableDef.AssignmentValue);
+                        Compile(AssVariableDef.AssignmentValue);
 
-					AppendLine(";");
-					break;
-				}
+                        AppendLine(";");
+                        break;
+                    }
 
-				case Expr_Identifier IdentifierEx: {
-					Append(IdentifierEx.Identifier);
-					break;
-				}
+                case Expr_Identifier IdentifierEx:
+                    {
+                        Append(IdentifierEx.Identifier);
+                        break;
+                    }
 
-				case Expr_ConstNumber NumberEx: {
-					Append(NumberEx.NumberLiteral);
-					break;
-				}
+                case Expr_ConstNumber NumberEx:
+                    {
+                        Append(NumberEx.NumberLiteral);
+                        break;
+                    }
 
-				case Expr_MathOp MathExp: {
-					Compile(MathExp.LExpr);
+                case Expr_MathOp MathExp:
+                    {
+                        Compile(MathExp.LExpr);
 
-					Append(" {0} ", MathExp.OpString);
+                        Append(" {0} ", MathExp.OpString);
 
-					Compile(MathExp.RExpr);
-					break;
-				}
+                        Compile(MathExp.RExpr);
+                        break;
+                    }
 
-				case Expr_FuncCall FuncCallExp: {
-					Compile(FuncCallExp.Function);
+                case Expr_FuncCall FuncCallExp:
+                    {
+                        Compile(FuncCallExp.Function);
 
-					Append("(");
+                        Append("(");
 
 
-					for (int i = 0; i < FuncCallExp.Arguments.Count; i++) {
-						Compile(FuncCallExp.Arguments[i]);
+                        for (int i = 0; i < FuncCallExp.Arguments.Count; i++)
+                        {
+                            Compile(FuncCallExp.Arguments[i]);
 
-						if (i < FuncCallExp.Arguments.Count - 1)
-							Append(", ");
-					}
+                            if (i < FuncCallExp.Arguments.Count - 1)
+                                Append(", ");
+                        }
 
-					AppendLine(");");
-					break;
-				}
+                        AppendLine(");");
+                        break;
+                    }
 
-				default: {
-					throw new NotImplementedException("Could not compile expression of type " + Ex.GetType());
-				}
-			}
-		}
-	}
+                case Expr_StaticValue StaticValueExp:
+                    {
+                        break;
+                    }
+
+                default:
+                    {
+                        throw new NotImplementedException("Could not compile expression of type " + Ex.GetType());
+                    }
+            }
+        }
+    }
 }
